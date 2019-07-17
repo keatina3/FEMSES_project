@@ -3,24 +3,26 @@
 
 class FEM {
 private:
-    std::vector<std::vector<float> > L;
-    std::vector<float> u;
-    std::vector<float> b;
+    float **L;
+    float *L_vals;
+    float *b;
     
     std::vector<std::vector<std::vector<float> > > Le;
     std::vector<std::vector<float> > be;
     
     // instert parameters here, or change default //
     Mesh* M;
+    int order;
 
 public:
-    FEM(const int* nr, const int* a, const int* b);
-    ~FEM(){ delete M;};
+    FEM(Mesh *M);
+    ~FEM();
     
     void assemble();
     void solve();
     void elem_mat(const int e);
     float area(float xi[3][3]) const;
+    void output(char* fname) const;
 };
 
 #endif

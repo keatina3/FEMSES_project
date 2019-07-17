@@ -1,3 +1,4 @@
+#include <iostream>
 #include <vector>
 #include <cmath>
 #include "mesh.h"
@@ -8,7 +9,7 @@ Mesh::Mesh(){
 }
 */ 
 
-Mesh::Mesh(const int* nr, const int* a, const int *b){
+Mesh::Mesh(const int* nr, const float* a, const float *b){
     // allow for more DOFs
     //int dof = 3;
     int dim = 2;
@@ -21,24 +22,27 @@ Mesh::Mesh(const int* nr, const int* a, const int *b){
         this->b[i] = b[i];
     }
 
-    dx = this->b[0]-this->a[0], dy = this->b[1]-this->a[1];
-    
+    dx = (this->b[0]-this->a[0])/nr[0], dy = (this->b[1]-this->a[1])/nr[1];
+    //std::cout << dx << std::endl;
+
     vertices.resize((nr[0]+1)*(nr[1]+1), std::vector<float>(dim, 0.0));
     cells.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
     dof.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
     boundary.resize((nr[0]+1)*(nr[1]+1), 0.0);
-
-    // CHECK IF a[1] = y-axis or x-axis ??? //
-    for(int i=this->a[1]; i<=this->b[1]; i+=dy){
-        for(int j=this->a[0]; j<=this->b[0]; j+=dx){
+    
+    // (x1,y1) - (x2,y2) //
+    for(float i=this->a[1]; i<=this->b[1]; i+=dy){
+        for(float j=this->a[0]; j<=this->b[0]; j+=dx){
+            //std::cout << j << std::endl;
             vertices[count][1] = i;
             vertices[count][0] = j;
 
+            // FIX THESE IF STATEMENTS //
             // DO MORE GENERAL BCs IMPLEMENTATION //
             if(j==a[0]){
-                boundary[count] = a[0];
+                boundary[count] = 2.0;
             } else if(j==b[0]){
-                boundary[count] = b[0];
+                boundary[count] = 6.0;
             } else {
                 boundary[count] = 0.0;
             }
@@ -46,6 +50,8 @@ Mesh::Mesh(const int* nr, const int* a, const int *b){
         }
     }
      
+    std::cout << "testing \n";
+
     for(int i=0; i<this->nr[1]; i++){
         for(int j=0; j<this->nr[0]; j++){
             cells[(2*j) + (i*nr[1])][0] = j + i*(nr[0]+1); 
@@ -69,15 +75,15 @@ Mesh::Mesh(const int* nr, const int* a, const int *b){
     // deform();
 }
 
-void Mesh::deform(void (*map)()){
+void Mesh::deform(void (*map)(std::vector<float>&, float*, float*, float, int)){
     
     // check this works properly //
     for(std::vector<std::vector<float> >::iterator v=vertices.begin(); v!=vertices.end(); ++v){ 
-        //map(v);
+        map(*v, a, b, M_PI/2.0, 2);
     }
 }
 
-void Mesh::get_xy(float *xy, const int v) const{
+void Mesh::get_xy(float *xy, const int v) const {
     xy[0] = vertices[v][0];
     xy[1] = vertices[v][1];
 }
@@ -103,12 +109,18 @@ float Mesh::get_bound(const int v) const {
     return boundary;
 }
 
-void annulus_portion(std::vector<int> &vertex, int *a, int *b, float theta){
+// expand this to be N-dimensional //
+void Mesh::get_recs(int* nrecs) const {
+    nrecs[0] = nr[0];
+    nrecs[1] = nr[1];
+}
+
+void annulus_seg_map(std::vector<float> &vertex, float *a, float *b, float theta, int s){
     float x_hat, y_hat;
     
-    x_hat = a[0] + (b[0]-a[0]) * pow( (vertex[0]-a[0]) / (b[0]-a[0]), 2);
+    x_hat = a[0] + (b[0]-a[0]) * pow( (vertex[0]-a[0]) / (b[0]-a[0]), s);
     y_hat = vertex[1];
 
-    vertex[0] = x_hat*cos(theta*y_hat/2);
-    vertex[1] = x_hat*sin(theta*y_hat/2);
+    vertex[0] = x_hat*cos(theta*y_hat);
+    vertex[1] = x_hat*sin(theta*y_hat);
 }

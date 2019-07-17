@@ -2,7 +2,7 @@ CC = g++
 
 CFLAGS = -g -Wall -W -O3
 
-LDFLAGS =
+LDFLAGS = -lm -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 OBJECTS = *.o
 FILES = *.cc
