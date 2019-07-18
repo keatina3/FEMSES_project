@@ -1,6 +1,8 @@
 #ifndef _FEM_H_
 #define _FEM_H_
 
+#define ERR 1.0E-08
+
 class FEM {
 private:
     float **L;
@@ -13,6 +15,7 @@ private:
     // instert parameters here, or change default //
     Mesh* M;
     int order;
+    int num_cells;
 
 public:
     FEM(Mesh *M);

@@ -54,21 +54,21 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
 
     for(int i=0; i<this->nr[1]; i++){
         for(int j=0; j<this->nr[0]; j++){
-            cells[(2*j) + (i*nr[1])][0] = j + i*(nr[0]+1); 
-            cells[(2*j) + (i*nr[1])][1] = j + i*(nr[0]+1) + 1;
-            cells[(2*j) + (i*nr[1])][2] = j + (i+1)*(nr[0]+1); 
+            cells[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
+            cells[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
+            cells[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
             
-            cells[(2*j) + (i*nr[1]) + 1][0] = j + i*(nr[0]+1) + 1; 
-            cells[(2*j) + (i*nr[1]) + 1][1] = j + (i+1)*(nr[0]+1);
-            cells[(2*j) + (i*nr[1]) + 1][2] = j + (i+1)*(nr[0]+1) + 1;
+            cells[2* (j + (i*nr[1]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
+            cells[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1);
+            cells[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1) + 1;
 
-            dof[(2*j) + (i*nr[1])][0] = j + i*(nr[0]+1); 
-            dof[(2*j) + (i*nr[1])][1] = j + i*(nr[0]+1) + 1;
-            dof[(2*j) + (i*nr[1])][2] = j + (i+1)*(nr[0]+1); 
+            dof[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
+            dof[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
+            dof[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
             
-            dof[(2*j) + (i*nr[1]) + 1][0] = j + i*(nr[0]+1) + 1; 
-            dof[(2*j) + (i*nr[1]) + 1][1] = j + (i+1)*(nr[0]+1);
-            dof[(2*j) + (i*nr[1]) + 1][2] = j + (i+1)*(nr[0]+1) + 1;
+            dof[2* (j + (i*nr[1]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
+            dof[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1);
+            dof[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1) + 1;
         }
     }
 

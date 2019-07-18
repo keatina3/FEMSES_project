@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
+#include <cmath>
 #include "mkl.h"
 #include "mesh.h"
 #include "fem.h"
@@ -19,6 +20,7 @@ FEM::FEM(Mesh *M){
     num_nodes = (nr[0]+1)*(nr[1]+1);
     dim = 2+1;
     order = num_nodes + 0;
+    num_cells = 2*nr[0]*nr[1];
     
     L_vals = new float[order*order]();
     L = new float*[order];
@@ -28,8 +30,8 @@ FEM::FEM(Mesh *M){
 
     this->b = new float[order]();
 
-    Le.resize(order, std::vector<std::vector <float> >(dim, std::vector<float>(dim,0.0)));
-    be.resize(order, std::vector<float>(dim,0.0));
+    Le.resize(num_cells, std::vector<std::vector <float> >(dim, std::vector<float>(dim,0.0)));
+    be.resize(num_cells, std::vector<float>(dim,0.0));
 
     //M = new Mesh(nr, a, b);
     this->M = M;
@@ -43,16 +45,24 @@ FEM::~FEM(){
 
 void FEM::assemble(){
     int dof_r, dof_s;
+    float bound;
     
     // change all these iterations to .size() for genralisation later //
     for(unsigned int e=0; e<Le.size(); e++){
-        elem_mat(e);
+        //elem_mat(e);
         for(unsigned int r=0; r<Le[e].size(); r++){
             dof_r = M->dof_map(e,r);
+            bound = M->get_bound(M->get_vertex(e,r));
             for(unsigned int s=0; s<Le[e][r].size(); s++){
                 dof_s = M->dof_map(e,s);
                 L[dof_r][dof_s] += Le[e][r][s];
             }
+            /*
+            if(fabs(bound) > ERR){
+                b[dof_r] = bound;
+                continue;
+            }
+            */
             b[dof_r] += be[e][r];
         }
     }
@@ -70,11 +80,37 @@ void FEM::solve(){
     MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
     MKL_INT ipiv[order];
 
-    for(int e=0; e<order; e++)
+    for(int e=0; e<Le.size(); e++)
         elem_mat(e);
-    
+     
+    /*
+    for(int e=0; e<num_cells; e++)
+        std::cout << M->dof_map(e,0) << " " << M->dof_map(e,1) << " " << M->dof_map(e,2) << std::endl;
+        //std::cout << M->get_vertex(e,0) << " " << M->get_vertex(e,1) << " " << M->get_vertex(e,2) << std::endl;
+
+    for(int i=0;i<Le[0].size();i++){
+        for(int j=0;j<Le[0][0].size();j++){
+            std::cout << Le[1][i][j] << " ";
+        }
+        std::cout << "be[i] = " << be[1][i] << 
+            " Boundary = " << M->get_bound(M->get_vertex(1,i)) << std::endl;
+    }
+    */
+
     assemble();    
-    
+   
+    /* 
+    // testing symmetry // 
+    for(int i=0; i<order; i++){
+        for(int j=0; j<i; j++){
+            if(L[i][j] != L[j][i])
+                std::cout << L[i][j] << std::endl;
+            //std::cout << L[i][j] << " ";
+        }
+        //std::cout << std::endl;
+    }
+    */
+
     info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
 }
 
@@ -83,7 +119,7 @@ void FEM::solve(){
 void FEM::elem_mat(const int e) {
     // these need to be expanded for more DOF //
     float alpha[3], beta[3], gamma[3];
-    float del;
+    float del, bound;
     float xi[3][3];
     int v;
     
@@ -94,32 +130,51 @@ void FEM::elem_mat(const int e) {
 
     // check this //
     del = e%2 == 0 ? area(xi) : (-1)*area(xi);
-
+    //del = area(xi);
+    
+    // THIS WONT WORK FOR P2, P3 etc //
     for(unsigned int i=0; i<Le[e].size(); i++){
         // alpha = xi[(i+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
         beta[i] = xi[(i+1)%3][2] - xi[(i+2)%3][2];
         gamma[i] = xi[(i+1)%3][1] - xi[(i+2)%3][1];
         
-        v = M->get_vertex(e,i);
         // need fn for 
         // also fn ptr here for Int(fv) //
-        be[e][i] = M->get_bound(v);
-       
+        // be[e][i] = INT(fv) //
+        //be[e][i] = 0.0;;
+        be[e][i] = M->get_bound(M->get_vertex(e,i));
+
+
         // remove some operations from this // 
-        for(unsigned int j=0; j<Le[e].size(); j++){
+        for(unsigned int j=0; j<=i; j++){
             // possibly change this to fn ptr //
-            Le[e][i][j] = (1/4.0) * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
-            if(M->get_bound(v) && i != j){
-                be[e][j] -= Le[e][j][i] * M->get_bound(v);
-                Le[e][i][j] = 0.0;
-                Le[e][j][i] = 0.0;
-            }
+            Le[e][i][j] = (1.0/4.0) * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
+            Le[e][j][i] = (1.0/4.0) * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
         }
+    }
+
+    for(unsigned int i=0; i<Le[e].size(); i++){
+        v = M->get_vertex(e,i);
+        bound = M->get_bound(v);
         
-        if(M->get_bound(v)){
-            be[e][i] = M->get_bound(M->get_vertex(e,i));
+        if(fabs(bound) > ERR){
+            //std::cout << "Boundary present\n";
+            for(unsigned int j=0; j<Le[e][i].size(); j++){
+                if(i != j){
+                    // WILL THIS WORK AFTER Le = 0.0 FOR 2ND BOUNDARY ??? //
+                    be[e][j] -= Le[e][j][i] * bound;
+                    //std::cout << "i = " << i << " j = " << j << std::endl;
+                    Le[e][i][j] = 0.0;
+                    Le[e][j][i] = 0.0;
+                }
+            }
             Le[e][i][i] = 1.0;
+            be[e][i] = M->get_bound(M->get_vertex(e,i));
         }
+        //if(e==0){
+        //    std::cout << be[e][i] << std::endl;
+        //}
+
     }
 }
 
@@ -140,7 +195,7 @@ void FEM::output(char* fname) const {
 
     fptr = fopen(fname, "w");
     if(!fptr)
-        printf("COuldn't open file %s\n", fname);
+        printf("Couldn't open file %s\n", fname);
     
     // ORDER OR NUM_NODES ?? //
     fprintf(fptr, "x, y, z\n");
