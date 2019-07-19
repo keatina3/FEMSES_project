@@ -8,7 +8,7 @@ Mesh::Mesh(){
      
 }
 */ 
-
+// put in BC parameters //
 Mesh::Mesh(const int* nr, const float* a, const float *b){
     // allow for more DOFs
     //int dof = 3;
@@ -52,28 +52,6 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
         }
     }
     
-    /*
-    for(float i=this->a[1]; i<=this->b[1]; i+=dy){
-        for(float j=this->a[0]; j<=this->b[0]; j+=dx){
-            //std::cout << j << std::endl;
-            vertices[count][1] = i;
-            vertices[count][0] = j;
-
-            // FIX THESE IF STATEMENTS //
-            // DO MORE GENERAL BCs IMPLEMENTATION //
-            if(j==a[0]){
-                boundary[count] = true;
-                bdr_val[count] = 2.0;
-            } else if(j==b[0]){
-                boundary[count] = true;
-                bdr_val[count] = 6.0;
-            } else {
-                boundary[count] = false;
-            }
-            count++;
-        }
-    }
-    */
     std::cout << "testing \n";
 
     for(int i=0; i<this->nr[1]; i++){

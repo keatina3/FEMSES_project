@@ -143,7 +143,7 @@ void FEM::elem_mat(const int e) {
         // remove some operations from this // 
         for(unsigned int j=0; j<=i; j++){
             // possibly change this to fn ptr //
-            Le[e][i][j] = (1.0/4.0) * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
+            Le[e][i][j] = 0.25 * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
             Le[e][j][i] = Le[e][i][j];
         }
     }
