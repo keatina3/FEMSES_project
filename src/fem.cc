@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <vector>
 #include <cmath>
+#include <cstdio>
 #include "mkl.h"
 #include "mesh.h"
 #include "fem.h"
@@ -45,24 +46,18 @@ FEM::~FEM(){
 
 void FEM::assemble(){
     int dof_r, dof_s;
-    float bound;
     
     // change all these iterations to .size() for genralisation later //
     for(unsigned int e=0; e<Le.size(); e++){
+        // can this be put in here ?? //
         //elem_mat(e);
         for(unsigned int r=0; r<Le[e].size(); r++){
             dof_r = M->dof_map(e,r);
-            bound = M->get_bound(M->get_vertex(e,r));
             for(unsigned int s=0; s<Le[e][r].size(); s++){
                 dof_s = M->dof_map(e,s);
                 L[dof_r][dof_s] += Le[e][r][s];
+                //std::cout << e << " " << dof_r << " " << dof_s << " " << std::endl;
             }
-            /*
-            if(fabs(bound) > ERR){
-                b[dof_r] = bound;
-                continue;
-            }
-            */
             b[dof_r] += be[e][r];
         }
     }
@@ -80,7 +75,7 @@ void FEM::solve(){
     MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
     MKL_INT ipiv[order];
 
-    for(int e=0; e<Le.size(); e++)
+    for(unsigned int e=0; e<Le.size(); e++)
         elem_mat(e);
      
     /*
@@ -99,18 +94,17 @@ void FEM::solve(){
 
     assemble();    
    
-    /* 
+     
     // testing symmetry // 
     for(int i=0; i<order; i++){
-        for(int j=0; j<i; j++){
+        for(int j=0; j<order; j++){
             if(L[i][j] != L[j][i])
                 std::cout << L[i][j] << std::endl;
             //std::cout << L[i][j] << " ";
         }
         //std::cout << std::endl;
     }
-    */
-
+    
     info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
 }
 
@@ -122,7 +116,8 @@ void FEM::elem_mat(const int e) {
     float del, bound;
     float xi[3][3];
     int v;
-    
+    bool is_bound;
+
     for(int i=0;i<3;i++){
         xi[i][0] = 1.0;
         M->get_xy(&xi[i][1], M->get_vertex(e,i));
@@ -141,24 +136,25 @@ void FEM::elem_mat(const int e) {
         // need fn for 
         // also fn ptr here for Int(fv) //
         // be[e][i] = INT(fv) //
-        //be[e][i] = 0.0;;
-        be[e][i] = M->get_bound(M->get_vertex(e,i));
+        //be[e][i] = M->get_bound(M->get_vertex(e,i));
+        be[e][i] = 0.0;;
 
 
         // remove some operations from this // 
         for(unsigned int j=0; j<=i; j++){
             // possibly change this to fn ptr //
             Le[e][i][j] = (1.0/4.0) * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
-            Le[e][j][i] = (1.0/4.0) * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
+            Le[e][j][i] = Le[e][i][j];
         }
     }
 
     for(unsigned int i=0; i<Le[e].size(); i++){
         v = M->get_vertex(e,i);
-        bound = M->get_bound(v);
+        is_bound = M->is_bound(v);
         
-        if(fabs(bound) > ERR){
-            //std::cout << "Boundary present\n";
+        if(is_bound){
+            bound = M->get_bound(v);
+            std::cout << v << " Boundary present\n";
             for(unsigned int j=0; j<Le[e][i].size(); j++){
                 if(i != j){
                     // WILL THIS WORK AFTER Le = 0.0 FOR 2ND BOUNDARY ??? //
@@ -169,12 +165,11 @@ void FEM::elem_mat(const int e) {
                 }
             }
             Le[e][i][i] = 1.0;
-            be[e][i] = M->get_bound(M->get_vertex(e,i));
+            be[e][i] = bound;
         }
         //if(e==0){
         //    std::cout << be[e][i] << std::endl;
         //}
-
     }
 }
 
@@ -186,7 +181,7 @@ float FEM::area(float xi[3][3]) const {
     tmp -= xi[0][1] * (xi[1][0]*xi[2][2] - xi[1][2]*xi[2][0]);
     tmp += xi[0][2] * (xi[1][0]*xi[2][1] - xi[1][1]*xi[2][0]);
 
-    return 2*tmp;
+    return 0.5*tmp;
 }
 
 void FEM::output(char* fname) const {

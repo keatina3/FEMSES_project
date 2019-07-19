@@ -28,9 +28,31 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
     vertices.resize((nr[0]+1)*(nr[1]+1), std::vector<float>(dim, 0.0));
     cells.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
     dof.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
-    boundary.resize((nr[0]+1)*(nr[1]+1), 0.0);
+    boundary.resize((nr[0]+1)*(nr[1]+1), false);
+    bdr_val.resize((nr[0]+1)*(nr[1]+1), 0.0);
     
     // (x1,y1) - (x2,y2) //
+    //
+    for(int i=0; i<=nr[1]; i++){
+        for(int j=0; j<=nr[0]; j++){
+            // fix this bit //
+            vertices[count][1] = a[1] + i*dy;
+            vertices[count][0] = a[0] + j*dx;
+
+            if(j==0){
+                boundary[count] = true;
+                bdr_val[count] = 2.0;
+            } else if(j==nr[0]){
+                boundary[count] = true;
+                bdr_val[count] = 6.0;
+            } else {
+                boundary[count] = false;
+            }
+            count++;
+        }
+    }
+    
+    /*
     for(float i=this->a[1]; i<=this->b[1]; i+=dy){
         for(float j=this->a[0]; j<=this->b[0]; j+=dx){
             //std::cout << j << std::endl;
@@ -40,16 +62,18 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
             // FIX THESE IF STATEMENTS //
             // DO MORE GENERAL BCs IMPLEMENTATION //
             if(j==a[0]){
-                boundary[count] = 2.0;
+                boundary[count] = true;
+                bdr_val[count] = 2.0;
             } else if(j==b[0]){
-                boundary[count] = 6.0;
+                boundary[count] = true;
+                bdr_val[count] = 6.0;
             } else {
-                boundary[count] = 0.0;
+                boundary[count] = false;
             }
             count++;
         }
     }
-     
+    */
     std::cout << "testing \n";
 
     for(int i=0; i<this->nr[1]; i++){
@@ -104,9 +128,16 @@ int Mesh::dof_map(const int e, const int r) const {
 
 float Mesh::get_bound(const int v) const {
     float boundary;
-    boundary = this->boundary[v];
+    boundary = bdr_val[v];
 
     return boundary;
+}
+
+bool Mesh::is_bound(const int v) const {
+    bool is_bound;
+    is_bound = boundary[v];
+
+    return is_bound;
 }
 
 // expand this to be N-dimensional //

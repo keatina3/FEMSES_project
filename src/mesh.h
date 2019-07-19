@@ -6,7 +6,8 @@ private:
     std::vector<std::vector<float> > vertices;
     std::vector<std::vector<int> > cells;
     std::vector<std::vector<int> > dof;
-    std::vector<float> boundary;
+    std::vector<bool> boundary;
+    std::vector<float> bdr_val;
 
     int nr[2];
     float a[2], b[2];
@@ -20,6 +21,7 @@ public:
     int get_vertex(const int e, const int i) const;
     int dof_map(const int e, const int r) const;
     float get_bound(const int v) const;
+    bool is_bound(const int v) const;
     void get_recs(int* nrecs) const;
 };
 

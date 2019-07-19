@@ -21,4 +21,4 @@ all: $(FILES)
 #	valgrind ./$(TARGET) -m 900 -t 350 -s 17
 
 clean:
-	$(RM) $(OBJECTS) $(TARGET) results.out error.log
+	$(RM) $(OBJECTS) $(TARGET) *.csv results.out error.log
