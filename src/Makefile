@@ -1,16 +1,26 @@
 CC = g++
+NVCC = nvcc
 
 CFLAGS = -g -Wall -W -O3
-
+NVCCFLAGS = -g -G --use_fast_math
+# CAN I PUT THESE IN AS INCLUDES AND NOT NEED TO LOAD MODULE ?? #
 LDFLAGS = -lm -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 OBJECTS = *.o
-FILES = *.cc
+CPP_SOURCES = *.cc
+CU_SOURCES = *.cu
 
-TARGET = prog
+TARGET = fem_solver
 
-all: $(FILES)
-	$(CC) $(CFLAGS) -o $(TARGET) $^ $(LDFLAGS)
+all: objs cu_objs
+	$(NVCC)$(OBJECTS) $(CFLAGS) $(NVCCFLAGS) -o $(TARGET) $(LDFLAGS)
+	#$(CC) $(CFLAGS) -o $(TARGET) $^ $(LDFLAGS)
+
+cu_objs: $(CU_SOURCES)
+	$(NVCC) $(NVCCFLAGS) -c $^
+
+objs: $(SOURCES)
+	$(CC) $(CFLAGS) -c $^
 
 #.PHONY: test mem_test clean
 #
@@ -18,6 +28,7 @@ all: $(FILES)
 #	./$(TARGET) -m 95000 -t 350 -s 17 1> results.out 2> error.log
 #
 #mem_test: all
+# ADD cuda-memcheck test here
 #	valgrind ./$(TARGET) -m 900 -t 350 -s 17
 
 clean:

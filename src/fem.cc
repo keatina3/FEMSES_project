@@ -93,8 +93,15 @@ void FEM::solve(){
     */
 
     assemble();    
-   
-     
+    
+   /* 
+    for(unsigned int e=0; e<be.size();e++){
+        for(int i=0; i<3; i++){
+            std::cout << be[e][i] << " ";
+        }
+        std::cout << std::endl;
+    }
+
     // testing symmetry // 
     for(int i=0; i<order; i++){
         for(int j=0; j<order; j++){
@@ -104,7 +111,8 @@ void FEM::solve(){
         }
         //std::cout << std::endl;
     }
-    
+    */
+
     info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
 }
 

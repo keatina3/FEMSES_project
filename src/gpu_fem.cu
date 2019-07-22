@@ -8,7 +8,7 @@ __device__ float area(float *xi){
     tmp -= xi[1]*(xi[3]*xi[8] - xi[5]*xi[6]);
     tmp += xi[2]*(xi[3]*xi[7] - xi[4]*xi[6]);
 
-    return tmp;
+    return 0.5*tmp;
 }
 
 __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, float *bdry_vals, float *temp1, int idx, int idy){
@@ -58,15 +58,47 @@ __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, fl
     }                            
 }
 
-__global__ void assemble_gpu(int num_cells, float *Le, float *be, float *vertices, float *cells, float *is_bound, float *bdry_vals){
+// CHANGE VERTICES ETC FROM FLOATS //
+// WILL NEED TO CHANGE THIS FROM "CELLS" to "DOF" WHEN EXPANDING TO PN //
+__device__ void assemble_mat(float *L, float *b, float *vertices, float *dof, float *temp1, int idx, int idy){
+    float *Le, *be;
+    int* dof_r;
+    
+    Le = temp1;
+    be = &temp1[9];
+   
+    // add in for loop for DOF // 
+    if(idy==0){
+        dof_r[0] = dof[(idx*3)];
+        dof_r[1] = dof[(idx*3)+1];
+        dof_r[2] = dof[(idx*3)+2];
+    }
+    __syncthreads();
+    
+    // ANY ALTERNATIVE TO ATOMICS ??? //
+    // b[dof[idy]] += be[idy];
+    atomicAdd(&b[dof[idy]], be[idy]);
+    
+    for(int i=0; i<3; i++){
+        // L[dof_r[idy]][dof_r[(idy+i)%3]] += Le[idy][(idy+i)%3];
+        atomicAdd(&L[dof_r[idy]][dof_r[(idy+i)%3]], Le[idy][(idy+i)%3]);
+    }
+}
+
+__global__ void assemble_gpu(int num_cells, float *L, float *b, float *vertices, float *cells, float *is_bound, float *bdry_vals){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1;
 
     if(idx < num_cells && idy < 3){
-
+        elem_mat_matrices(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        assemble_mat(Le, be, vertices, cells, temp1, idx, idy);
     }
 } 
+
+__global__ void solve(      ){
+
+}
 
 extern void gpu_fem(Mesh &M){
     int nr[2];
@@ -112,6 +144,7 @@ extern void gpu_fem(Mesh &M){
     dim3 dimGrid((n/dimBlock.x)+(!(n%dimBlock.x)?0:1),
                 (numSamples/dimBlock.y)+(!(numSamples%dimBlock.y)?0:1));
     
+    // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
     assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(Le, be, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
 

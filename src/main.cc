@@ -3,6 +3,8 @@
 #include "mesh.h"
 #include "fem.h"
 
+extern void gpu_fem(Mesh &M);
+
 int main(int argc, char** argv){
     int nr[2];
     float a[2], b[2];
