@@ -21,8 +21,9 @@ __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, fl
     xi = &temp1[12]
     consts = &temp1[21]
     
+    // Potentially write function to return global vertex index //
     v = cells[(idx*3) + idy];
-
+    
     xi[3*idy] = 1.0;
     xi[(3*idy) + 1] = vertices[2*v]; 
     xi[(3*idy) + 2] = vertices[(2*v)+1];
@@ -31,6 +32,7 @@ __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, fl
         consts[9] = idx%2 ? area(xi) : (-1)*area(xi);
     __syncthreads();
 
+    // alpha, beta, gamma //
     // consts[(3*idy)] = xi[(idy+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
     consts[(3*idy)+1] = xi[ 3*((idy+1)%3) +2] - xi[ 3*((idy+2)%3) + 2]
     consts[(3*idy)+2] = xi[ 3*((idy+1)%3) +1] - xi[ 3*((idy+2)%3) + 1]
@@ -77,7 +79,7 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, float *dof, fl
     
     // ANY ALTERNATIVE TO ATOMICS ??? //
     // b[dof[idy]] += be[idy];
-    atomicAdd(&b[dof[idy]], be[idy]);
+    atomicAdd(&b[dof_r[idy]], be[idy]);
     
     for(int i=0; i<3; i++){
         // L[dof_r[idy]][dof_r[(idy+i)%3]] += Le[idy][(idy+i)%3];
@@ -88,10 +90,10 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, float *dof, fl
 __global__ void assemble_gpu(int num_cells, float *L, float *b, float *vertices, float *cells, float *is_bound, float *bdry_vals){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
-    extern __shared__ float temp1;
+    extern __shared__ float temp1[];
 
     if(idx < num_cells && idy < 3){
-        elem_mat_matrices(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        elem_mat(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         assemble_mat(Le, be, vertices, cells, temp1, idx, idy);
     }
 } 

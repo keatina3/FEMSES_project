@@ -16,7 +16,7 @@ int main(int argc, char** argv){
     Mesh M(nr,a,b);
     M.deform(annulus_seg_map);
 
-    FEM F(&M);
+    FEM F(M);
     F.solve();
     F.output("output.csv");
      

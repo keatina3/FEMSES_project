@@ -7,14 +7,14 @@ NVCCFLAGS = -g -G --use_fast_math
 LDFLAGS = -lm -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 OBJECTS = *.o
-CPP_SOURCES = *.cc
+SOURCES = *.cc
 CU_SOURCES = *.cu
 
 TARGET = fem_solver
 
-all: objs cu_objs
-	$(NVCC)$(OBJECTS) $(CFLAGS) $(NVCCFLAGS) -o $(TARGET) $(LDFLAGS)
-	#$(CC) $(CFLAGS) -o $(TARGET) $^ $(LDFLAGS)
+all: objs #cu_objs
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LDFLAGS)
+	#$(NVCC)$(OBJECTS) $(CFLAGS) $(NVCCFLAGS) -o $(TARGET) $(LDFLAGS)
 
 cu_objs: $(CU_SOURCES)
 	$(NVCC) $(NVCCFLAGS) -c $^

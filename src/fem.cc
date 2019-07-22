@@ -9,14 +9,14 @@
 
 // this also needs parameters //
 // change a,b to x, y maybe?? //
-FEM::FEM(Mesh *M){
+FEM::FEM(Mesh &M){
     // need to incorporate DOF here also //
     // dim L = (#Nodes + #DOF/node)^2
     // FIX DEGREES OF FREEDOM AND NUM DIMENSIONS //
     int nr[2];
     int num_nodes, dim;
     
-    M->get_recs(nr);
+    M.get_recs(nr);
     
     num_nodes = (nr[0]+1)*(nr[1]+1);
     dim = 2+1;
@@ -35,7 +35,7 @@ FEM::FEM(Mesh *M){
     be.resize(num_cells, std::vector<float>(dim,0.0));
 
     //M = new Mesh(nr, a, b);
-    this->M = M;
+    this->M = &M;
 }
 
 FEM::~FEM(){
@@ -132,8 +132,10 @@ void FEM::elem_mat(const int e) {
     }
 
     // check this //
+    // CHANGE ORDERING OF NODES //
     del = e%2 == 0 ? area(xi) : (-1)*area(xi);
     //del = area(xi);
+    std::cout << "cell = " << e << " Area = " << del << std::endl;
     
     // THIS WONT WORK FOR P2, P3 etc //
     for(unsigned int i=0; i<Le[e].size(); i++){
@@ -145,7 +147,7 @@ void FEM::elem_mat(const int e) {
         // also fn ptr here for Int(fv) //
         // be[e][i] = INT(fv) //
         //be[e][i] = M->get_bound(M->get_vertex(e,i));
-        be[e][i] = 0.0;;
+        be[e][i] = 0.0;
 
 
         // remove some operations from this // 
@@ -162,7 +164,7 @@ void FEM::elem_mat(const int e) {
         
         if(is_bound){
             bound = M->get_bound(v);
-            std::cout << v << " Boundary present\n";
+            //std::cout << v << " Boundary present\n";
             for(unsigned int j=0; j<Le[e][i].size(); j++){
                 if(i != j){
                     // WILL THIS WORK AFTER Le = 0.0 FOR 2ND BOUNDARY ??? //

@@ -18,7 +18,7 @@ private:
     int num_cells;
 
 public:
-    FEM(Mesh *M);
+    FEM(Mesh &M);
     ~FEM();
     
     void assemble();
