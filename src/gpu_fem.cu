@@ -1,3 +1,4 @@
+#include <vector>
 #include "mesh.h"
 #include "gpu_fem.h"
 
@@ -11,15 +12,15 @@ __device__ float area(float *xi){
     return 0.5*tmp;
 }
 
-__device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, float *bdry_vals, float *temp1, int idx, int idy){
+__device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float *bdry_vals, float *temp1, int idx, int idy){
     float *Le, *be, *xi, *consts;
     int v;
     float bound;
 
     Le = temp1;
     be = &temp1[9];
-    xi = &temp1[12]
-    consts = &temp1[21]
+    xi = &temp1[12];
+    consts = &temp1[21];
     
     // Potentially write function to return global vertex index //
     v = cells[(idx*3) + idy];
@@ -34,8 +35,8 @@ __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, fl
 
     // alpha, beta, gamma //
     // consts[(3*idy)] = xi[(idy+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
-    consts[(3*idy)+1] = xi[ 3*((idy+1)%3) +2] - xi[ 3*((idy+2)%3) + 2]
-    consts[(3*idy)+2] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1]
+    consts[(3*idy)+1] = xi[ 3*((idy+1)%3) +2] - xi[ 3*((idy+2)%3) + 2];
+    consts[(3*idy)+2] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1];
     
     be[idy] = 0.0;      // or Int(fv) //
      
@@ -62,13 +63,15 @@ __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, fl
 
 // CHANGE VERTICES ETC FROM FLOATS //
 // WILL NEED TO CHANGE THIS FROM "CELLS" to "DOF" WHEN EXPANDING TO PN //
-__device__ void assemble_mat(float *L, float *b, float *vertices, float *dof, float *temp1, int idx, int idy){
+__device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, float *temp1, int idx, int idy){
     float *Le, *be;
     int* dof_r;
-    
+ 
+    // size of these will change for non P1 //   
     Le = temp1;
     be = &temp1[9];
-   
+    dof_r = (int *)&temp1[12];
+
     // add in for loop for DOF // 
     if(idy==0){
         dof_r[0] = dof[(idx*3)];
@@ -80,21 +83,23 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, float *dof, fl
     // ANY ALTERNATIVE TO ATOMICS ??? //
     // b[dof[idy]] += be[idy];
     atomicAdd(&b[dof_r[idy]], be[idy]);
-    
+     
     for(int i=0; i<3; i++){
         // L[dof_r[idy]][dof_r[(idy+i)%3]] += Le[idy][(idy+i)%3];
-        atomicAdd(&L[dof_r[idy]][dof_r[(idy+i)%3]], Le[idy][(idy+i)%3]);
+        // DEFINTELY CHECK THIS //
+        atomicAdd(&L[((gridDim.x)*dof_r[idy]) + dof_r[(idy+i)%3]], 
+                            Le[(3*idy) + (idy+i)%3]);
     }
 }
 
-__global__ void assemble_gpu(int num_cells, float *L, float *b, float *vertices, float *cells, float *is_bound, float *bdry_vals){
+__global__ void assemble_gpu(int num_cells, float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[];
 
     if(idx < num_cells && idy < 3){
-        elem_mat(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
-        assemble_mat(Le, be, vertices, cells, temp1, idx, idy);
+        elem_mat_gpu(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        assemble_mat(L, b, vertices, cells, temp1, idx, idy);
     }
 } 
 
@@ -104,14 +109,14 @@ __global__ void solve(      ){
 
 extern void gpu_fem(float *u, Mesh &M){
     int nr[2];
-    int num_nodes, dim;
+    int num_nodes, dim, order, num_cells;
     int block_size_X, block_size_Y;
     float *vertices_gpu, *vertices;
-    float *cells_gpu, *cells;
-    float *dof_gpu, *dof;
-    bool *is_bound_gpu, *is_bound;
+    int *cells_gpu, *cells;
+    int *dof_gpu, *dof;
+    int *is_bound_gpu, *is_bound;
     float *bdry_vals_gpu, *bdry_vals;
-    float *L, *Le *b, *be;
+    float *L, *b;
 
     M.get_recs(nr);
 
@@ -124,9 +129,9 @@ extern void gpu_fem(float *u, Mesh &M){
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
 
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
-    cudaMalloc( (void**)&cells_gpu, num_cells*sizeof(float));
-    cudaMalloc( (void**)&dof_gpu, num_cells*sizeof(float));
-    cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(bool));
+    cudaMalloc( (void**)&cells_gpu, num_cells*sizeof(int));
+    cudaMalloc( (void**)&dof_gpu, num_cells*sizeof(int));
+    cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(int));
     cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
     
     cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
@@ -142,15 +147,17 @@ extern void gpu_fem(float *u, Mesh &M){
     //cudaMalloc(be);
     
     block_size_X = 1, block_size_Y = 3;
+    // check these dimensions //
+    // this will be scope for efficency experimentation //
     dim3 dimBlock(block_size_X, block_size_Y);
-    dim3 dimGrid((n/dimBlock.x)+(!(n%dimBlock.x)?0:1),
-                (numSamples/dimBlock.y)+(!(numSamples%dimBlock.y)?0:1));
+    dim3 dimGrid((order/dimBlock.x)+(!(order%dimBlock.x)?0:1),
+                (1/dimBlock.y)+(!(1%dimBlock.y)?0:1));
     
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
-    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(Le, be, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(order, L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
 
     // solve<<<
     
-    cudaMemcpy(u, b, num_nodes*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
 }

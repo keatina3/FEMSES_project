@@ -3,7 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <cstdio>
-#include "mkl.h"
+// #include "mkl.h"
 #include "mesh.h"
 #include "fem.h"
 
@@ -78,8 +78,8 @@ float FEM::phi_P1(const float* x, const float del) const {
 // change this to CSC format in time //
 void FEM::solve(){
     // add LAPACK library call here //
-    MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
-    MKL_INT ipiv[order];
+    // MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
+    // MKL_INT ipiv[order];
 
     for(unsigned int e=0; e<Le.size(); e++)
         elem_mat(e);
@@ -119,9 +119,9 @@ void FEM::solve(){
     }
     */
 
-    //info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
-    //info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);
-    info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
+    // info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
+    // info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);
+    // info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
 }
 
 // THIS FUNCTION IS VERY INEFFICIENT // 
