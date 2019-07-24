@@ -29,13 +29,13 @@ __device__ void elem_mat_gpu(float *vertices, float *cells,  float *is_bound, fl
     xi[(3*idy) + 2] = vertices[(2*v)+1];
 
     if(idy==0)
-        consts[9] = idx%2 ? area(xi) : (-1)*area(xi);
+        consts[9] = area(xi);
     __syncthreads();
 
     // alpha, beta, gamma //
     // consts[(3*idy)] = xi[(idy+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
     consts[(3*idy)+1] = xi[ 3*((idy+1)%3) +2] - xi[ 3*((idy+2)%3) + 2]
-    consts[(3*idy)+2] = xi[ 3*((idy+1)%3) +1] - xi[ 3*((idy+2)%3) + 1]
+    consts[(3*idy)+2] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1]
     
     be[idy] = 0.0;      // or Int(fv) //
      
@@ -102,7 +102,7 @@ __global__ void solve(      ){
 
 }
 
-extern void gpu_fem(Mesh &M){
+extern void gpu_fem(float *u, Mesh &M){
     int nr[2];
     int num_nodes, dim;
     int block_size_X, block_size_Y;
@@ -113,7 +113,7 @@ extern void gpu_fem(Mesh &M){
     float *bdry_vals_gpu, *bdry_vals;
     float *L, *Le *b, *be;
 
-    M->get_recs(nr);
+    M.get_recs(nr);
 
     num_nodes = (nr[0]+1)*(nr[1]+1);
     dim = 2+1;      // needs expansion here //
@@ -121,7 +121,7 @@ extern void gpu_fem(Mesh &M){
     num_cells = 2*nr[0]*nr[1];
     
     // Sorting Mesh // 
-    get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
+    M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
 
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, num_cells*sizeof(float));
@@ -129,7 +129,7 @@ extern void gpu_fem(Mesh &M){
     cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(bool));
     cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
     
-    cudaMemcpy(vertices_gpu, vertices, 2*num_nodes(sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cells_gpu, cells, num_cells*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(dof_gpu, dof, num_cells*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(is_bound_gpu, is_bound, num_nodes*sizeof(bool), cudaMemcpyHostToDevice);
@@ -151,4 +151,6 @@ extern void gpu_fem(Mesh &M){
     assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(Le, be, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
 
     // solve<<<
+    
+    cudaMemcpy(u, b, num_nodes*sizeof(float), cudaMemcpyDeviceToHost);
 }

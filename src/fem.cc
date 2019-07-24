@@ -61,6 +61,12 @@ void FEM::assemble(){
             b[dof_r] += be[e][r];
         }
     }
+    for(unsigned int i=0; i<16; i++){
+        for(unsigned int j=0; j<16; j++){
+            std::cout << L[i][j] << " ";
+        }
+        std::cout << "bi = " << b[i] << std::endl;
+    }
 }
 
 /*
@@ -82,12 +88,12 @@ void FEM::solve(){
     for(int e=0; e<num_cells; e++)
         std::cout << M->dof_map(e,0) << " " << M->dof_map(e,1) << " " << M->dof_map(e,2) << std::endl;
         //std::cout << M->get_vertex(e,0) << " " << M->get_vertex(e,1) << " " << M->get_vertex(e,2) << std::endl;
-
+    
     for(int i=0;i<Le[0].size();i++){
         for(int j=0;j<Le[0][0].size();j++){
-            std::cout << Le[1][i][j] << " ";
+            std::cout << Le[0][i][j] << " ";
         }
-        std::cout << "be[i] = " << be[1][i] << 
+        std::cout << "be[i] = " << be[0][i] << 
             " Boundary = " << M->get_bound(M->get_vertex(1,i)) << std::endl;
     }
     */
@@ -113,7 +119,9 @@ void FEM::solve(){
     }
     */
 
-    info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
+    //info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
+    //info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);
+    info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
 }
 
 // THIS FUNCTION IS VERY INEFFICIENT // 
@@ -133,15 +141,14 @@ void FEM::elem_mat(const int e) {
 
     // check this //
     // CHANGE ORDERING OF NODES //
-    del = e%2 == 0 ? area(xi) : (-1)*area(xi);
-    //del = area(xi);
-    std::cout << "cell = " << e << " Area = " << del << std::endl;
+    //del = e%2 == 0 ? area(xi) : (-1)*area(xi);
+    del = area(xi);
     
     // THIS WONT WORK FOR P2, P3 etc //
     for(unsigned int i=0; i<Le[e].size(); i++){
         // alpha = xi[(i+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
         beta[i] = xi[(i+1)%3][2] - xi[(i+2)%3][2];
-        gamma[i] = xi[(i+1)%3][1] - xi[(i+2)%3][1];
+        gamma[i] = xi[(i+2)%3][1] - xi[(i+1)%3][1];
         
         // need fn for 
         // also fn ptr here for Int(fv) //
@@ -158,6 +165,23 @@ void FEM::elem_mat(const int e) {
         }
     }
 
+    std::cout << "cell = " << e << " Area = " << del << " Nodes = " << 
+        M->get_vertex(e,0) << " " << M->get_vertex(e,1) << " " << M->get_vertex(e,2)
+        << " gamma[i] = " << gamma[0] << " " << gamma[1] << " " << gamma[2]
+        << " beta[i] = " << beta[0] << " " << beta[1] << " " << beta[2]
+        << " Lii = " << Le[e][0][0] << " " << Le[e][1][1] << " " << Le[e][2][2] << std::endl;
+    
+    int tmp = 7;
+    if(e==tmp){
+    for(unsigned int i=0;i<Le[0].size();i++){
+        for(unsigned int j=0;j<Le[tmp][0].size();j++){
+            std::cout << Le[tmp][i][j] << " ";
+        }
+        std::cout << "be[i] = " << be[tmp][i] << 
+            " Boundary = " << M->get_bound(M->get_vertex(tmp,i)) << std::endl;
+    }
+    }
+    
     for(unsigned int i=0; i<Le[e].size(); i++){
         v = M->get_vertex(e,i);
         is_bound = M->is_bound(v);
@@ -180,6 +204,16 @@ void FEM::elem_mat(const int e) {
         //if(e==0){
         //    std::cout << be[e][i] << std::endl;
         //}
+    }
+    
+    if(e==tmp){
+    for(unsigned int i=0;i<Le[0].size();i++){
+        for(unsigned int j=0;j<Le[tmp][0].size();j++){
+            std::cout << Le[tmp][i][j] << " ";
+        }
+        std::cout << "be[i] = " << be[tmp][i] << 
+            " Boundary = " << M->get_bound(M->get_vertex(tmp,i)) << std::endl;
+    }
     }
 }
 

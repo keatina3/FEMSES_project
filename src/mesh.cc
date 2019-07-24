@@ -61,20 +61,18 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
             cells[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
             
             cells[2* (j + (i*nr[1]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
-            cells[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1);
-            cells[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1) + 1;
+            cells[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1);
+            cells[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
 
             dof[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
             dof[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
             dof[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
             
             dof[2* (j + (i*nr[1]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
-            dof[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1);
-            dof[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1) + 1;
+            dof[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1);
+            dof[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
         }
     }
-
-    // deform();
 }
 
 void Mesh::deform(void (*map)(std::vector<float>&, float*, float*, float, int)){
@@ -111,8 +109,8 @@ float Mesh::get_bound(const int v) const {
     return boundary;
 }
 
-bool Mesh::is_bound(const int v) const {
-    bool is_bound;
+int Mesh::is_bound(const int v) const {
+    int is_bound;
     is_bound = boundary[v];
 
     return is_bound;
@@ -122,6 +120,14 @@ bool Mesh::is_bound(const int v) const {
 void Mesh::get_recs(int* nrecs) const {
     nrecs[0] = nr[0];
     nrecs[1] = nr[1];
+}
+
+void Mesh::get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals){
+    *vertices = &this->vertices[0][0];
+    *cells = &this->cells[0][0];
+    *dof = &this->dof[0][0];
+    *is_bound = &this->boundary[0];
+    *bdry_vals = &this->bdr_val[0];
 }
 
 void annulus_seg_map(std::vector<float> &vertex, float *a, float *b, float theta, int s){

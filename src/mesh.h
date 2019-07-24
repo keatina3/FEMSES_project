@@ -6,7 +6,7 @@ private:
     std::vector<std::vector<float> > vertices;
     std::vector<std::vector<int> > cells;
     std::vector<std::vector<int> > dof;
-    std::vector<bool> boundary;
+    std::vector<int> boundary;
     std::vector<float> bdr_val;
 
     int nr[2];
@@ -21,8 +21,9 @@ public:
     int get_vertex(const int e, const int i) const;
     int dof_map(const int e, const int r) const;
     float get_bound(const int v) const;
-    bool is_bound(const int v) const;
+    int is_bound(const int v) const;
     void get_recs(int* nrecs) const;
+    void get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals);
 };
 
 void annulus_seg_map(std::vector<float> &vertex, float *a, float *b, float theta, int s);
