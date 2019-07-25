@@ -1,4 +1,6 @@
 #include <vector>
+#include <cuda_runtime.h>
+#include <cusolverDn.h>     // need to change this for sparse //
 #include "mesh.h"
 #include "gpu_fem.h"
 
@@ -117,6 +119,16 @@ extern void gpu_fem(float *u, Mesh &M){
     int *is_bound_gpu, *is_bound;
     float *bdry_vals_gpu, *bdry_vals;
     float *L, *b;
+    
+    cusolverDnHandle_t handle = NULL;
+    cudaStream_t stream = NULL;
+    cusolverStatus_t status = CUSOLVER_STATUS_SUCCESS;
+    cudaError_t cudaStat1 = cudaSuccess;
+    const cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
+    const int nrhs = 1;
+    int n, lda;
+    float Lwork;
+    int devInfo;
 
     M.get_recs(nr);
 
@@ -124,7 +136,7 @@ extern void gpu_fem(float *u, Mesh &M){
     dim = 2+1;      // needs expansion here //
     order = num_nodes + 0;
     num_cells = 2*nr[0]*nr[1];
-    
+    n = lda = num_cells;
     // Sorting Mesh // 
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
 
@@ -142,9 +154,17 @@ extern void gpu_fem(float *u, Mesh &M){
     //////////////////
 
     cudaMalloc( (void**)&L, order*order*sizeof(float));
+    // cudaMalloc( (void**)&L0, order*order*sizeof(float));
     cudaMalloc( (void**)&b, order*sizeof(float));
     //cudaMalloc(b);
     //cudaMalloc(be);
+    
+    status = cusolverDnCreate(&handle);
+    //assert(CUSOLVER_STATUS_SUCCESS == status);
+    cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+    //assert(cudaSuccess == cudaStat1);
+    status = cusolverDnSetStream(handle, stream);
+    //assert(CUSOLVER_STATUS_SUCCESS == status); 
     
     block_size_X = 1, block_size_Y = 3;
     // check these dimensions //
@@ -156,7 +176,13 @@ extern void gpu_fem(float *u, Mesh &M){
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
     assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(order, L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
-
+    
+    status = cusolverDnSpotrf(handle, uplo, n, L, lda, &Lwork, 1, &devInfo);
+    cudaStat1 = cudaDeviceSynchronize();
+    //assert(CUSOLVER_STATUS_SUCCESS == status);
+    //assert(cudaSuccess == cudaStat1);
+    status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
+    
     // solve<<<
     
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
