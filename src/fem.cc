@@ -3,7 +3,8 @@
 #include <vector>
 #include <cmath>
 #include <cstdio>
-// #include "mkl.h"
+#include <gsl/gsl_linalg.h>
+// #include <mkl.h>
 #include "mesh.h"
 #include "fem.h"
 
@@ -118,6 +119,11 @@ void FEM::solve(){
         //std::cout << std::endl;
     }
     */
+    
+    const gsl_matrix_float_view L_gsl = gsl_matrix_float_view_array(L_vals, order, order);
+    gsl_vector_float_view b_gsl = gsl_vector_float_view_array(b, order);
+
+    gsl_linalg_cholesky_svx(&L_gsl.matrix, &b_gsl.vector);
 
     // info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
     // info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);

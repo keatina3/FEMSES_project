@@ -182,8 +182,13 @@ extern void gpu_fem(float *u, Mesh &M){
     //assert(CUSOLVER_STATUS_SUCCESS == status);
     //assert(cudaSuccess == cudaStat1);
     status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
-    
+    cudaDeviceSynchronize();
+
     // solve<<<
     
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
+    cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);
+    cudaFree(L); cudaFree(b);
 }
