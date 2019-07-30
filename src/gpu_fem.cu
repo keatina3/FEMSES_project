@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstdio>
 #include <iostream>
 #include <vector>
 #include <cuda_runtime.h>
@@ -43,7 +44,16 @@ __device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float 
     consts[(3*idy)+2] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1];
     
     be[idy] = 0.0;      // or Int(fv) //
-     
+
+    if(idx == 0 && idy == 2){
+        for(int i=0;i<9;i++){
+            printf("x = %f, y = %f, bdry = %d\n", vertices[2*i], vertices[(2*i)+1], is_bound[i]);
+        }
+        for(int i=0;i<8;i++){
+            printf("cell = %d, cells[0] = %d , cells[1] = %d, cells[2] = %d\n", i, cells[i*3], cells[(i*3)+1], cells[(i*3)+2]);
+        }
+    }
+
     for(int i=0; i<idy; i++){
         Le[(3*idy)+i] = 0.25*consts[9]*consts[9]*consts[9] * (consts[(3*idy)+1]*consts[(3*i)+1] 
                                     + consts[(3*idy)+2]*consts[(3*i)+2]);
@@ -96,13 +106,16 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, floa
     }
 }
 
-__global__ void assemble_gpu(int num_cells, float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals){
+__global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[];
 
-    if(idx < num_cells && idy < 3){
+    if(idx < gridDim.x && idy < 3){
         elem_mat_gpu(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        if(idx == 0 && idy == 0){
+            printf("%f\n", temp1[0]);
+        }
         assemble_mat(L, b, vertices, cells, temp1, idx, idy);
     }
 } 
@@ -143,25 +156,22 @@ extern void gpu_fem(float *u, Mesh &M){
     std::cout << "test1\n";
     
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
-    cudaMalloc( (void**)&cells_gpu, num_cells*sizeof(int));
-    cudaMalloc( (void**)&dof_gpu, num_cells*sizeof(int));
+    cudaMalloc( (void**)&cells_gpu, dim*num_cells*sizeof(int));
+    cudaMalloc( (void**)&dof_gpu, dim*num_cells*sizeof(int));
     cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(int));
     cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
  
     cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(cells_gpu, cells, num_cells*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(dof_gpu, dof, num_cells*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(is_bound_gpu, is_bound, num_nodes*sizeof(bool), cudaMemcpyHostToDevice);
+    cudaMemcpy(cells_gpu, cells, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dof_gpu, dof, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(is_bound_gpu, is_bound, num_nodes*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(bdry_vals_gpu, bdry_vals, num_nodes*sizeof(float), cudaMemcpyHostToDevice);
     //////////////////
 
     std::cout << "test2\n";
 
     cudaMalloc( (void**)&L, order*order*sizeof(float));
-    // cudaMalloc( (void**)&L0, order*order*sizeof(float));
     cudaMalloc( (void**)&b, order*sizeof(float));
-    //cudaMalloc(b);
-    //cudaMalloc(be);
     
     std::cout << "test3\n";
 
@@ -183,14 +193,14 @@ extern void gpu_fem(float *u, Mesh &M){
     
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
-    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(order, L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
     
     std::cout << "test4\n";
 
     status = cusolverDnSpotrf(handle, uplo, n, L, lda, &Lwork, 1, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
-    // assert(cudaSuccess == cudaStat1);
+    assert(cudaSuccess == cudaStat1);
     
     status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();

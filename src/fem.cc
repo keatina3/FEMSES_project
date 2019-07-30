@@ -84,7 +84,7 @@ float FEM::phi_P1(const float* x, const float del) const {
 void FEM::solve(){
     // add LAPACK library call here //
     MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
-    MKL_INT ipiv[order];
+    // MKL_INT ipiv[order];
 
     for(unsigned int e=0; e<Le.size(); e++)
         elem_mat(e);

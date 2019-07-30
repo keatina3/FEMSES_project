@@ -12,7 +12,7 @@ int main(int argc, char** argv){
     float *u_gpu;
     int order;
     
-    nr[0] = 4, nr[1] = 4;
+    nr[0] = 2, nr[1] = 2;
     a[0] = 3; a[1] = 0;
     b[0] = 10; b[1] = 1;
 
@@ -21,11 +21,11 @@ int main(int argc, char** argv){
     u_gpu = new float[order];
     
     Mesh M(nr,a,b);
-    // M.deform(annulus_seg_map);
+    M.deform(annulus_seg_map);
 
-    FEM F(M);
-    F.solve();
-    F.output("output_cpu.csv");
+    //FEM F(M);
+    //F.solve();
+    //F.output("output_cpu.csv");
     
     gpu_fem(u_gpu, M);
     output_csv("output_gpu.csv", M, u_gpu, order);
