@@ -12,7 +12,7 @@ int main(int argc, char** argv){
     float *u_gpu;
     int order;
     
-    nr[0] = 3, nr[1] = 3;
+    nr[0] = 4, nr[1] = 4;
     a[0] = 3; a[1] = 0;
     b[0] = 10; b[1] = 1;
 

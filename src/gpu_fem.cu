@@ -190,7 +190,7 @@ extern void gpu_fem(float *u, Mesh &M){
     status = cusolverDnSpotrf(handle, uplo, n, L, lda, &Lwork, 1, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
-    assert(cudaSuccess == cudaStat1);
+    // assert(cudaSuccess == cudaStat1);
     
     status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();

@@ -1,10 +1,11 @@
+#include <cassert>
 #include <iostream>
 #include <cstdlib>
 #include <vector>
 #include <cmath>
 #include <cstdio>
-#include <gsl/gsl_linalg.h>
-// #include <mkl.h>
+// #include <gsl/gsl_linalg.h>
+#include <mkl.h>
 #include "mesh.h"
 #include "utils.h"
 #include "fem.h"
@@ -82,8 +83,8 @@ float FEM::phi_P1(const float* x, const float del) const {
 // change this to CSC format in time //
 void FEM::solve(){
     // add LAPACK library call here //
-    // MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
-    // MKL_INT ipiv[order];
+    MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
+    MKL_INT ipiv[order];
 
     for(unsigned int e=0; e<Le.size(); e++)
         elem_mat(e);
@@ -123,14 +124,15 @@ void FEM::solve(){
     }
     */
     
-    const gsl_matrix_float_view L_gsl = gsl_matrix_float_view_array(L_vals, order, order);
-    gsl_vector_float_view b_gsl = gsl_vector_float_view_array(b, order);
+    //const gsl_matrix_float_view L_gsl = gsl_matrix_float_view_array(L_vals, order, order);
+    //gsl_vector_float_view b_gsl = gsl_vector_float_view_array(b, order);
 
     // gsl_linalg_cholesky_svx(&L_gsl.matrix, &b_gsl.vector);
 
     // info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
     // info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);
-    // info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
+    info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
+    assert(!info);
 }
 
 // THIS FUNCTION IS VERY INEFFICIENT // 
