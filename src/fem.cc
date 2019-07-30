@@ -6,6 +6,7 @@
 #include <gsl/gsl_linalg.h>
 // #include <mkl.h>
 #include "mesh.h"
+#include "utils.h"
 #include "fem.h"
 
 // this also needs parameters //
@@ -62,12 +63,14 @@ void FEM::assemble(){
             b[dof_r] += be[e][r];
         }
     }
+    /*
     for(unsigned int i=0; i<16; i++){
         for(unsigned int j=0; j<16; j++){
             std::cout << L[i][j] << " ";
         }
         std::cout << "bi = " << b[i] << std::endl;
     }
+    */
 }
 
 /*
@@ -123,7 +126,7 @@ void FEM::solve(){
     const gsl_matrix_float_view L_gsl = gsl_matrix_float_view_array(L_vals, order, order);
     gsl_vector_float_view b_gsl = gsl_vector_float_view_array(b, order);
 
-    gsl_linalg_cholesky_svx(&L_gsl.matrix, &b_gsl.vector);
+    // gsl_linalg_cholesky_svx(&L_gsl.matrix, &b_gsl.vector);
 
     // info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
     // info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);
@@ -170,7 +173,8 @@ void FEM::elem_mat(const int e) {
             Le[e][j][i] = Le[e][i][j];
         }
     }
-
+    
+    /*
     std::cout << "cell = " << e << " Area = " << del << " Nodes = " << 
         M->get_vertex(e,0) << " " << M->get_vertex(e,1) << " " << M->get_vertex(e,2)
         << " gamma[i] = " << gamma[0] << " " << gamma[1] << " " << gamma[2]
@@ -187,7 +191,7 @@ void FEM::elem_mat(const int e) {
             " Boundary = " << M->get_bound(M->get_vertex(tmp,i)) << std::endl;
     }
     }
-    
+    */
     for(unsigned int i=0; i<Le[e].size(); i++){
         v = M->get_vertex(e,i);
         is_bound = M->is_bound(v);
@@ -212,6 +216,7 @@ void FEM::elem_mat(const int e) {
         //}
     }
     
+   /* 
     if(e==tmp){
     for(unsigned int i=0;i<Le[0].size();i++){
         for(unsigned int j=0;j<Le[tmp][0].size();j++){
@@ -221,6 +226,7 @@ void FEM::elem_mat(const int e) {
             " Boundary = " << M->get_bound(M->get_vertex(tmp,i)) << std::endl;
     }
     }
+    */
 }
 
 // potentially expand this to numerical integration instead //
@@ -235,6 +241,10 @@ float FEM::area(float xi[3][3]) const {
 }
 
 void FEM::output(char* fname) const {
+    
+    output_csv(fname, *M, b, order);
+
+    /*
     FILE* fptr;
     float xy[2];
 
@@ -250,4 +260,5 @@ void FEM::output(char* fname) const {
     }
 
     fclose(fptr);
+    */
 }

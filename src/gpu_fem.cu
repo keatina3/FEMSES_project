@@ -1,3 +1,5 @@
+#include <cassert>
+#include <iostream>
 #include <vector>
 #include <cuda_runtime.h>
 #include <cusolverDn.h>     // need to change this for sparse //
@@ -105,10 +107,6 @@ __global__ void assemble_gpu(int num_cells, float *L, float *b, float *vertices,
     }
 } 
 
-__global__ void solve(      ){
-
-}
-
 extern void gpu_fem(float *u, Mesh &M){
     int nr[2];
     int num_nodes, dim, order, num_cells;
@@ -129,7 +127,7 @@ extern void gpu_fem(float *u, Mesh &M){
     int n, lda;
     float Lwork;
     int devInfo;
-
+     
     M.get_recs(nr);
 
     num_nodes = (nr[0]+1)*(nr[1]+1);
@@ -140,12 +138,16 @@ extern void gpu_fem(float *u, Mesh &M){
     // Sorting Mesh // 
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
 
+    std::cout << num_nodes << std::endl;
+    
+    std::cout << "test1\n";
+    
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, num_cells*sizeof(int));
     cudaMalloc( (void**)&dof_gpu, num_cells*sizeof(int));
     cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(int));
     cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
-    
+ 
     cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cells_gpu, cells, num_cells*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(dof_gpu, dof, num_cells*sizeof(float), cudaMemcpyHostToDevice);
@@ -153,18 +155,24 @@ extern void gpu_fem(float *u, Mesh &M){
     cudaMemcpy(bdry_vals_gpu, bdry_vals, num_nodes*sizeof(float), cudaMemcpyHostToDevice);
     //////////////////
 
+    std::cout << "test2\n";
+
     cudaMalloc( (void**)&L, order*order*sizeof(float));
     // cudaMalloc( (void**)&L0, order*order*sizeof(float));
     cudaMalloc( (void**)&b, order*sizeof(float));
     //cudaMalloc(b);
     //cudaMalloc(be);
     
+    std::cout << "test3\n";
+
     status = cusolverDnCreate(&handle);
-    //assert(CUSOLVER_STATUS_SUCCESS == status);
+    assert(CUSOLVER_STATUS_SUCCESS == status);
+    
     cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-    //assert(cudaSuccess == cudaStat1);
+    assert(cudaSuccess == cudaStat1);
+    
     status = cusolverDnSetStream(handle, stream);
-    //assert(CUSOLVER_STATUS_SUCCESS == status); 
+    assert(CUSOLVER_STATUS_SUCCESS == status); 
     
     block_size_X = 1, block_size_Y = 3;
     // check these dimensions //
@@ -177,18 +185,28 @@ extern void gpu_fem(float *u, Mesh &M){
     // this assumes 1 dof per triangle //
     assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(order, L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
     
+    std::cout << "test4\n";
+
     status = cusolverDnSpotrf(handle, uplo, n, L, lda, &Lwork, 1, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();
-    //assert(CUSOLVER_STATUS_SUCCESS == status);
-    //assert(cudaSuccess == cudaStat1);
-    status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
-    cudaDeviceSynchronize();
-
-    // solve<<<
+    assert(CUSOLVER_STATUS_SUCCESS == status);
+    assert(cudaSuccess == cudaStat1);
     
-    cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
+    status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
+    cudaStat1 = cudaDeviceSynchronize();
+    assert(CUSOLVER_STATUS_SUCCESS == status);
+    assert(cudaSuccess == cudaStat1);
 
+    std::cout << "test5\n";
+
+    cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
+    
+    std::cout << "test6\n";
+    
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);
     cudaFree(L); cudaFree(b);
+    
+    std::cout << "test7\n";
+    
 }

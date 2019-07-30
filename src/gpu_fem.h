@@ -1,10 +1,10 @@
 #ifndef _GPU_FEM_H_
 
-#ifdef __cplusplus
+//#ifdef __cplusplus
 
 extern void gpu_fem(float *u, Mesh &M);
 
-#endif
+//#endif
 
 #define _GPU_FEM_H_
 
