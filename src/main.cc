@@ -1,8 +1,8 @@
 #include <iostream>
 #include <vector>
 #include "mesh.h"
-#include "utils.h"
 #include "fem.h"
+#include "utils.h"
 
 extern void gpu_fem(float *u, Mesh &M);
 
@@ -23,9 +23,9 @@ int main(int argc, char** argv){
     Mesh M(nr,a,b);
     M.deform(annulus_seg_map);
 
-    //FEM F(M);
-    //F.solve();
-    //F.output("output_cpu.csv");
+    FEM F(M);
+    F.solve();
+    F.output("output_cpu.csv");
     
     gpu_fem(u_gpu, M);
     output_csv("output_gpu.csv", M, u_gpu, order);

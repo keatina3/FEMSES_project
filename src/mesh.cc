@@ -1,21 +1,21 @@
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 #include <cmath>
 #include "mesh.h"
+#include "utils.h"
 
-/*
-Mesh::Mesh(){
-     
-}
-*/ 
 // put in BC parameters //
 Mesh::Mesh(const int* nr, const float* a, const float *b){
     // allow for more DOFs
     //int dof = 3;
     int dim = 2;
+    int dofs = 3;
     float dx, dy;
     int count=0;
-    
+    int order = (nr[0]+1)*(nr[1]+1);
+    int num_cells = 2*nr[0]*nr[1];
+
     for(int i=0; i<2; i++){
         this->nr[i] = nr[i];
         this->a[i] = a[i];
@@ -24,12 +24,23 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
 
     dx = (this->b[0]-this->a[0])/nr[0], dy = (this->b[1]-this->a[1])/nr[1];
     //std::cout << dx << std::endl;
-
+    
+    /*
     vertices.resize((nr[0]+1)*(nr[1]+1), std::vector<float>(dim, 0.0));
     cells.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
     dof.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
     boundary.resize((nr[0]+1)*(nr[1]+1), false);
     bdr_val.resize((nr[0]+1)*(nr[1]+1), 0.0);
+    */
+    std::cout << "test test 1\n";
+
+    assign_ptrs(&vertices, &vert_vals, order, dim);
+    assign_ptrs(&cells, &cells_vals, num_cells, dofs);
+    assign_ptrs(&dof, &dof_vals, num_cells, dofs);
+    boundary = (int*)calloc(order,sizeof(int));
+    bdry_vals = (float*)calloc(order,sizeof(int));
+    
+    std::cout << "test test 2\n";
     
     // (x1,y1) - (x2,y2) //
     //
@@ -41,10 +52,10 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
 
             if(j==0){
                 boundary[count] = true;
-                bdr_val[count] = 2.0;
+                bdry_vals[count] = 2.0;
             } else if(j==nr[0]){
                 boundary[count] = true;
-                bdr_val[count] = 6.0;
+                bdry_vals[count] = 6.0;
             } else {
                 boundary[count] = false;
             }
@@ -73,14 +84,31 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
             dof[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
         }
     }
+    
+    std::cout << "testing \n";
 }
 
-void Mesh::deform(void (*map)(std::vector<float>&, float*, float*, float, int)){
-    
+Mesh::~Mesh(){
+    delete[] vertices; delete[] vert_vals;
+    delete[] cells; delete[] cells_vals;
+    delete[] dof; delete[] dof_vals;
+    delete[] boundary; delete[] bdry_vals;
+}
+
+void Mesh::deform(void (*map)(float*, float*, float*, float, int)){
+    float **v = vertices;
+    int order = (nr[0]+1)*(nr[1]+1);
+
+    for(int i=0; i<order; i++)
+        map(v[i], a, b, M_PI/2.0, 2);
+
+    std::cout << "testing \n";
+    /*
     // check this works properly //
     for(std::vector<std::vector<float> >::iterator v=vertices.begin(); v!=vertices.end(); ++v){ 
         map(*v, a, b, M_PI/2.0, 2);
     }
+    */
 }
 
 void Mesh::get_xy(float *xy, const int v) const {
@@ -104,7 +132,7 @@ int Mesh::dof_map(const int e, const int r) const {
 
 float Mesh::get_bound(const int v) const {
     float boundary;
-    boundary = bdr_val[v];
+    boundary = bdry_vals[v];
 
     return boundary;
 }
@@ -123,14 +151,14 @@ void Mesh::get_recs(int* nrecs) const {
 }
 
 void Mesh::get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals){
-    *vertices = &this->vertices[0][0];
-    *cells = &this->cells[0][0];
-    *dof = &this->dof[0][0];
-    *is_bound = &this->boundary[0];
-    *bdry_vals = &this->bdr_val[0];
+    *vertices = this->vert_vals;
+    *cells = this->cells_vals;
+    *dof = this->dof_vals;
+    *is_bound = this->boundary;
+    *bdry_vals = this->bdry_vals;
 }
 
-void annulus_seg_map(std::vector<float> &vertex, float *a, float *b, float theta, int s){
+void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s){
     float x_hat, y_hat;
     
     x_hat = a[0] + (b[0]-a[0]) * pow( (vertex[0]-a[0]) / (b[0]-a[0]), s);

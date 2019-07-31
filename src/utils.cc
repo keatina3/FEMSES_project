@@ -1,4 +1,5 @@
 #include <vector>
+#include <cstdlib>
 #include <cstdio>
 #include "mesh.h"
 #include "utils.h"
@@ -18,4 +19,30 @@ void output_csv(char *fname, Mesh &M, float *u, int order){
     }
 
     fclose(fptr);
+}
+
+void assign_ptrs(float*** arr_ptr, float** arr, int n, int m){
+    float **arr_tmp, *tmp_vals;
+
+    *arr_ptr = (float**)malloc(n*sizeof(float*));
+    *arr = (float*)calloc(n*m,sizeof(float));
+    
+    arr_tmp = *arr_ptr;
+    tmp_vals = *arr;
+
+    for(int i=0; i<n; i++)
+        arr_tmp[i] = &tmp_vals[i*m];
+}
+
+void assign_ptrs(int*** arr_ptr, int** arr, int n, int m){
+    int **arr_tmp, *tmp_vals;
+    
+    *arr_ptr = (int**)malloc(n*sizeof(int*));
+    *arr = (int*)calloc(n*m,sizeof(int));
+
+    arr_tmp = *arr_ptr;
+    tmp_vals = *arr;
+
+    for(int i=0; i<n; i++)
+        arr_tmp[i] = &tmp_vals[i*m];
 }

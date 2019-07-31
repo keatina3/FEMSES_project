@@ -34,9 +34,10 @@ __device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float 
     xi[(3*idy) + 1] = vertices[2*v]; 
     xi[(3*idy) + 2] = vertices[(2*v)+1];
 
+    __syncthreads();
+    
     if(idy==0)
         consts[9] = area(xi);
-    __syncthreads();
 
     // alpha, beta, gamma //
     // consts[(3*idy)] = xi[(idy+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
@@ -45,6 +46,14 @@ __device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float 
     
     be[idy] = 0.0;      // or Int(fv) //
 
+    __syncthreads();
+    /*
+    if(idx==2 && idy==2){
+        printf("b0 = %f, b1 = %f, b2 = %f\n", consts[1], consts[4], consts[7]);
+        printf("g0 = %f, g1 = %f, g2 = %f\n", consts[2], consts[5], consts[8]);
+        printf("del = %f\n",consts[9]);
+    }    
+    
     if(idx == 0 && idy == 2){
         for(int i=0;i<9;i++){
             printf("x = %f, y = %f, bdry = %d\n", vertices[2*i], vertices[(2*i)+1], is_bound[i]);
@@ -53,30 +62,40 @@ __device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float 
             printf("cell = %d, cells[0] = %d , cells[1] = %d, cells[2] = %d\n", i, cells[i*3], cells[(i*3)+1], cells[(i*3)+2]);
         }
     }
-
-    for(int i=0; i<idy; i++){
+    */
+    for(int i=0; i<=idy; i++){
         Le[(3*idy)+i] = 0.25*consts[9]*consts[9]*consts[9] * (consts[(3*idy)+1]*consts[(3*i)+1] 
                                     + consts[(3*idy)+2]*consts[(3*i)+2]);
         Le[(3*i)+idy] = Le[(3*idy)+i];
     }
+    __syncthreads();
 
     if(is_bound[v]){
         bound = bdry_vals[v];
         // change this appropriately for more DOF if necessary //
         for(int j=0; j<3; j++){
             if(idy != j){
-                be[j] -= Le[(3*j) + idy]*bound;
+                atomicAdd(&be[j], (-1)*Le[(3*j) + idy]*bound);
                 Le[(3*j) + idy] = 0.0;
                 Le[(3*idy) + j] = 0.0;
             }
         }
+        __syncthreads();
         Le[(3*idy)+idy] = 1.0;
-        be[idy] = bound;
+        atomicExch(&be[idy], bound);
     }                            
+    /* 
+    if(idx == 2 && idy == 2){
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                printf("%f ", Le[(3*i) + j]);
+            }
+            printf(" bi = %f\n",be[i]);
+        }
+    }
+    */
 }
 
-// CHANGE VERTICES ETC FROM FLOATS //
-// WILL NEED TO CHANGE THIS FROM "CELLS" to "DOF" WHEN EXPANDING TO PN //
 __device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, float *temp1, int idx, int idy){
     float *Le, *be;
     int* dof_r;
@@ -94,15 +113,36 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, floa
     }
     __syncthreads();
     
+    /*
+    if(idx == 0 && idy == 0){
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                printf("%f ", Le[(3*i) + j]);
+            }
+            printf(" bi = %f\n",be[i]);
+        }
+        printf("dof_0 = %d, dof_1 = %d, dof_2 = %d\n",dof_r[0], dof_r[1], dof_r[2]);
+        printf("global b[2] = %f\n", b[2]);
+        printf("L[0][0] = %f\n",L[0]);
+    }
+    */
+    
     // ANY ALTERNATIVE TO ATOMICS ??? //
     // b[dof[idy]] += be[idy];
+    // printf("dof_r = %d\n",dof_r[idy]);
     atomicAdd(&b[dof_r[idy]], be[idy]);
-     
-    for(int i=0; i<3; i++){
+    
+    for(int i=0; i<=idy; i++){
         // L[dof_r[idy]][dof_r[(idy+i)%3]] += Le[idy][(idy+i)%3];
-        // DEFINTELY CHECK THIS //
-        atomicAdd(&L[((gridDim.x)*dof_r[idy]) + dof_r[(idy+i)%3]], 
-                            Le[(3*idy) + (idy+i)%3]);
+        // DEFINITELY CHECK THIS //
+        atomicAdd(&L[((gridDim.x)*dof_r[idy]) + dof_r[i]], 
+                            Le[(3*idy) + i]);
+        if(i==idy)
+            continue;
+        else {
+            atomicAdd(&L[((gridDim.x)*dof_r[i]) + dof_r[idy]], 
+                            Le[(3*idy) + i]);
+        }
     }
 }
 
@@ -113,10 +153,19 @@ __global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, in
 
     if(idx < gridDim.x && idy < 3){
         elem_mat_gpu(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
-        if(idx == 0 && idy == 0){
-            printf("%f\n", temp1[0]);
-        }
         assemble_mat(L, b, vertices, cells, temp1, idx, idy);
+        __syncthreads();
+         
+        if(idx == 2 && idy == 2){
+            printf("\n\n");
+            for(int i=0;i<gridDim.x;i++){
+                for(int j=0;j<gridDim.x;j++){
+                    printf("%f ", L[(i*gridDim.x)+j]);
+                }
+                printf("bi = %f\n", b[i]);
+            }
+        }
+
     }
 } 
 
@@ -188,7 +237,7 @@ extern void gpu_fem(float *u, Mesh &M){
     // check these dimensions //
     // this will be scope for efficency experimentation //
     dim3 dimBlock(block_size_X, block_size_Y);
-    dim3 dimGrid((order/dimBlock.x)+(!(order%dimBlock.x)?0:1),
+    dim3 dimGrid((num_cells/dimBlock.x)+(!(order%dimBlock.x)?0:1),
                 (1/dimBlock.y)+(!(1%dimBlock.y)?0:1));
     
     // shared memory will grow for more DOF //

@@ -3,20 +3,29 @@
 
 class Mesh {
 private:
+
+    float **vertices, *vert_vals;
+    int **cells, *cells_vals;
+    int **dof, *dof_vals;
+    int *boundary;
+    float *bdry_vals;
+    
+    /*
     std::vector<std::vector<float> > vertices;
     std::vector<std::vector<int> > cells;
     std::vector<std::vector<int> > dof;
     std::vector<int> boundary;
     std::vector<float> bdr_val;
+    */
 
     int nr[2];
     float a[2], b[2];
 
 public:
     Mesh(const int* nr, const float* a, const float* b);
-    ~Mesh(){};
+    ~Mesh();
 
-    void deform(void (*map)(std::vector<float>&, float*, float*, float, int));
+    void deform(void (*map)(float*, float*, float*, float, int));
     void get_xy(float *xy, const int v) const;
     int get_vertex(const int e, const int i) const;
     int dof_map(const int e, const int r) const;
@@ -26,6 +35,6 @@ public:
     void get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals);
 };
 
-void annulus_seg_map(std::vector<float> &vertex, float *a, float *b, float theta, int s);
+void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s);
 
 #endif
