@@ -96,7 +96,7 @@ __device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float 
     */
 }
 
-__device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, float *temp1, int idx, int idy){
+__device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, float *temp1, int idx, int idy, int order){
     float *Le, *be;
     int* dof_r;
  
@@ -135,37 +135,37 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, floa
     for(int i=0; i<=idy; i++){
         // L[dof_r[idy]][dof_r[(idy+i)%3]] += Le[idy][(idy+i)%3];
         // DEFINITELY CHECK THIS //
-        atomicAdd(&L[((gridDim.x)*dof_r[idy]) + dof_r[i]], 
+        atomicAdd(&L[(order*dof_r[idy]) + dof_r[i]], 
                             Le[(3*idy) + i]);
         if(i==idy)
             continue;
         else {
-            atomicAdd(&L[((gridDim.x)*dof_r[i]) + dof_r[idy]], 
+            atomicAdd(&L[(order*dof_r[i]) + dof_r[idy]], 
                             Le[(3*idy) + i]);
         }
     }
 }
 
-__global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals){
+__global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals, int order){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[];
 
     if(idx < gridDim.x && idy < 3){
         elem_mat_gpu(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
-        assemble_mat(L, b, vertices, cells, temp1, idx, idy);
-        __syncthreads();
-         
+        assemble_mat(L, b, vertices, cells, temp1, idx, idy, order);
+        
+        /* 
         if(idx == 2 && idy == 2){
             printf("\n\n");
-            for(int i=0;i<gridDim.x;i++){
-                for(int j=0;j<gridDim.x;j++){
-                    printf("%f ", L[(i*gridDim.x)+j]);
+            for(int i=0;i<order;i++){
+                for(int j=0;j<order;j++){
+                    printf("%f ", L[(i*order)+j]);
                 }
                 printf("bi = %f\n", b[i]);
             }
         }
-
+        */
     }
 } 
 
@@ -187,8 +187,8 @@ extern void gpu_fem(float *u, Mesh &M){
     const cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
     const int nrhs = 1;
     int n, lda;
-    float Lwork;
-    int devInfo;
+    float *Workspace;
+    int Lwork, devInfo;
      
     M.get_recs(nr);
 
@@ -196,7 +196,7 @@ extern void gpu_fem(float *u, Mesh &M){
     dim = 2+1;      // needs expansion here //
     order = num_nodes + 0;
     num_cells = 2*nr[0]*nr[1];
-    n = lda = num_cells;
+    n = lda = order;
     // Sorting Mesh // 
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
 
@@ -242,16 +242,21 @@ extern void gpu_fem(float *u, Mesh &M){
     
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
-    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
     
     std::cout << "test4\n";
+    
+    status = cusolverDnSpotrf_bufferSize(handle, uplo, order, L, order, &Lwork);
+    assert(CUSOLVER_STATUS_SUCCESS == status);
+    cudaMalloc( (void**)&Workspace, Lwork*sizeof(float));
+    std::cout << "bufferSize " << Lwork << std::endl;
 
-    status = cusolverDnSpotrf(handle, uplo, n, L, lda, &Lwork, 1, &devInfo);
+    status = cusolverDnSpotrf(handle, uplo, order, L, order, Workspace, Lwork, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
     assert(cudaSuccess == cudaStat1);
     
-    status = cusolverDnSpotrs(handle, uplo, n, nrhs, L, lda, b, lda, &devInfo);
+    status = cusolverDnSpotrs(handle, uplo, order, nrhs, L, order, b, order, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
     assert(cudaSuccess == cudaStat1);
@@ -262,6 +267,8 @@ extern void gpu_fem(float *u, Mesh &M){
     
     std::cout << "test6\n";
     
+    cusolverDnDestroy(handle);
+
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);
     cudaFree(L); cudaFree(b);
