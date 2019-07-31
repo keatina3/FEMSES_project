@@ -2,6 +2,7 @@
 
 #ifdef __cplusplus
 
+void dense_solve(float *L, float *b, float *u, int order);
 extern void gpu_fem(float *u, Mesh &M);
 
 #endif

@@ -21,7 +21,7 @@ int main(int argc, char** argv){
     u_gpu = new float[order];
     
     Mesh M(nr,a,b);
-    M.deform(annulus_seg_map);
+    // M.deform(annulus_seg_map);
 
     FEM F(M);
     F.solve();
