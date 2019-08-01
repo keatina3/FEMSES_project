@@ -28,11 +28,12 @@ FEM::FEM(Mesh &M){
     order = num_nodes + 0;
     num_cells = 2*nr[0]*nr[1];
     
-    L_vals = new float[order*order]();
-    L = new float*[order];
 
-    for(int i=0;i<order;i++)
-        L[i] = &L_vals[i*order];
+    // L_vals = new float[order*order]();
+    // L = new float*[order];
+
+    // for(int i=0;i<order;i++)
+    //    L[i] = &L_vals[i*order];
 
     this->b = new float[order]();
 
@@ -58,9 +59,9 @@ FEM::FEM(Mesh &M){
 }
 
 FEM::~FEM(){
-    delete[] L;
-    delete[] L_vals;
-    delete[] b;
+    // delete[] L;
+    // delete[] L_vals;
+    // delete[] b;
 }
 
 void FEM::assemble(){
@@ -358,6 +359,7 @@ void FEM::output(char* fname) const {
 }
 
 int FEM::sparsity_pass(){
+    std::vector<std::set<int> > sparsity;
     std::vector<int> colTmp;
     int v1, v2;
     int n = 0;

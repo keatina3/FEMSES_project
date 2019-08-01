@@ -5,16 +5,14 @@
 
 class FEM {
 private:
-    float **L;
-    float *L_vals;
+    //float **L;
+    //float *L_vals;
     float *b;
     
     std::vector<float> valsL;
     std::vector<int> rowPtrL;
     std::vector<int> colPtrL;
 
-    std::vector<std::set<int> > sparsity;
-    
     std::vector<std::vector<std::vector<float> > > Le;
     std::vector<std::vector<float> > be;
     
