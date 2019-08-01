@@ -78,8 +78,8 @@ __device__ void elem_mat_gpu(float *vertices, int *cells,  int *is_bound, float 
         for(int j=0; j<3; j++){
             if(idy != j){
                 atomicAdd(&be[j], (-1)*Le[(3*j) + idy]*bound);
-                Le[(3*j) + idy] = 0.0;
-                Le[(3*idy) + j] = 0.0;
+                atomicExch(&Le[(3*j) + idy],  0.0);
+                atomicExch(&Le[(3*idy) + j], 0.0);
             }
         }
         __syncthreads();

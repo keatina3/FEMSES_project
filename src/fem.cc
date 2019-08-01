@@ -1,3 +1,5 @@
+#include <cstring>
+#include <set>
 #include <cassert>
 #include <iostream>
 #include <cstdlib>
@@ -39,6 +41,20 @@ FEM::FEM(Mesh &M){
 
     //M = new Mesh(nr, a, b);
     this->M = &M;
+
+    this->nnz = sparsity_pass();
+
+    std::cout <<"test i\n";
+    
+    /* 
+    for(int i=0; i<=order; i++){
+        std::cout << rowPtrL[i] << std::endl;
+    }
+    
+    for(int i=0; i<nnz; i++){
+        std::cout << colPtrL[i] << std::endl;
+    }
+    */
 }
 
 FEM::~FEM(){
@@ -80,6 +96,36 @@ float FEM::phi_P1(const float* x, const float del) const {
 }
 */
 
+void FEM::assemble_csr(){
+    int dof_r, dof_s;
+    int off = 0;
+    int *tmp;
+
+    for(unsigned int e=0; e<Le.size(); e++){
+        // can this be put in here ?? //
+        //elem_mat(e);
+        for(unsigned int r=0; r<Le[e].size(); r++){
+            dof_r = M->dof_map(e,r);
+            for(unsigned int s=0; s<Le[e][r].size(); s++){
+                dof_s = M->dof_map(e,s);
+                //L[dof_r][dof_s] += Le[e][r][s];
+                //std::cout << e << " " << dof_r << " " << dof_s << " " << std::endl;
+                tmp = &colPtrL[rowPtrL[dof_r]];
+                while(*tmp != dof_s){
+                    off++;
+                    tmp++;
+                }
+                valsL[rowPtrL[dof_r] + off] += Le[e][r][s];
+                off = 0;
+            }
+            b[dof_r] += be[e][r];
+        }
+    }
+    
+    //for(int i=0; i<nnz; i++)
+        //std::cout << valsL[i] << std::endl;
+}
+
 // change this to CSC format in time //
 void FEM::solve(){
     // add LAPACK library call here //
@@ -103,8 +149,8 @@ void FEM::solve(){
     }
     */
 
-    assemble();    
-    
+    // assemble();
+    assemble_csr(); 
    /* 
     for(unsigned int e=0; e<be.size();e++){
         for(int i=0; i<3; i++){
@@ -131,8 +177,54 @@ void FEM::solve(){
 
     // info = LAPACKE_ssysv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, ipiv, b, ldb);
     // info = LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, nrhs, L_vals, lda, ipiv, b, ldb);
-    info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
-    assert(!info);
+    
+    //info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
+    //assert(!info);
+
+    MKL_solve();
+}
+
+void FEM::MKL_solve(){
+    MKL_INT status = MKL_DSS_SUCCESS;
+    _MKL_DSS_HANDLE_t handle;
+    MKL_INT opt;
+    MKL_INT* rowInd = &rowPtrL[0];
+    MKL_INT* columns = &colPtrL[0];
+    MKL_INT nRows = order;
+    MKL_INT nCols = order;
+    MKL_INT nNonZeros = nnz;
+    MKL_INT nRhs = 1;
+    
+    std::cout << "MKL" << std::endl; 
+    opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR 
+                        + MKL_DSS_SINGLE_PRECISION + MKL_DSS_ZERO_BASED_INDEXING;
+    status = dss_create(handle, opt);
+    assert(status == MKL_DSS_SUCCESS);
+    
+    std::cout << "MKL" << std::endl; 
+    opt = MKL_DSS_SYMMETRIC;
+    status = dss_define_structure(handle, opt, rowInd, nRows, nCols, columns, nNonZeros);
+    assert(status == MKL_DSS_SUCCESS);
+
+    std::cout << "MKL3" << std::endl; 
+    opt = MKL_DSS_AUTO_ORDER;
+    status = dss_reorder(handle, opt, 0); 
+    assert(status == MKL_DSS_SUCCESS);
+    
+    std::cout << "MKL" << std::endl; 
+    opt = MKL_DSS_POSITIVE_DEFINITE;
+    status = dss_factor_real(handle, opt, &valsL[0]);
+    assert(status == MKL_DSS_SUCCESS);
+    
+    // will this work for same b?? //
+    std::cout << "MKL" << std::endl; 
+    opt = MKL_DSS_DEFAULTS;
+    status = dss_solve_real(handle, opt, b, nRhs, b);
+    assert(status == MKL_DSS_SUCCESS);
+    
+    std::cout << "MKL" << std::endl; 
+    status = dss_delete(handle, opt);
+    assert(status == MKL_DSS_SUCCESS);
 }
 
 // THIS FUNCTION IS VERY INEFFICIENT // 
@@ -263,4 +355,47 @@ void FEM::output(char* fname) const {
 
     fclose(fptr);
     */
+}
+
+int FEM::sparsity_pass(){
+    std::vector<int> colTmp;
+    int v1, v2;
+    int n = 0;
+    int *rowTmp;
+    int count=0;
+
+    sparsity.resize(order);
+    colTmp.resize(order*order, 0);
+    this->rowPtrL.resize(order+1,0);
+
+    rowTmp = &rowPtrL[0];
+
+    for(int e=0; e<num_cells; e++){
+        for(int i=0; i<3; i++){
+            v1 = M->get_vertex(e, i);
+            for(int j=0; j<3; j++){
+                v2 = M->get_vertex(e, j);
+                sparsity[v1].insert(v2);
+                sparsity[v2].insert(v1);
+            }
+        }
+    }
+    
+    rowTmp++;
+    for(std::vector<std::set<int> >::iterator v = sparsity.begin(); v != sparsity.end(); ++v){
+        for(std::set<int>::iterator vi = (*v).begin(); vi != (*v).end(); ++vi){
+            colTmp[count] = (*vi);
+            count++;
+        }
+        n += (*v).size();
+        *(rowTmp++) = n;
+    }
+    
+    this->valsL.resize(n,0.0);
+    this->colPtrL.resize(n,0);
+    
+    std::memcpy(&colPtrL[0], &colTmp[0], n*sizeof(int));
+    std::cout << "sparsity test\n";    
+
+    return n;
 }
