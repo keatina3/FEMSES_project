@@ -33,6 +33,8 @@ public:
     int is_bound(const int v) const;
     void get_recs(int* nrecs) const;
     void get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals);
+    int sparsity_pass(std::vector<float> &valsL, std::vector<int> &rowPtr, 
+                        std::vector<int> &colPtrL);
 };
 
 void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s);

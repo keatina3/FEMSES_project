@@ -148,7 +148,50 @@ __device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, floa
     }
 }
 
-__global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals, int order){
+__device__ void assemble_mat_sparse(float *valsL, int *rowPtrL, int *colPtrL, float *b, float *vertices, int *dof, float *temp1, int idx, int idy, int order){
+    float *Le, *be;
+    int* dof_r;
+    int row;
+    int *tmp1, *tmp2;
+    int off = 0;
+
+    // size of these will change for non P1 //   
+    Le = temp1;
+    be = &temp1[9];
+    dof_r = (int *)&temp1[12];
+
+    // add in for loop for DOF // 
+    if(idy==0){
+        dof_r[0] = dof[(idx*3)];
+        dof_r[1] = dof[(idx*3)+1];
+        dof_r[2] = dof[(idx*3)+2];
+    }
+    __syncthreads();
+     
+    atomicAdd(&b[dof_r[idy]], be[idy]);
+    
+    row = rowPtrL[dof_r[idy]];
+    tmp1 = &colPtrL[row];
+    for(int i=0; i<3; i++){
+        tmp2 = tmp1;
+        while(*tmp2 != dof_r[i]){
+            off++;
+            tmp2++;
+        }
+        atomicAdd(&valsL[row + off], Le[(3*idy) + i]);
+        off = 0; 
+        /*
+        if(i==idy)
+            continue;
+        else {
+            atomicAdd(&L[(order*dof_r[i]) + dof_r[idy]], 
+                            Le[(3*idy) + i]);
+        }
+        */
+    }
+}
+
+__global__ void assemble_gpu(float *valsL, int *rowPtrL, int *colPtrL, float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals, int order){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[];
@@ -156,8 +199,10 @@ __global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, in
     if(idx < gridDim.x && idy < 3){
         elem_mat_gpu(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         assemble_mat(L, b, vertices, cells, temp1, idx, idy, order);
+        // add conversion to CSR for timing //
+        // assemble_mat_sparse(valsL, rowPtrL, colPtrL, b, vertices, cells, temp1, idx, idy, order);
         
-        /* 
+        /*
         if(idx == 2 && idy == 2){
             printf("\n\n");
             for(int i=0;i<order;i++){
@@ -166,10 +211,24 @@ __global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, in
                 }
                 printf("bi = %f\n", b[i]);
             }
+            for(int i=0; i<41; i++){
+                printf("%f\n",valsL[i]);
+            }
         }
         */
     }
 } 
+
+__global__ void assemble_gpu_csr(float *valsL, int *rowPtrL, int *colPtrL, float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals, int order){
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    extern __shared__ float temp1[];
+
+    if(idx < gridDim.x && idy < 3){
+        elem_mat_gpu(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        assemble_mat_sparse(valsL, rowPtrL, colPtrL, b, vertices, cells, temp1, idx, idy, order);
+    }
+}    
 
 void dense_solve(float *L, float *b, float *u, int order){
     cusolverDnHandle_t handle = NULL;
@@ -183,6 +242,7 @@ void dense_solve(float *L, float *b, float *u, int order){
 
     status = cusolverDnCreate(&handle);
     assert(CUSOLVER_STATUS_SUCCESS == status);
+    std::cout << "lefence issue here\n";
     
     cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
     assert(cudaSuccess == cudaStat1);
@@ -210,7 +270,7 @@ void dense_solve(float *L, float *b, float *u, int order){
     cudaStreamDestroy(stream);
 }
 
-void sparse_solve(float *L, float *b, float *u, int order){
+void sparse_solve(float *valsL,int *rowPtrL, int *colPtrL, float *L, float *b, float *u, int order, int nnz){
     cusparseHandle_t handle = NULL;
     cusolverSpHandle_t handleS = NULL;
     cudaStream_t stream = NULL;
@@ -234,6 +294,7 @@ void sparse_solve(float *L, float *b, float *u, int order){
     
     status = cusparseCreate(&handle);
     assert(CUSPARSE_STATUS_SUCCESS == status);
+    std::cout << "lefence issue here\n";
     
     status2 = cusolverSpCreate(&handleS);
     assert(CUSPARSE_STATUS_SUCCESS == status2);
@@ -244,6 +305,7 @@ void sparse_solve(float *L, float *b, float *u, int order){
     status = cusparseCreateMatDescr(&desc);
     assert(CUSPARSE_STATUS_SUCCESS == status);
     
+    std::cout << "giddyup\n";
     cusparseSetMatIndexBase(desc, CUSPARSE_INDEX_BASE_ZERO);
     cusparseSetMatType(desc, CUSPARSE_MATRIX_TYPE_GENERAL);
     cusparseSetMatFillMode(desc, CUSPARSE_FILL_MODE_LOWER);
@@ -266,8 +328,10 @@ void sparse_solve(float *L, float *b, float *u, int order){
     status2 = cusolverSpSetStream(handleS, stream);
     assert(CUSOLVER_STATUS_SUCCESS == status);
 
-    status2 = cusolverSpScsrlsvchol(handleS, order, nnzL, desc, csrValL, csrRowPtrL,
-                                            csrColIndL, b, err, reorder, b, &singularity);
+    //status2 = cusolverSpScsrlsvchol(handleS, order, nnzL, desc, csrValL, csrRowPtrL,
+    //                                        csrColIndL, b, err, reorder, b, &singularity);
+    status2 = cusolverSpScsrlsvchol(handleS, order, nnz, desc, valsL, rowPtrL,
+                                            colPtrL, b, err, reorder, b, &singularity);
     
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -279,15 +343,19 @@ void sparse_solve(float *L, float *b, float *u, int order){
 
 extern void gpu_fem(float *u, Mesh &M){
     int nr[2];
-    int num_nodes, dim, order, num_cells;
-    int block_size_X, block_size_Y;
+    int num_nodes, dim, order, num_cells, nnz;
+    int block_size_X, block_size_Y, shared;
     float *vertices_gpu, *vertices;
     int *cells_gpu, *cells;
     int *dof_gpu, *dof;
     int *is_bound_gpu, *is_bound;
     float *bdry_vals_gpu, *bdry_vals;
-    float *L, *b;
-    
+    float *L, *b, *valsL;
+    int *rowPtrL, *colPtrL;
+    std::vector<float> valsLCPU;
+    std::vector<int> rowPtrLCPU;
+    std::vector<int> colPtrLCPU;
+
     M.get_recs(nr);
 
     num_nodes = (nr[0]+1)*(nr[1]+1);
@@ -299,6 +367,8 @@ extern void gpu_fem(float *u, Mesh &M){
     std::cout << num_nodes << std::endl;
     
     std::cout << "test1\n";
+    
+    nnz = M.sparsity_pass(valsLCPU, rowPtrLCPU, colPtrLCPU);
     
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, dim*num_cells*sizeof(int));
@@ -317,7 +387,12 @@ extern void gpu_fem(float *u, Mesh &M){
 
     cudaMalloc( (void**)&L, order*order*sizeof(float));
     cudaMalloc( (void**)&b, order*sizeof(float));
+    cudaMalloc( (void**)&valsL, nnz*sizeof(float)); 
+    cudaMalloc( (void**)&colPtrL, nnz*sizeof(int)); 
+    cudaMalloc( (void**)&rowPtrL, (order+1)*sizeof(int)); 
     
+    cudaMemcpy(rowPtrL, &rowPtrLCPU[0], (order+1)*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(colPtrL, &colPtrLCPU[0], nnz*sizeof(int), cudaMemcpyHostToDevice);
     std::cout << "test3\n";
 
     block_size_X = 1, block_size_Y = 3;
@@ -327,14 +402,24 @@ extern void gpu_fem(float *u, Mesh &M){
     dim3 dimGrid((num_cells/dimBlock.x)+(!(order%dimBlock.x)?0:1),
                 (1/dimBlock.y)+(!(1%dimBlock.y)?0:1));
     
+    int dofs = 3;
+    shared = (dofs*dofs) + dofs + 1;
+    // MIGHT LEAVE SHARED AS 31 UNTIL LATER //
+    if(true)
+       shared += 18;
+    
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
-    assemble_gpu<<<dimGrid, dimBlock, 31*sizeof(float)>>>(L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    
+    // assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colPtrL, L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    assemble_gpu_csr<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colPtrL, L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
     
     std::cout << "test4\n";
         
-    //dense_solve(L, b, u, order);
-    sparse_solve(L, b, u, order);
+    // dense_solve(L, b, u, order);
+    sparse_solve(valsL, rowPtrL, colPtrL, L, b, u, order, nnz);
+    
+    std::cout << "test5\n";
 
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);

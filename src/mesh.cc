@@ -1,3 +1,5 @@
+#include <set>
+#include <cstring>
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -156,6 +158,52 @@ void Mesh::get_arrays(float **vertices, int **cells, int **dof, int **is_bound, 
     *dof = this->dof_vals;
     *is_bound = this->boundary;
     *bdry_vals = this->bdry_vals;
+}
+
+int Mesh::sparsity_pass(std::vector<float> &valsL, std::vector<int> &rowPtrL, std::vector<int> &colPtrL){
+    std::vector<std::set<int> > sparsity;
+    std::vector<int> colTmp;
+    int v1, v2;
+    int n = 0;
+    int *rowTmp;
+    int count=0;
+    int num_cells = nr[0]*nr[1]*2;
+    int order = (nr[0]+1)*(nr[1]+1);
+
+    sparsity.resize(order);
+    colTmp.resize(order*order, 0);
+    rowPtrL.resize(order+1,0);
+
+    rowTmp = &rowPtrL[0];
+
+    for(int e=0; e<num_cells; e++){
+        for(int i=0; i<3; i++){
+            v1 = get_vertex(e, i);
+            for(int j=0; j<3; j++){
+                v2 = get_vertex(e, j);
+                sparsity[v1].insert(v2);
+                sparsity[v2].insert(v1);
+            }
+        }
+    }
+    
+    rowTmp++;
+    for(std::vector<std::set<int> >::iterator v = sparsity.begin(); v != sparsity.end(); ++v){
+        for(std::set<int>::iterator vi = (*v).begin(); vi != (*v).end(); ++vi){
+            colTmp[count] = (*vi);
+            count++;
+        }
+        n += (*v).size();
+        *(rowTmp++) = n;
+    }
+    
+    valsL.resize(n,0.0);
+    colPtrL.resize(n,0);
+    
+    std::memcpy(&colPtrL[0], &colTmp[0], n*sizeof(int));
+    std::cout << "sparsity test\n";    
+
+    return n;
 }
 
 void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s){

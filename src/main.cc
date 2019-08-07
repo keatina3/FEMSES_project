@@ -25,11 +25,11 @@ int main(int argc, char** argv){
     // M.deform(annulus_seg_map);
 
     FEM F(M);
-    F.solve();
-    F.output("output_cpu.csv");
+    // F.solve();
+    // F.output("output_cpu.csv");
     
-    //gpu_fem(u_gpu, M);
-    //output_csv("output_gpu.csv", M, u_gpu, order);
+    gpu_fem(u_gpu, M);
+    output_csv("output_gpu.csv", M, u_gpu, order);
 
     delete[] u_gpu;
 

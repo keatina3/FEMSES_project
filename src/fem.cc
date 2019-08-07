@@ -29,21 +29,23 @@ FEM::FEM(Mesh &M){
     num_cells = 2*nr[0]*nr[1];
     
 
-    // L_vals = new float[order*order]();
-    // L = new float*[order];
+    L_vals = new float[order*order]();
+    L = new float*[order];
 
-    // for(int i=0;i<order;i++)
-    //    L[i] = &L_vals[i*order];
+    for(int i=0;i<order;i++)
+        L[i] = &L_vals[i*order];
 
     this->b = new float[order]();
-
+    
+    // add if statements for sparse/dense //
     Le.resize(num_cells, std::vector<std::vector <float> >(dim, std::vector<float>(dim,0.0)));
     be.resize(num_cells, std::vector<float>(dim,0.0));
 
     //M = new Mesh(nr, a, b);
     this->M = &M;
 
-    this->nnz = sparsity_pass();
+    // this possibly shouldn't return a value, change to passing by reference maybe //
+    this->nnz = M.sparsity_pass(valsL, rowPtrL, colPtrL);
 
     std::cout <<"test i\n";
     
@@ -61,7 +63,7 @@ FEM::FEM(Mesh &M){
 FEM::~FEM(){
     // delete[] L;
     // delete[] L_vals;
-    // delete[] b;
+    delete[] b;
 }
 
 void FEM::assemble(){
@@ -81,21 +83,14 @@ void FEM::assemble(){
             b[dof_r] += be[e][r];
         }
     }
-    /*
-    for(unsigned int i=0; i<16; i++){
-        for(unsigned int j=0; j<16; j++){
+        
+    for(unsigned int i=0; i<9; i++){
+        for(unsigned int j=0; j<9; j++){
             std::cout << L[i][j] << " ";
         }
         std::cout << "bi = " << b[i] << std::endl;
-    }
-    */
+    }     
 }
-
-/*
-float FEM::phi_P1(const float* x, const float del) const {
-
-}
-*/
 
 void FEM::assemble_csr(){
     int dof_r, dof_s;
@@ -109,7 +104,6 @@ void FEM::assemble_csr(){
             dof_r = M->dof_map(e,r);
             for(unsigned int s=0; s<Le[e][r].size(); s++){
                 dof_s = M->dof_map(e,s);
-                //L[dof_r][dof_s] += Le[e][r][s];
                 //std::cout << e << " " << dof_r << " " << dof_s << " " << std::endl;
                 tmp = &colPtrL[rowPtrL[dof_r]];
                 while(*tmp != dof_s){
@@ -122,9 +116,7 @@ void FEM::assemble_csr(){
             b[dof_r] += be[e][r];
         }
     }
-    
-    //for(int i=0; i<nnz; i++)
-        //std::cout << valsL[i] << std::endl;
+    printCsr(order, order, nnz, &valsL[0], &rowPtrL[0], &colPtrL[0]);
 }
 
 // change this to CSC format in time //
@@ -150,7 +142,7 @@ void FEM::solve(){
     }
     */
 
-    // assemble();
+    assemble();
     assemble_csr(); 
    /* 
     for(unsigned int e=0; e<be.size();e++){
@@ -196,7 +188,8 @@ void FEM::MKL_solve(){
     MKL_INT nNonZeros = nnz;
     MKL_INT nRhs = 1;
     
-    std::cout << "MKL" << std::endl; 
+    std::cout << "MKL" << std::endl;
+    // need option here for double precision versions // 
     opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR 
                         + MKL_DSS_SINGLE_PRECISION + MKL_DSS_ZERO_BASED_INDEXING;
     status = dss_create(handle, opt);
@@ -206,6 +199,8 @@ void FEM::MKL_solve(){
     opt = MKL_DSS_SYMMETRIC;
     status = dss_define_structure(handle, opt, rowInd, nRows, nCols, columns, nNonZeros);
     assert(status == MKL_DSS_SUCCESS);
+
+    // printCsr(order, order, nnz, &valsL[0], &rowPtrL[0], &colPtrL[0]);
 
     std::cout << "MKL3" << std::endl; 
     opt = MKL_DSS_AUTO_ORDER;
@@ -357,8 +352,8 @@ void FEM::output(char* fname) const {
     fclose(fptr);
     */
 }
-
-int FEM::sparsity_pass(){
+/*
+int FEM::sparsity_pass(float **valsL, float **rowPtr, float **colPtrL){
     std::vector<std::set<int> > sparsity;
     std::vector<int> colTmp;
     int v1, v2;
@@ -401,3 +396,4 @@ int FEM::sparsity_pass(){
 
     return n;
 }
+*/

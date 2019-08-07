@@ -4,5 +4,7 @@
 void output_csv(char *fname, Mesh &M, float *u, int order);
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m);
 void assign_ptrs(int*** arr_ptr, int** arr, int n, int m);
+void printCsr(int m, int n, int nnz, const float *csrValA, const int *csrRowPtrA, 
+                            const int *csrColIndA);
 
 #endif

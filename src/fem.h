@@ -5,8 +5,8 @@
 
 class FEM {
 private:
-    //float **L;
-    //float *L_vals;
+    float **L;
+    float *L_vals;
     float *b;
     
     std::vector<float> valsL;
@@ -33,7 +33,7 @@ public:
     void elem_mat(const int e);
     float area(float xi[3][3]) const;
     void output(char* fname) const;
-    int sparsity_pass();
+    // int sparsity_pass();
 };
 
 #endif
