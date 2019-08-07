@@ -10,6 +10,9 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
+
+///// NB: NEED TO CHANGE 3 TO BLOCKDIM AND MAKE SURE DIFFERENT MESH SIZES WORK //////
+
 __device__ float area(float *xi){
     float tmp = 0.0;
 
@@ -321,7 +324,7 @@ extern void gpu_fem(float *u, Mesh &M){
     // check these dimensions //
     // this will be scope for efficency experimentation //
     dim3 dimBlock(block_size_X, block_size_Y);
-    dim3 dimGrid((num_cells/dimBlock.x)+(!(order%dimBlock.x)?0:1),
+    dim3 dimGrid((num_cells/dimBlock.x)+(!(num_cells%dimBlock.x)?0:1),
                 (1/dimBlock.y)+(!(1%dimBlock.y)?0:1));
     
     int dofs = 3;
