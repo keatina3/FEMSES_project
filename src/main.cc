@@ -6,6 +6,7 @@
 #include "utils.h"
 
 extern void gpu_fem(float *u, Mesh &M);
+extern void gpu_femses(float *u, Mesh &M);
 
 int main(int argc, char** argv){
     int nr[2];
@@ -22,7 +23,7 @@ int main(int argc, char** argv){
     u_gpu = new float[order];
     
     Mesh M(nr,a,b);
-    // M.deform(annulus_seg_map);
+    M.deform(annulus_seg_map);
 
     FEM F(M);
     // F.solve();

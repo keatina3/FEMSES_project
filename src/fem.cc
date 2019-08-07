@@ -116,7 +116,7 @@ void FEM::assemble_csr(){
             b[dof_r] += be[e][r];
         }
     }
-    printCsr(order, order, nnz, &valsL[0], &rowPtrL[0], &colPtrL[0]);
+    printCsr(order, &valsL[0], &rowPtrL[0], &colPtrL[0]);
 }
 
 // change this to CSC format in time //

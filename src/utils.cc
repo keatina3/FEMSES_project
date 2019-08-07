@@ -47,10 +47,9 @@ void assign_ptrs(int*** arr_ptr, int** arr, int n, int m){
         arr_tmp[i] = &tmp_vals[i*m];
 }
 
-void printCsr(int m, int n, int nnz, const float *csrValA, const int *csrRowPtrA, 
-                        const int *csrColIndA){
+void printCsr(int m, const float *csrValA, const int *csrRowPtrA, const int *csrColIndA){
 
-    for(int row = 0 ; row < m ; row++){
+    for(int row = 0; row < m; row++){
         const int start = csrRowPtrA[row  ];
         const int end   = csrRowPtrA[row+1];
         for(int colidx = start ; colidx < end ; colidx++){
