@@ -4,6 +4,7 @@
 #include <cusolverDn.h>
 #include <cusolverSp.h>
 #include <cusparse.h>
+#include <cublas_v2.h>
 #include "gpu_utils.h"
 
 void dnsspr_solve(float *L, float *b, int order){
@@ -144,4 +145,18 @@ void dense_solve(float *L, float *b, int order){
       
     cusolverDnDestroy(handle);
     cudaStreamDestroy(stream);
+}
+
+void dotProd(float *a, float *b, int n, float &x){
+    cublasHandle_t handle;
+    cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
+    
+    status = cublasCreate(&handle);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+
+    status = cublasSdot(handle, n, a, 1, b, 1, &x); 
+    assert(status == CUBLAS_STATUS_SUCCESS);
+
+    status = cublasDestroy(handle);
+    assert(status == CUBLAS_STATUS_SUCCESS); 
 }

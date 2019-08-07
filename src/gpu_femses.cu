@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cassert>
 #include <cstdio>
 #include <iostream>
@@ -6,6 +7,8 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 #include "gpu_femses.h"
+
+#define EPS = 1E-08
 
 // need to change to DOF for more than P1 //
 __device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int idy){
@@ -103,7 +106,7 @@ __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells)
 
         atomicAdd(&u[v], weight * ue[(idx*3) + idy]);
     }
-}  
+}
 
 extern void gpu_femses(float *u, Mesh &M){
     int nr[2];
@@ -114,7 +117,9 @@ extern void gpu_femses(float *u, Mesh &M){
     int *dof_gpu, *dof;
     int *is_bound_gpu, *is_bound;
     float *bdry_vals_gpu, *bdry_vals;
-    float *Le, *be, *ue, *u_gpu, *we;
+    float *Le, *be, *ue, *we;
+    float *up_gpu, *un_gpu;
+    float err = 1E16;
 
     M.get_recs(nr);
 
@@ -140,7 +145,8 @@ extern void gpu_femses(float *u, Mesh &M){
     cudaMalloc( (void**)&Le, num_cells*dim*dim*sizeof(float));
     cudaMalloc( (void**)&be, num_cells*dim*sizeof(float));
     cudaMalloc( (void**)&ue, num_cells*dim*sizeof(float));
-    cudaMalloc( (void**)&u_gpu, order*sizeof(float));
+    cudaMalloc( (void**)&un_gpu, order*sizeof(float));
+    cudaMalloc( (void**)&up_gpu, order*sizeof(float));
     cudaMalloc( (void**)&we, order*sizeof(float));
 
     block_size_X = 1, block_size_Y = 3;
@@ -157,17 +163,25 @@ extern void gpu_femses(float *u, Mesh &M){
         shared += 18;
 
     assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
-
-    // change shared memory accordingly //
-    local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
     
-    glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, u, ue, cells_gpu); 
+    float *tmp;
+    while(true){
+        // change shared memory accordingly //
+        local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
+    
+        glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, un_gpu, ue, cells_gpu);
+    
+        dotProd(un_gpu, up_gpu, order, err);
 
+        tmp = un_gpu;
+        un_gpu = up_gpu;
+        up_gpu = tmp; 
+    }
     ////////// REST OF FEMSES GOES HERE //////////
 
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);
-    cudaFree(Le); cudaFree(be); cudaFree(u_gpu);
+    cudaFree(Le); cudaFree(be); cudaFree(un_gpu); cudaFree(up_gpu);
 
     std::cout << "test7\n";
 
