@@ -8,7 +8,7 @@
 #include "utils.h"
 
 // put in BC parameters //
-Mesh::Mesh(const int* nr, const float* a, const float *b){
+Mesh::Mesh(const int* nr, const float* x, const float *y){
     // allow for more DOFs
     //int dof = 3;
     int dim = 2;
@@ -20,12 +20,11 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
 
     for(int i=0; i<2; i++){
         this->nr[i] = nr[i];
-        this->a[i] = a[i];
-        this->b[i] = b[i];
+        this->x[i] = x[i];
+        this->y[i] = y[i];
     }
 
-    dx = (this->b[0]-this->a[0])/nr[0], dy = (this->b[1]-this->a[1])/nr[1];
-    //std::cout << dx << std::endl;
+    dx = (this->x[1]-this->x[0])/nr[0], dy = (this->y[1]-this->y[0])/nr[1];
     
     /*
     vertices.resize((nr[0]+1)*(nr[1]+1), std::vector<float>(dim, 0.0));
@@ -49,8 +48,8 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
     for(int i=0; i<=nr[1]; i++){
         for(int j=0; j<=nr[0]; j++){
             // fix this bit //
-            vertices[count][1] = a[1] + i*dy;
-            vertices[count][0] = a[0] + j*dx;
+            vertices[count][1] = y[0] + i*dy;
+            vertices[count][0] = x[0] + j*dx;
 
             if(j==0){
                 boundary[count] = true;
@@ -65,8 +64,6 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
         }
     }
     
-    std::cout << "testing \n";
-
     for(int i=0; i<this->nr[1]; i++){
         for(int j=0; j<this->nr[0]; j++){
             cells[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
@@ -86,15 +83,13 @@ Mesh::Mesh(const int* nr, const float* a, const float *b){
             dof[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
         }
     }
-    
-    std::cout << "testing \n";
 }
 
 Mesh::~Mesh(){
-    delete[] vertices; delete[] vert_vals;
-    delete[] cells; delete[] cells_vals;
-    delete[] dof; delete[] dof_vals;
-    delete[] boundary; delete[] bdry_vals;
+    delete[] vertices;  delete[] vert_vals;
+    delete[] cells;     delete[] cells_vals;
+    delete[] dof;       delete[] dof_vals;
+    delete[] boundary;  delete[] bdry_vals;
 }
 
 void Mesh::deform(void (*map)(float*, float*, float*, float, int)){
@@ -102,7 +97,7 @@ void Mesh::deform(void (*map)(float*, float*, float*, float, int)){
     int order = (nr[0]+1)*(nr[1]+1);
 
     for(int i=0; i<order; i++)
-        map(v[i], a, b, M_PI/2.0, 2);
+        map(v[i], x, y, M_PI/2.0, 2);
 
     std::cout << "testing \n";
     /*
@@ -206,10 +201,10 @@ int Mesh::sparsity_pass(std::vector<float> &valsL, std::vector<int> &rowPtrL, st
     return n;
 }
 
-void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s){
+void annulus_seg_map(float *vertex, float *x, float *y, float theta, int s){
     float x_hat, y_hat;
     
-    x_hat = a[0] + (b[0]-a[0]) * pow( (vertex[0]-a[0]) / (b[0]-a[0]), s);
+    x_hat = x[0] + (x[1]-x[0]) * pow( (vertex[0]-x[0]) / (x[1]-x[0]), s);
     y_hat = vertex[1];
 
     vertex[0] = x_hat*cos(theta*y_hat);

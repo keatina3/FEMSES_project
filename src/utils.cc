@@ -7,12 +7,13 @@
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = true, dense = false, dnsspr = false, debug =  false;
-int n = 2, m = 2, a = 3, b = 10;
+int n = 2, m = 2;
+float a = 3.0, dr = 7.0;
 
 int parse_arguments(int argc, char **argv){
     int opt;
 
-    while((opt = getopt(argc, argv, "vhtcgfdsDCn:m:a:b:")) != -1) {
+    while((opt = getopt(argc, argv, "vhtcgfdsDCn:m:a:r:")) != -1) {
         switch(opt){
             case 'v': 
                 verbose =  true; break;
@@ -40,8 +41,8 @@ int parse_arguments(int argc, char **argv){
                 m = atoi(optarg); break;
             case 'a':
                 a = atoi(optarg); break;
-            case 'b':
-                b = atoi(optarg); break;
+            case 'r':
+                dr = atoi(optarg); break;
             default:
                 fprintf(stderr, "Invalid option given\n");
                 print_usage();

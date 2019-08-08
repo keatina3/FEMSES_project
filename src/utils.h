@@ -3,7 +3,8 @@
 
 extern bool verbose, timing, cpu, gpu_f, gpu_fs;
 extern bool annulus, dense, dnsspr, debug;
-extern int n, m, a, b;
+extern int n, m; 
+extern float a, dr;
 //extern int block_size_X, block_size_Y;
 
 typedef struct Tau {

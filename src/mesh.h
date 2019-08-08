@@ -19,7 +19,7 @@ private:
     */
 
     int nr[2];
-    float a[2], b[2];
+    float x[2], y[2];
 
 public:
     Mesh(const int* nr, const float* a, const float* b);

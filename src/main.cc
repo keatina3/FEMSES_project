@@ -10,27 +10,27 @@ extern void gpu_femses(float *u, Mesh &M);
 
 int main(int argc, char** argv){
     int nr[2];
-    float a[2], b[2];
+    float x[2], y[2];
     float *u_gpu, *u_gpu_femses;
     int order;
     
     parse_arguments(argc, argv);
 
     nr[0] = n, nr[1] = m;
-    a[0] = a; b[0] = b;
+    x[0] = a; x[1] = a + dr;
 
     if(annulus)
-        a[1] = 0; b[1] = 1;
+        y[0] = 0.0, y[1] = 1.0;
     else
-        a[1] = a; b[1] = b;
+        y[0] = a, y[1] = a + dr;
 
     order = (nr[0]+1)*(nr[0]+1);
 
     u_gpu = new float[order];
     u_gpu_femses = new float[order];
     
-    Mesh M(nr,a,b);
-    M.deform(annulus_seg_map);
+    Mesh M(nr,x,y);
+    //M.deform(annulus_seg_map);
 
     FEM F(M);
     // F.solve();
