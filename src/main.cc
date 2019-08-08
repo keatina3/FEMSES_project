@@ -11,7 +11,7 @@ extern void gpu_femses(float *u, Mesh &M);
 int main(int argc, char** argv){
     int nr[2];
     float a[2], b[2];
-    float *u_gpu;
+    float *u_gpu, *u_gpu_femses;
     int order;
     
     nr[0] = 2, nr[1] = 2;
@@ -21,6 +21,7 @@ int main(int argc, char** argv){
     order = (nr[0]+1)*(nr[0]+1);
 
     u_gpu = new float[order];
+    u_gpu_femses = new float[order];
     
     Mesh M(nr,a,b);
     M.deform(annulus_seg_map);
@@ -32,7 +33,10 @@ int main(int argc, char** argv){
     gpu_fem(u_gpu, M);
     output_csv("output_gpu.csv", M, u_gpu, order);
 
-    delete[] u_gpu;
+    gpu_femses(u_gpu, M);
+    output_csv("output_femses.csv", M, u_gpu_femses, order);
+    
+    delete[] u_gpu; delete[] u_gpu_femses;
 
     return 0;
 }

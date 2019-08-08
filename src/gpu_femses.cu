@@ -8,7 +8,8 @@
 #include "gpu_fem.h"
 #include "gpu_femses.h"
 
-#define EPS = 1E-08
+#define EPS 1E-08
+#define MAX_ITERS 10
 
 // need to change to DOF for more than P1 //
 __device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int idy){
@@ -17,7 +18,7 @@ __device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int id
 
     Le = temp1;
     v = cells[(idx*3) + idy];
-    
+
     atomicAdd(&we[v], Le[(idy*3) + idy]);
 }
 
@@ -28,7 +29,7 @@ __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int 
     be_shrd = &temp1[9];
 
     // CHANGE THIS FROM BLOCK DIM IN CASE OF UNEVEN BLOCK SIZES //
-    be[(idx*blockDim.y) + idy] = be_shrd[idy];
+    be[(idx*3) + idy] = be_shrd[idy];
 
     for(int i=0; i<3; i++){
         Le[(idx*9) + (idy*3) + i] = Le_shrd[(idy*3) + i];
@@ -37,23 +38,40 @@ __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int 
 
 __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, int idy){
     float *Le_shrd, *be_shrd;
-    
+
     Le_shrd = temp1;
     be_shrd = &temp1[9];
-    
-    be_shrd[idy] = be[(idx*blockDim.y) + idy];
+
+    be_shrd[idy] = be[(idx*3) + idy];
     for(int i=0; i<3; i++){
         Le_shrd[(idy*3) + i] = Le[(idx*9) + (idy*3) + i];
-    } 
+    }
+    __syncthreads();
+    /* 
+    if(idx == 1 && idy == 0){
+        for(int i=0; i<3; i++){
+            printf("femses: %f %f %f,  b[i] = %f\n", Le_shrd[i*3],Le_shrd[(3*i)+1],
+                    Le_shrd[(3*i)+2], be_shrd[i]);
+        }
+    }
+    */
 }
 
 __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
     float *Le_shrd, *be_shrd, ue_loc;
-    
+
     Le_shrd = temp1;
     be_shrd = &temp1[9];
     // for Other iteration types, make ue_loc shared //
-
+    
+    /*
+    if(idx == 0 && idy == 0){
+        for(int i=0; i<3; i++){
+            printf("femses: %f %f %f,  b[i] = %f\n", Le_shrd[i*3],Le_shrd[(3*i)+1],
+                    Le_shrd[(3*i)+2], be_shrd[i]);
+        }
+    }
+    */
     ue_loc = be_shrd[idy];
     for(int i=0; i<3; i++){
         if(i==idy) 
@@ -63,6 +81,8 @@ __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
     ue_loc /= Le_shrd[(idy*3) + idy];
 
     ue[(idx*3) + idy] = ue_loc;
+    //if(idx == 0 && idy == 0)
+    //    printf("uloc = %f\n", ue[0]);
 }
 
 __global__ void assemble_elems_gpu(float *Le, float *be, float *we, float *vertices, int *cells, int *is_bound, float *bdry_vals){
@@ -86,10 +106,18 @@ __global__ void local_sols(float *Le, float *be, float *ue){
 
     // CAN I NOT DO ATMOMIC ADD OF ELEMENT SOLUTION VALES AT EACH ITERATION ?? //
     if(idx < gridDim.x && idy < 3){
+        
+        /*
+        if(idx == 0 && idy == 0){
+            for(int i=0; i<3*gridDim.x; i++){
+                printf("femses: %f %f %f,  b[i] = %f\n", Le[i*3],Le[(i*3)+1],Le[(i*3)+2],be[i]);
+            }
+        }
+        */
         elems_shared_cpy(Le, be, temp1, idx, idy);
         jacobi_iter(ue, temp1, idx, idy);
     }
-        
+
 }
 
 __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells){
@@ -97,12 +125,20 @@ __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells)
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     int v;
     float Lii, weight;
-    
+
     if(idx < gridDim.x && idy < 3){
+        
         v = cells[(idx*3) + idy];
         Lii = Le[(idx*9) + (idy*3) + idy];
-        weight = we[(idx*3) + idy];
-        weight /= Lii;
+        /*
+        if(idx == 0 && idy == 1){
+            for(int i=0; i<9; i++){
+                printf("we[i] = %f\n", we[i]);
+            }
+            printf("Lii = %f\n", Lii);
+        }
+        */
+        weight = Lii/we[v];
 
         atomicAdd(&u[v], weight * ue[(idx*3) + idy]);
     }
@@ -163,21 +199,28 @@ extern void gpu_femses(float *u, Mesh &M){
         shared += 18;
 
     assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
-    
+
     float *tmp;
-    while(true){
+    int count = 0;
+    while(err > EPS && count < MAX_ITERS){
         // change shared memory accordingly //
         local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
-    
+   
         glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, un_gpu, ue, cells_gpu);
-    
-        dotProd(un_gpu, up_gpu, order, err);
 
+        std::cout << "error " << err <<std::endl;
+        error_dot_prod(un_gpu, up_gpu, order, err);
+        std::cout << "error " << err <<std::endl;
+        
         tmp = un_gpu;
         un_gpu = up_gpu;
-        up_gpu = tmp; 
+        up_gpu = tmp;
+
+        count++;
+        std::cout << count << std::endl;
     }
-    ////////// REST OF FEMSES GOES HERE //////////
+
+    cudaMemcpy(u, up_gpu, order*sizeof(float), cudaMemcpyDeviceToHost);
 
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);

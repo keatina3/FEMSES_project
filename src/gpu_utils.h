@@ -4,6 +4,6 @@
 void dnsspr_solve(float *L, float *b, int order);
 void sparse_solve(float *valsL, int *rowPtrL, int *colIndL, float *b, int order, int nnz);
 void dense_solve(float *L, float *b, int order);
-void dotProd(float *a, float *b, int n, float &x);
+void error_dot_prod(float *a, float *b, int n, float &x);
 
 #endif

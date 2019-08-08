@@ -103,6 +103,7 @@ __device__ void assemble_elem(float *vertices, int *cells,  int *is_bound, float
         }
     }
     */
+    __syncthreads();
 }
 
 __device__ void assemble_mat(float *L, float *b, float *vertices, int *dof, float *temp1, int idx, int idy, int order){
@@ -209,6 +210,7 @@ __device__ void assemble_mat_csr(float *valsL, int *rowPtrL, int *colIndL, float
         printf("global b[0] = %f\n", b[0]);
     }
     */
+    __syncthreads();
 }
 
 __global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, int *is_bound, float *bdry_vals, int order){
