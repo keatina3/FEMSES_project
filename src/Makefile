@@ -3,8 +3,6 @@ NVCC = nvcc
 
 CFLAGS = -g -Wall -W #-O3
 NVCCFLAGS = -g -G --use_fast_math --relocatable-device-code=true #-lefence #-DNDEBUG
-#LDFLAGS = -lgsl -lgslcblas -lcusolver
-# CAN I PUT THESE IN AS INCLUDES AND NOT NEED TO LOAD MODULE ??
 LDFLAGS = -lm -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lcusolver -lcusparse -lcublas
 
 OBJECTS = *.o
