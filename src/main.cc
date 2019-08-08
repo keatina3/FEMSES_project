@@ -14,9 +14,15 @@ int main(int argc, char** argv){
     float *u_gpu, *u_gpu_femses;
     int order;
     
-    nr[0] = 2, nr[1] = 2;
-    a[0] = 3; a[1] = 0;
-    b[0] = 10; b[1] = 1;
+    parse_arguments(argc, argv);
+
+    nr[0] = n, nr[1] = m;
+    a[0] = a; b[0] = b;
+
+    if(annulus)
+        a[1] = 0; b[1] = 1;
+    else
+        a[1] = a; b[1] = b;
 
     order = (nr[0]+1)*(nr[0]+1);
 
