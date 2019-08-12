@@ -348,8 +348,8 @@ extern void gpu_fem(float *u, Mesh &M){
     // this assumes 1 dof per triangle //
     
     //if(dense) {
-    //    assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
-    //                   cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+        assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
+                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
     //} else {
     //    assemble_gpu_csr<<<dimGrid, dimBlock, 31*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
     //                    b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
@@ -358,7 +358,7 @@ extern void gpu_fem(float *u, Mesh &M){
     std::cout << "test4\n";
         
     // if statements here tested from inputs //
-    dnsspr_solve(L, b, order);
+    //dnsspr_solve(L, b, order);
     dense_solve(L, b, order);
     //sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
     

@@ -31,8 +31,8 @@ int main(int argc, char** argv){
     
     if(cpu){ 
         FEM F(M);
-        // F.solve();
-        // F.output("output_cpu.csv");
+        F.solve();
+        F.output("output_cpu.csv");
     }
     
     if(gpu_f){ 

@@ -117,29 +117,38 @@ void dense_solve(float *L, float *b, int order){
     cudaError_t cudaStat1 = cudaSuccess; 
     const cublasFillMode_t uplo = CUBLAS_FILL_MODE_LOWER;
     const int nrhs = 1;
-    float *Workspace;
-    int Lwork, devInfo;
-
+    float *buffer = NULL;
+    int bufferSize = 0; 
+    int *info = NULL;
+    int h_info = 0;
+    
+    std::cout << "Dense testing not sparse\n";
     status = cusolverDnCreate(&handle);
     assert(CUSOLVER_STATUS_SUCCESS == status);
     std::cout << "lefence issue here\n";
     
     cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
+    //cudaStat1 = cudaStreamCreate(&stream);
     assert(cudaSuccess == cudaStat1);
     
     status = cusolverDnSetStream(handle, stream);
     assert(CUSOLVER_STATUS_SUCCESS == status); 
 
-    status = cusolverDnSpotrf_bufferSize(handle, uplo, order, L, order, &Lwork);
+    status = cusolverDnSpotrf_bufferSize(handle, uplo, order, L, order, &bufferSize);
     assert(CUSOLVER_STATUS_SUCCESS == status);
-    cudaMalloc( (void**)&Workspace, Lwork*sizeof(float));
+    
+    cudaMalloc( (void**)&info, sizeof(int));
+    cudaMalloc( (void**)&buffer, bufferSize*sizeof(float));
+    cudaMemset(info, 0, sizeof(int));
 
-    status = cusolverDnSpotrf(handle, uplo, order, L, order, Workspace, Lwork, &devInfo);
+    status = cusolverDnSpotrf(handle, uplo, order, L, order, buffer, bufferSize, info);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
-    //assert(cudaSuccess == cudaStat1);
+    assert(cudaSuccess == cudaStat1);
     
-    status = cusolverDnSpotrs(handle, uplo, order, nrhs, L, order, b, order, &devInfo);
+    cudaMemcpy(&h_info, info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    status = cusolverDnSpotrs(handle, uplo, order, nrhs, L, order, b, order, info);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
     assert(cudaSuccess == cudaStat1);

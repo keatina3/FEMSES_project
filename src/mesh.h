@@ -35,6 +35,8 @@ public:
     void get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals);
     int sparsity_pass(std::vector<float> &valsL, std::vector<int> &rowPtr, 
                         std::vector<int> &colPtrL);
+    int sparsity_pass_half(std::vector<float> &valsL, std::vector<int> &rowPtrL,
+                        std::vector<int> &colPtrL);
 };
 
 void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s);

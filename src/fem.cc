@@ -8,6 +8,7 @@
 #include <cstdio>
 // #include <gsl/gsl_linalg.h>
 #include <mkl.h>
+#include "mkl_types.h"
 #include "mesh.h"
 #include "utils.h"
 #include "fem.h"
@@ -39,9 +40,9 @@ FEM::FEM(Mesh &M){
 
     } else {
         // this possibly shouldn't return a value, change to passing by reference maybe //
-        this->nnz = M.sparsity_pass(valsL, rowPtrL, colIndL);
+        this->nnz = M.sparsity_pass_half(valsL, rowPtrL, colIndL);
     }
-    
+ 
     this->b = new float[order]();
     Le.resize(num_cells, std::vector<std::vector <float> >(dim, std::vector<float>(dim,0.0)));
     be.resize(num_cells, std::vector<float>(dim,0.0));
@@ -83,7 +84,7 @@ void FEM::assemble_csr(){
     int dof_r, dof_s;
     int off = 0;
     int *tmp;
-
+    
     for(unsigned int e=0; e<Le.size(); e++){
         // can this be put in here ?? //
         //elem_mat(e);
@@ -91,7 +92,8 @@ void FEM::assemble_csr(){
             dof_r = M->dof_map(e,r);
             for(unsigned int s=0; s<Le[e][r].size(); s++){
                 dof_s = M->dof_map(e,s);
-                //std::cout << e << " " << dof_r << " " << dof_s << " " << std::endl;
+                if(dof_s < dof_r)   continue;       // dealing with half matrix //
+                
                 tmp = &colIndL[rowPtrL[dof_r]];
                 while(*tmp != dof_s){
                     off++;
@@ -103,6 +105,7 @@ void FEM::assemble_csr(){
             b[dof_r] += be[e][r];
         }
     }
+    std::cout << "TEST\n";
     print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
 }
 
@@ -138,16 +141,20 @@ void FEM::solve(){
 
 void FEM::MKL_solve(){
     MKL_INT status = MKL_DSS_SUCCESS;
-    _MKL_DSS_HANDLE_t handle;
-    MKL_INT opt;
-    MKL_INT* rowInd = &rowPtrL[0];
-    MKL_INT* columns = &colIndL[0];
     MKL_INT nRows = order;
     MKL_INT nCols = order;
     MKL_INT nNonZeros = nnz;
     MKL_INT nRhs = 1;
-    
-    std::cout << "MKL" << std::endl;
+    _INTEGER_t *rowInd = &rowPtrL[0];
+    _INTEGER_t *columns = &colIndL[0];
+    float *values = &valsL[0];
+    float *rhs = &b[0];
+    _MKL_DSS_HANDLE_t handle;
+    MKL_INT opt = MKL_DSS_DEFAULTS;
+    MKL_INT sym = MKL_DSS_SYMMETRIC;
+    MKL_INT type = MKL_DSS_POSITIVE_DEFINITE;
+     
+    std::cout << "nnz = " << nnz << std::endl;
     // need option here for double precision versions // 
     opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR 
                         + MKL_DSS_SINGLE_PRECISION + MKL_DSS_ZERO_BASED_INDEXING;
@@ -155,26 +162,24 @@ void FEM::MKL_solve(){
     assert(status == MKL_DSS_SUCCESS);
     
     std::cout << "MKL" << std::endl; 
-    opt = MKL_DSS_SYMMETRIC;
-    status = dss_define_structure(handle, opt, rowInd, nRows, nCols, columns, nNonZeros);
+    // opt = MKL_DSS_SYMMETRIC;
+    status = dss_define_structure(handle, sym, rowInd, nRows, nCols, columns, nNonZeros);
     assert(status == MKL_DSS_SUCCESS);
 
-    // printCsr(order, order, nnz, &valsL[0], &rowPtrL[0], &colIndL[0]);
-
     std::cout << "MKL3" << std::endl; 
-    opt = MKL_DSS_AUTO_ORDER;
+    opt = MKL_DSS_DEFAULTS;
     status = dss_reorder(handle, opt, 0); 
     assert(status == MKL_DSS_SUCCESS);
     
     std::cout << "MKL" << std::endl; 
-    opt = MKL_DSS_POSITIVE_DEFINITE;
-    status = dss_factor_real(handle, opt, &valsL[0]);
+    //opt = MKL_DSS_POSITIVE_DEFINITE;
+    status = dss_factor_real(handle, type, values);
     assert(status == MKL_DSS_SUCCESS);
     
     // will this work for same b?? //
     std::cout << "MKL" << std::endl; 
-    opt = MKL_DSS_DEFAULTS;
-    status = dss_solve_real(handle, opt, b, nRhs, b);
+    //opt = MKL_DSS_DEFAULTS;
+    status = dss_solve_real(handle, opt, rhs, nRhs, rhs);
     assert(status == MKL_DSS_SUCCESS);
     
     std::cout << "MKL" << std::endl; 
