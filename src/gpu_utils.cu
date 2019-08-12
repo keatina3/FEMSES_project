@@ -89,8 +89,9 @@ void sparse_solve(float *valsL,int *rowPtrL, int *colPtrL, float *b, int order, 
     assert(cudaSuccess == cudaStat1);
     
     status2 = cusolverSpCreate(&handle);
+    std::cout << status2 << std::endl;
     assert(CUSPARSE_STATUS_SUCCESS == status2);
-    
+
     status = cusparseCreateMatDescr(&desc);
     assert(CUSPARSE_STATUS_SUCCESS == status);
     
@@ -136,7 +137,7 @@ void dense_solve(float *L, float *b, int order){
     status = cusolverDnSpotrf(handle, uplo, order, L, order, Workspace, Lwork, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();
     assert(CUSOLVER_STATUS_SUCCESS == status);
-    assert(cudaSuccess == cudaStat1);
+    //assert(cudaSuccess == cudaStat1);
     
     status = cusolverDnSpotrs(handle, uplo, order, nrhs, L, order, b, order, &devInfo);
     cudaStat1 = cudaDeviceSynchronize();

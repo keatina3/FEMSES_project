@@ -3,10 +3,11 @@
 #include <iostream>
 #include <vector>
 #include <cuda_runtime.h>
-#include <cusolverDn.h>     // need to change this for sparse //
+#include <cusolverDn.h>
 #include <cusolverSp.h>
 #include <cusparse.h>
 #include "mesh.h"
+#include "utils.h"
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
@@ -247,7 +248,8 @@ __global__ void assemble_gpu_csr(float *valsL, int *rowPtrL, int *colIndL, float
     if(idx < gridDim.x && idy < 3){
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         assemble_mat_csr(valsL, rowPtrL, colIndL, b, vertices, cells, temp1, idx, idy, order);
-         
+        
+        /*
         if(idx == 0 && idy == 0){
             for(int row = 0; row < order; row++){
                 const int start = rowPtrL[row  ];
@@ -263,6 +265,7 @@ __global__ void assemble_gpu_csr(float *valsL, int *rowPtrL, int *colIndL, float
                 printf("bi = %f\n", b[i]);
             }
         }
+        */
     }
 }    
 
@@ -294,14 +297,24 @@ extern void gpu_fem(float *u, Mesh &M){
     
     std::cout << "test1\n";
     
-    nnz = M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU);
+    //if(!dense) 
+    //nnz = M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU);
     
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, dim*num_cells*sizeof(int));
     cudaMalloc( (void**)&dof_gpu, dim*num_cells*sizeof(int));
     cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(int));
     cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
- 
+    
+    //if(dense){
+        cudaMalloc( (void**)&L, order*order*sizeof(float));
+        cudaMalloc( (void**)&b, order*sizeof(float));
+        cudaMalloc( (void**)&valsL, nnz*sizeof(float)); 
+    //} else {
+        cudaMalloc( (void**)&colIndL, nnz*sizeof(int)); 
+        cudaMalloc( (void**)&rowPtrL, (order+1)*sizeof(int)); 
+    //}
+
     cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cells_gpu, cells, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(dof_gpu, dof, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
@@ -310,12 +323,7 @@ extern void gpu_fem(float *u, Mesh &M){
     //////////////////
 
     std::cout << "test2\n";
-
-    cudaMalloc( (void**)&L, order*order*sizeof(float));
-    cudaMalloc( (void**)&b, order*sizeof(float));
-    cudaMalloc( (void**)&valsL, nnz*sizeof(float)); 
-    cudaMalloc( (void**)&colIndL, nnz*sizeof(int)); 
-    cudaMalloc( (void**)&rowPtrL, (order+1)*sizeof(int)); 
+    
     
     // MAKE SURE TO COUNT EXTRA TIME ON TRANSFERS WHEN SPARSITY PATTERN NEEDED //
     cudaMemcpy(rowPtrL, &rowPtrLCPU[0], (order+1)*sizeof(int), cudaMemcpyHostToDevice);
@@ -339,15 +347,20 @@ extern void gpu_fem(float *u, Mesh &M){
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
     
-    // assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
-    assemble_gpu_csr<<<dimGrid, dimBlock, 31*sizeof(float)>>>(valsL, rowPtrL, colIndL, b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    //if(dense) {
+    //    assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
+    //                   cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    //} else {
+    //    assemble_gpu_csr<<<dimGrid, dimBlock, 31*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
+    //                    b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    //}
     
     std::cout << "test4\n";
         
     // if statements here tested from inputs //
-    // dense_solve(L, b, u, order);
-    // dnsspr_solve(L, b, u, order);
-    sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
+    dnsspr_solve(L, b, order);
+    dense_solve(L, b, order);
+    //sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
     
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
     

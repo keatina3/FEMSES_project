@@ -11,7 +11,7 @@ private:
     
     std::vector<float> valsL;
     std::vector<int> rowPtrL;
-    std::vector<int> colPtrL;
+    std::vector<int> colIndL;
 
     std::vector<std::vector<std::vector<float> > > Le;
     std::vector<std::vector<float> > be;

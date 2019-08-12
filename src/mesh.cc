@@ -18,33 +18,24 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
     int order = (nr[0]+1)*(nr[1]+1);
     int num_cells = 2*nr[0]*nr[1];
 
+    // assigning size of mesh //
     for(int i=0; i<2; i++){
         this->nr[i] = nr[i];
         this->x[i] = x[i];
         this->y[i] = y[i];
     }
-
     dx = (this->x[1]-this->x[0])/nr[0], dy = (this->y[1]-this->y[0])/nr[1];
     
-    /*
-    vertices.resize((nr[0]+1)*(nr[1]+1), std::vector<float>(dim, 0.0));
-    cells.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
-    dof.resize(2*nr[0]*nr[1], std::vector<int>(3,0));
-    boundary.resize((nr[0]+1)*(nr[1]+1), false);
-    bdr_val.resize((nr[0]+1)*(nr[1]+1), 0.0);
-    */
-    std::cout << "test test 1\n";
-
+    
+    /////////////// Allocating memory for mesh //////////////
     assign_ptrs(&vertices, &vert_vals, order, dim);
     assign_ptrs(&cells, &cells_vals, num_cells, dofs);
     assign_ptrs(&dof, &dof_vals, num_cells, dofs);
     boundary = (int*)calloc(order,sizeof(int));
     bdry_vals = (float*)calloc(order,sizeof(int));
     
-    std::cout << "test test 2\n";
     
-    // (x1,y1) - (x2,y2) //
-    //
+    //////// Setting mesh vertices & boundary values ////////
     for(int i=0; i<=nr[1]; i++){
         for(int j=0; j<=nr[0]; j++){
             // fix this bit //
@@ -64,6 +55,8 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
         }
     }
     
+
+    ///////// Setting global vertex values for each cell ///////
     for(int i=0; i<this->nr[1]; i++){
         for(int j=0; j<this->nr[0]; j++){
             cells[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
@@ -92,20 +85,13 @@ Mesh::~Mesh(){
     delete[] boundary;  delete[] bdry_vals;
 }
 
+//////////// pass function "map" as parameter to deform mesh from rectangle //////
 void Mesh::deform(void (*map)(float*, float*, float*, float, int)){
     float **v = vertices;
     int order = (nr[0]+1)*(nr[1]+1);
 
     for(int i=0; i<order; i++)
         map(v[i], x, y, M_PI/2.0, 2);
-
-    std::cout << "testing \n";
-    /*
-    // check this works properly //
-    for(std::vector<std::vector<float> >::iterator v=vertices.begin(); v!=vertices.end(); ++v){ 
-        map(*v, a, b, M_PI/2.0, 2);
-    }
-    */
 }
 
 void Mesh::get_xy(float *xy, const int v) const {

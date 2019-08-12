@@ -53,7 +53,25 @@ int parse_arguments(int argc, char **argv){
 }
 
 void print_usage(){
-
+    printf("Finite element method - single element solution GPU program\n");
+    printf("This program numerically calculates the solution to a PDE using FEM\n");
+    printf("Usage:\n");
+    printf("fem_solver [options]\n");
+    printf("    -v          : will activate verbose mode for output (default: no)\n");
+    printf("    -h          : will show this usage message\n");
+    printf("    -t          : will activate timing output (default: no)\n");
+    printf("    -c          : will skip CPU testing\n");
+    printf("    -g          : will skip standard FEM GPU test\n");
+    printf("    -f          : will skip FEMSES GPU test\n");
+    printf("    -d          : will use dense linear solvers\\matrix assembly\n");
+    printf("    -s          : will use dense assembly & conversion to CSR, sparse solver\n");
+    printf("    -D          : turns onn debugging mode\n");
+    printf("    -C          : turns off mesh deformation from rectangle to annulus\n");
+    printf("    -n          : number of rectangles in x-axis\n");
+    printf("    -m          : number of rectangles in y-axis\n");
+    printf("    -a          : radius of inner circle in annulus/left corner of rectangle\n");
+    printf("    -r          : difference between inner radius and outer radius\n");
+    printf("        \n");
 }
 
 void output_csv(char *fname, Mesh &M, float *u, int order){
