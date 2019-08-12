@@ -141,20 +141,22 @@ void FEM::solve(){
 
 void FEM::MKL_solve(){
     MKL_INT status = MKL_DSS_SUCCESS;
-    MKL_INT nRows = order;
-    MKL_INT nCols = order;
-    MKL_INT nNonZeros = nnz;
-    MKL_INT nRhs = 1;
-    _INTEGER_t *rowInd = &rowPtrL[0];
-    _INTEGER_t *columns = &colIndL[0];
-    float *values = &valsL[0];
-    float *rhs = &b[0];
+    const MKL_INT nRows = order;
+    const MKL_INT nCols = order;
+    const MKL_INT nNonZeros = nnz;
+    const MKL_INT nRhs = 1;
+    const _INTEGER_t *rowInd = &rowPtrL[0];
+    const _INTEGER_t *columns = &colIndL[0];
+    const _REAL_t *values = &valsL[0];
+
+    const _REAL_t *rhs = &b[0];
+    _REAL_t *solVals = new float[order]();
     _MKL_DSS_HANDLE_t handle;
     MKL_INT opt = MKL_DSS_DEFAULTS;
     MKL_INT sym = MKL_DSS_SYMMETRIC;
     MKL_INT type = MKL_DSS_POSITIVE_DEFINITE;
-     
-    std::cout << "nnz = " << nnz << std::endl;
+    
+    std::cout << "order = " << order << std::endl;
     // need option here for double precision versions // 
     opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR 
                         + MKL_DSS_SINGLE_PRECISION + MKL_DSS_ZERO_BASED_INDEXING;
@@ -162,7 +164,6 @@ void FEM::MKL_solve(){
     assert(status == MKL_DSS_SUCCESS);
     
     std::cout << "MKL" << std::endl; 
-    // opt = MKL_DSS_SYMMETRIC;
     status = dss_define_structure(handle, sym, rowInd, nRows, nCols, columns, nNonZeros);
     assert(status == MKL_DSS_SUCCESS);
 
@@ -172,19 +173,19 @@ void FEM::MKL_solve(){
     assert(status == MKL_DSS_SUCCESS);
     
     std::cout << "MKL" << std::endl; 
-    //opt = MKL_DSS_POSITIVE_DEFINITE;
     status = dss_factor_real(handle, type, values);
     assert(status == MKL_DSS_SUCCESS);
     
     // will this work for same b?? //
     std::cout << "MKL" << std::endl; 
-    //opt = MKL_DSS_DEFAULTS;
-    status = dss_solve_real(handle, opt, rhs, nRhs, rhs);
+    status = dss_solve_real(handle, opt, rhs, nRhs, solVals);
     assert(status == MKL_DSS_SUCCESS);
     
     std::cout << "MKL" << std::endl; 
     status = dss_delete(handle, opt);
     assert(status == MKL_DSS_SUCCESS);
+
+    memcpy(b, solVals, order*sizeof(float));
 }
 
 // THIS FUNCTION IS VERY INEFFICIENT // 
