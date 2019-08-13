@@ -4,12 +4,10 @@
 #include <iostream>
 #include <vector>
 #include "mesh.h"
+#include "utils.h"
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 #include "gpu_femses.h"
-
-#define EPS 1E-08
-#define MAX_ITERS 10
 
 // need to change to DOF for more than P1 //
 __device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int idy){
@@ -80,7 +78,10 @@ __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
     }
     ue_loc /= Le_shrd[(idy*3) + idy];
 
-    ue[(idx*3) + idy] = ue_loc;
+    __syncthreads();
+    atomicExch(&ue[(idx*3) + idy], ue_loc);
+    
+    //ue[(idx*3) + idy] = ue_loc;
     //if(idx == 0 && idy == 0)
     //    printf("uloc = %f\n", ue[0]);
 }
@@ -184,6 +185,9 @@ extern void gpu_femses(float *u, Mesh &M){
     cudaMalloc( (void**)&un_gpu, order*sizeof(float));
     cudaMalloc( (void**)&up_gpu, order*sizeof(float));
     cudaMalloc( (void**)&we, order*sizeof(float));
+    
+    cudaMemcpy(up_gpu, u, order*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(un_gpu, u, order*sizeof(float), cudaMemcpyHostToDevice);
 
     block_size_X = 1, block_size_Y = 3;
     // check these dimensions //
@@ -205,27 +209,29 @@ extern void gpu_femses(float *u, Mesh &M){
     while(err > EPS && count < MAX_ITERS){
         // change shared memory accordingly //
         local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
-   
+  
+        cudaMemset(un_gpu, 0.0, order*sizeof(float)); 
         glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, un_gpu, ue, cells_gpu);
 
-        std::cout << "error " << err <<std::endl;
         error_dot_prod(un_gpu, up_gpu, order, err);
         std::cout << "error " << err <<std::endl;
-        
+
         tmp = un_gpu;
         un_gpu = up_gpu;
         up_gpu = tmp;
 
         count++;
         std::cout << count << std::endl;
+        if(count == MAX_ITERS){
+            std::cout << "Maximum iterations reached!\n";
+            exit(1);
+        }
     }
 
     cudaMemcpy(u, up_gpu, order*sizeof(float), cudaMemcpyDeviceToHost);
+    std::cout << "u[0] final = " << u[0] << std::endl;
 
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);
     cudaFree(Le); cudaFree(be); cudaFree(un_gpu); cudaFree(up_gpu);
-
-    std::cout << "test7\n";
-
 }

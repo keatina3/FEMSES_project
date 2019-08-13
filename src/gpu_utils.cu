@@ -128,7 +128,6 @@ void dense_solve(float *L, float *b, int order){
     std::cout << "lefence issue here\n";
     
     cudaStat1 = cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking);
-    //cudaStat1 = cudaStreamCreate(&stream);
     assert(cudaSuccess == cudaStat1);
     
     status = cusolverDnSetStream(handle, stream);
@@ -161,25 +160,16 @@ void error_dot_prod(float *a, float *b, int n, float &x){
     cublasHandle_t handle;
     cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
     const float alpha = -1.0;
-    float *res;
-
-    cudaMalloc( (void**)&res, n*sizeof(float));
-    cudaMemcpy(res, b, n*sizeof(float), cudaMemcpyDeviceToDevice);
 
     status = cublasCreate(&handle);
     assert(status == CUBLAS_STATUS_SUCCESS);
  
-    status = cublasSaxpy(handle, n, &alpha, a, 1, res, 1); 
+    status = cublasSaxpy(handle, n, &alpha, a, 1, b, 1); 
     assert(status == CUBLAS_STATUS_SUCCESS);
 
-    status = cublasSnrm2(handle, n, res, 1, &x);
+    status = cublasSnrm2(handle, n, b, 1, &x);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    /*
-    std::cout << "x " << x <<std::endl;
-    status = cublasSdot(handle, n, a, 1, b, 1, &x); 
-    assert(status == CUBLAS_STATUS_SUCCESS);
-    std::cout << "x " << x <<std::endl;
-    */
+    
     status = cublasDestroy(handle);
-    assert(status == CUBLAS_STATUS_SUCCESS); 
+    assert(status == CUBLAS_STATUS_SUCCESS);
 }

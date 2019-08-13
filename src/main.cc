@@ -27,7 +27,7 @@ int main(int argc, char** argv){
     order = (nr[0]+1)*(nr[0]+1);
     
     Mesh M(nr,x,y);
-    M.deform(annulus_seg_map);
+    // M.deform(annulus_seg_map);
     
     if(cpu){ 
         FEM F(M);
@@ -36,14 +36,14 @@ int main(int argc, char** argv){
     }
     
     if(gpu_f){ 
-        u_gpu = new float[order];
+        u_gpu = new float[order]();
         gpu_fem(u_gpu, M);
         output_csv("output_gpu.csv", M, u_gpu, order);
     }
     
     if(gpu_fs){
-        u_gpu_femses = new float[order]; 
-        gpu_femses(u_gpu, M);
+        u_gpu_femses = new float[order](); 
+        gpu_femses(u_gpu_femses, M);
         output_csv("output_femses.csv", M, u_gpu_femses, order);
     }
 

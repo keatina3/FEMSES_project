@@ -74,6 +74,16 @@ void print_usage(){
     printf("        \n");
 }
 
+float sse(float *a, float *b, int n){
+    float sse = 0.0;
+
+    for(int i=0; i<n; i++)
+        sse += (a[i] -b[i]) * (a[i] - b[i]);
+
+    return sse;
+}
+
+//// FIX THIS //////
 void output_csv(char *fname, Mesh &M, float *u, int order){
     FILE* fptr;
     float xy[2];

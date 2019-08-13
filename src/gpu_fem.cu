@@ -298,7 +298,7 @@ extern void gpu_fem(float *u, Mesh &M){
     std::cout << "test1\n";
     
     //if(!dense) 
-    //nnz = M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU);
+    nnz = M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU);
     
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, dim*num_cells*sizeof(int));
@@ -348,19 +348,19 @@ extern void gpu_fem(float *u, Mesh &M){
     // this assumes 1 dof per triangle //
     
     //if(dense) {
-        assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
-                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    //    assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
+    //                   cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
     //} else {
-    //    assemble_gpu_csr<<<dimGrid, dimBlock, 31*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
-    //                    b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+        assemble_gpu_csr<<<dimGrid, dimBlock, 31*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
+                        b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
     //}
     
     std::cout << "test4\n";
         
     // if statements here tested from inputs //
     //dnsspr_solve(L, b, order);
-    dense_solve(L, b, order);
-    //sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
+    // dense_solve(L, b, order);
+    sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
     
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
     
