@@ -32,6 +32,7 @@ export LD_LIBRARY_PATH="/usr/local/cuda-10.1/lib64:/home/support/apps/intel/18.0
 #### Make
 To make the program, simply run
 ```
+cd src/
 make
 ```
 ### Usage
