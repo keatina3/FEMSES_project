@@ -1,36 +1,25 @@
 #include <cstring>
-#include <set>
 #include <cassert>
-#include <iostream>
 #include <cstdlib>
 #include <vector>
 #include <cmath>
 #include <cstdio>
-// #include <gsl/gsl_linalg.h>
 #include <mkl.h>
-#include "mkl_types.h"
 #include "mesh.h"
 #include "utils.h"
 #include "fem.h"
 
-// this also needs parameters //
-// change a,b to x, y maybe?? //
 FEM::FEM(Mesh &M){
-    // need to incorporate DOF here also //
-    // dim L = (#Nodes + #DOF/node)^2
-    // FIX DEGREES OF FREEDOM AND NUM DIMENSIONS //
     int nr[2];
-    int num_nodes, dim;
     
     M.get_recs(nr);
     
-    num_nodes = (nr[0]+1)*(nr[1]+1);
-    dim = 2+1;
-    order = num_nodes + 0;
+    order = (nr[0]+1)*(nr[1]+1);
     num_cells = 2*nr[0]*nr[1];
     
     this->M = &M;
-    
+
+    // assigning memory whether dense or CSR format //
     if(dense){
         L = new float*[order];
         L_vals = new float[order*order]();
@@ -39,13 +28,13 @@ FEM::FEM(Mesh &M){
             L[i] = &L_vals[i*order];
 
     } else {
-        // this possibly shouldn't return a value, change to passing by reference maybe //
-        this->nnz = M.sparsity_pass_half(valsL, rowPtrL, colIndL);
+        // See mesh.h for function info //
+        M.sparsity_pass_half(valsL, rowPtrL, colIndL, this->nnz);
     }
  
     this->b = new float[order]();
-    Le.resize(num_cells, std::vector<std::vector <float> >(dim, std::vector<float>(dim,0.0)));
-    be.resize(num_cells, std::vector<float>(dim,0.0));
+    Le.resize(num_cells, std::vector<std::vector <float> >(3, std::vector<float>(3,0.0)));
+    be.resize(num_cells, std::vector<float>(3,0.0));
 }
 
 FEM::~FEM(){
@@ -54,47 +43,47 @@ FEM::~FEM(){
     delete[] b;
 }
 
+////////////////// Assembles global stiffness matrix and stress vector ///////////
+// Assembles L in dense format from all the element matrices in the
+// vector Le. Same applies for stress vector b and be element vectors 
 void FEM::assemble(){
-    int dof_r, dof_s;
+    int dof_r, dof_s;       // global node numbering 
+                            // for local nodes r,s
     
-    // change all these iterations to .size() for genralisation later //
     for(unsigned int e=0; e<Le.size(); e++){
-        // can this be put in here ?? //
-        //elem_mat(e);
         for(unsigned int r=0; r<Le[e].size(); r++){
             dof_r = M->dof_map(e,r);
             for(unsigned int s=0; s<Le[e][r].size(); s++){
                 dof_s = M->dof_map(e,s);
                 L[dof_r][dof_s] += Le[e][r][s];
-                //std::cout << e << " " << dof_r << " " << dof_s << " " << std::endl;
             }
             b[dof_r] += be[e][r];
         }
     }
-        
-    for(unsigned int i=0; i<9; i++){
-        for(unsigned int j=0; j<9; j++){
-            std::cout << L[i][j] << " ";
-        }
-        std::cout << "bi = " << b[i] << std::endl;
-    }     
 }
+/////////
 
+
+////////////////// Assembles global stiffness matrix and stress vector ///////////
+// Assembles L in CSR format from all the element matrices in the
+// vector Le. Same applies for stress vector b and be element vectors 
+// Only assembles upper half of matrix
+// Uses the already found sparsity pattern, populated in colInd and rowPtr
 void FEM::assemble_csr(){
     int dof_r, dof_s;
-    int off = 0;
+    int off = 0;            // offset from start of row
     int *tmp;
     
     for(unsigned int e=0; e<Le.size(); e++){
-        // can this be put in here ?? //
-        //elem_mat(e);
         for(unsigned int r=0; r<Le[e].size(); r++){
             dof_r = M->dof_map(e,r);
             for(unsigned int s=0; s<Le[e][r].size(); s++){
                 dof_s = M->dof_map(e,s);
-                if(dof_s < dof_r)   continue;       // dealing with half matrix //
+                
+                if(dof_s < dof_r)   continue;       // no lower half values //
                 
                 tmp = &colIndL[rowPtrL[dof_r]];
+                // increments until column dof_s is found in row //
                 while(*tmp != dof_s){
                     off++;
                     tmp++;
@@ -105,15 +94,15 @@ void FEM::assemble_csr(){
             b[dof_r] += be[e][r];
         }
     }
-    std::cout << "TEST\n";
-    print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
 }
+///////
 
-// change this to CSC format in time //
+
+////////////////////// Overall solver function //////////////////////////////
+// Takes FEM object, gets element matrices, assembles L, 
+// solves linear system
 void FEM::solve(){
-    // add LAPACK library call here //
     MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
-    // MKL_INT ipiv[order];
     
     ///////// GENERATING ELEMENT MATRICES //////////////
     for(unsigned int e=0; e<Le.size(); e++)
@@ -138,9 +127,13 @@ void FEM::solve(){
 
     /////////////////////////////////////////////////////
 }
+//////
 
+
+/////////////// Linear solver for CSR matrices using MKL's DSS lib //////////////
+// Takes stifness matrix in CSR and stress vector b and solves system
+// Value written back over b
 void FEM::MKL_solve(){
-    MKL_INT status = MKL_DSS_SUCCESS;
     const MKL_INT nRows = order;
     const MKL_INT nCols = order;
     const MKL_INT nNonZeros = nnz;
@@ -148,95 +141,100 @@ void FEM::MKL_solve(){
     const _INTEGER_t *rowInd = &rowPtrL[0];
     const _INTEGER_t *columns = &colIndL[0];
     const _REAL_t *values = &valsL[0];
-
     const _REAL_t *rhs = &b[0];
+    
+    MKL_INT status = MKL_DSS_SUCCESS;
     _REAL_t *solVals = new float[order]();
     _MKL_DSS_HANDLE_t handle;
     MKL_INT opt = MKL_DSS_DEFAULTS;
     MKL_INT sym = MKL_DSS_SYMMETRIC;
     MKL_INT type = MKL_DSS_POSITIVE_DEFINITE;
     
-    std::cout << "order = " << order << std::endl;
-    // need option here for double precision versions // 
+    // setting initial options for solver  and creating handle // 
     opt = MKL_DSS_MSG_LVL_WARNING + MKL_DSS_TERM_LVL_ERROR 
                         + MKL_DSS_SINGLE_PRECISION + MKL_DSS_ZERO_BASED_INDEXING;
     status = dss_create(handle, opt);
     assert(status == MKL_DSS_SUCCESS);
     
-    std::cout << "MKL" << std::endl; 
+    // defining structure of matrix as symmetric //
     status = dss_define_structure(handle, sym, rowInd, nRows, nCols, columns, nNonZeros);
     assert(status == MKL_DSS_SUCCESS);
 
-    std::cout << "MKL3" << std::endl; 
+    // auto-reordering matrix //
     opt = MKL_DSS_DEFAULTS;
     status = dss_reorder(handle, opt, 0); 
     assert(status == MKL_DSS_SUCCESS);
     
-    std::cout << "MKL" << std::endl; 
+    // factoring matrix using Cholesky decomposition //
     status = dss_factor_real(handle, type, values);
     assert(status == MKL_DSS_SUCCESS);
     
-    // will this work for same b?? //
-    std::cout << "MKL" << std::endl; 
+    // solving linear system //
     status = dss_solve_real(handle, opt, rhs, nRhs, solVals);
     assert(status == MKL_DSS_SUCCESS);
     
-    std::cout << "MKL" << std::endl; 
+    // freeing handle //
     status = dss_delete(handle, opt);
     assert(status == MKL_DSS_SUCCESS);
 
+    // copying memory back over b //
     memcpy(b, solVals, order*sizeof(float));
-}
 
-// THIS FUNCTION IS VERY INEFFICIENT // 
-// NEED TO REDUCE UNECESSARY FN CALLS //
-void FEM::elem_mat(const int e) {
-    // these need to be expanded for more DOF //
-    float alpha[3], beta[3], gamma[3];
-    float del, bound;
-    float xi[3][3];
+    delete[] solVals;
+}
+////////
+
+
+/////////////// Calculates element matrix and element vector for cell e ////////////////
+// Uses some analytical formulas based on the fact that 
+// each element is a triangle and of order P1
+void FEM::elem_mat(const int e){
+    float beta[3], gamma[3];    // constants needed for formula
+    float del, bound;           // del = area of triangle
+    float xi[3][3];             // matrix needed for shoelace equation
     int v;
     bool is_bound;
 
+    // gets x,y coordinates of each of the 3 nodes and fills them into matrix //
     for(int i=0;i<3;i++){
         xi[i][0] = 1.0;
         M->get_xy(&xi[i][1], M->get_vertex(e,i));
     }
 
-    // check this //
-    // CHANGE ORDERING OF NODES //
-    //del = e%2 == 0 ? area(xi) : (-1)*area(xi);
+    // uses shoelace formula/determinant of matrix xi to get area //
     del = area(xi);
     
-    // THIS WONT WORK FOR P2, P3 etc //
+    // hand calculates analytical formulae for integral on LHS //
     for(unsigned int i=0; i<Le[e].size(); i++){
-        // alpha = xi[(i+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
         beta[i] = xi[(i+1)%3][2] - xi[(i+2)%3][2];
         gamma[i] = xi[(i+2)%3][1] - xi[(i+1)%3][1];
         
-        // be[e][i] = INT(fv) //
-        be[e][i] = 0.0;
+        be[e][i] = 0.0;     // Poisson -> stress vector = 0 unless boundary //
 
-        // remove some operations from this // 
         for(unsigned int j=0; j<=i; j++){
-            // possibly change this to fn ptr //
             Le[e][i][j] = 0.25 * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);
-            Le[e][j][i] = Le[e][i][j];
+            Le[e][j][i] = Le[e][i][j];      // symmetrical matrix
         }
     }
     
+    // applying boundary conditions to element matrix and stress vector //
     for(unsigned int i=0; i<Le[e].size(); i++){
         v = M->get_vertex(e,i);
         is_bound = M->is_bound(v);
-        
+
+        // checks if v is boundary point //
         if(is_bound){
             bound = M->get_bound(v);
-            //std::cout << v << " Boundary present\n";
+
+            ////////// Applying below algorithm /////////////
+            // suppose B.C. = D @ k
+            // bi -= Lik * D        (taking BC from RHS of interior points)
+            // Lek = Lke = 0        (setting entire row/col @ k = 0)
+            // Lkk = 1.0            (val on diagonal = 1.0)
+            // bk D                 (RHS = B.C. @ k)
             for(unsigned int j=0; j<Le[e][i].size(); j++){
                 if(i != j){
-                    // WILL THIS WORK AFTER Le = 0.0 FOR 2ND BOUNDARY ??? //
                     be[e][j] -= Le[e][j][i] * bound;
-                    //std::cout << "i = " << i << " j = " << j << std::endl;
                     Le[e][i][j] = 0.0;
                     Le[e][j][i] = 0.0;
                 }
@@ -246,8 +244,10 @@ void FEM::elem_mat(const int e) {
         }
     }
 }
+////////
 
-// potentially expand this to numerical integration instead //
+
+////////////// Evaluates area of triangle, given glob coords ////////////////
 float FEM::area(float xi[3][3]) const {
     float tmp = 0.0;
 
@@ -258,7 +258,8 @@ float FEM::area(float xi[3][3]) const {
     return 0.5*tmp;
 }
 
-void FEM::output(char* fname) const {
+// need an updated version of this //
+void FEM::output(char* fname, float *u_an) const {
     
-    output_csv(fname, *M, b, order);
+    output_csv(fname, *M, b, u_an, order);
 }

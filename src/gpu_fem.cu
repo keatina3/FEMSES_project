@@ -297,8 +297,7 @@ extern void gpu_fem(float *u, Mesh &M){
     
     std::cout << "test1\n";
     
-    //if(!dense) 
-    nnz = M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU);
+    if(!dense) M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU, nnz);
     
     cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, dim*num_cells*sizeof(int));
@@ -306,14 +305,14 @@ extern void gpu_fem(float *u, Mesh &M){
     cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(int));
     cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
     
-    //if(dense){
+    if(dense){
         cudaMalloc( (void**)&L, order*order*sizeof(float));
-        cudaMalloc( (void**)&b, order*sizeof(float));
+    } else {
         cudaMalloc( (void**)&valsL, nnz*sizeof(float)); 
-    //} else {
         cudaMalloc( (void**)&colIndL, nnz*sizeof(int)); 
         cudaMalloc( (void**)&rowPtrL, (order+1)*sizeof(int)); 
-    //}
+    }
+    cudaMalloc( (void**)&b, order*sizeof(float));
 
     cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cells_gpu, cells, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
@@ -324,10 +323,11 @@ extern void gpu_fem(float *u, Mesh &M){
 
     std::cout << "test2\n";
     
-    
     // MAKE SURE TO COUNT EXTRA TIME ON TRANSFERS WHEN SPARSITY PATTERN NEEDED //
-    cudaMemcpy(rowPtrL, &rowPtrLCPU[0], (order+1)*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(colIndL, &colIndLCPU[0], nnz*sizeof(int), cudaMemcpyHostToDevice);
+    if(!dense){
+        cudaMemcpy(rowPtrL, &rowPtrLCPU[0], (order+1)*sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(colIndL, &colIndLCPU[0], nnz*sizeof(int), cudaMemcpyHostToDevice);
+    }
     std::cout << "test3\n";
 
     block_size_X = 1, block_size_Y = 3;
@@ -347,28 +347,31 @@ extern void gpu_fem(float *u, Mesh &M){
     // shared memory will grow for more DOF //
     // this assumes 1 dof per triangle //
     
-    //if(dense) {
-    //    assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
-    //                   cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
-    //} else {
+    if(dense) {
+        assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
+                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+    } else {
         assemble_gpu_csr<<<dimGrid, dimBlock, 31*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
                         b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
-    //}
+    }
     
     std::cout << "test4\n";
         
-    // if statements here tested from inputs //
-    //dnsspr_solve(L, b, order);
-    // dense_solve(L, b, order);
-    sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
-    
+    if(dense){
+        if(dnsspr)  dnsspr_solve(L, b, order);
+        else        dense_solve(L, b, order);
+    } else { 
+        sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
+    }
+
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
     
     std::cout << "test5\n";
 
-    cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
-    cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);
-    cudaFree(L); cudaFree(b);
+    cudaFree(vertices_gpu);      cudaFree(cells_gpu); cudaFree(dof_gpu);
+    cudaFree(is_bound_gpu);      cudaFree(bdry_vals_gpu);
+    if(dense)   cudaFree(L),     cudaFree(b);
+    else        cudaFree(valsL), cudaFree(colIndL) ,  cudaFree(rowPtrL); 
     
     std::cout << "test7\n";
     

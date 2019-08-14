@@ -229,7 +229,6 @@ extern void gpu_femses(float *u, Mesh &M){
     }
 
     cudaMemcpy(u, up_gpu, order*sizeof(float), cudaMemcpyDeviceToHost);
-    std::cout << "u[0] final = " << u[0] << std::endl;
 
     cudaFree(vertices_gpu); cudaFree(cells_gpu); cudaFree(dof_gpu);
     cudaFree(is_bound_gpu); cudaFree(bdry_vals_gpu);

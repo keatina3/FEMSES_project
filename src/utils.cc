@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
@@ -7,13 +8,13 @@
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = true, dense = false, dnsspr = false, debug =  false;
-int n = 2, m = 2;
-float a = 3.0, dr = 7.0;
+int n = 2, m = 2; 
+float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
 
 int parse_arguments(int argc, char **argv){
     int opt;
 
-    while((opt = getopt(argc, argv, "vhtcgfdsDCn:m:a:r:")) != -1) {
+    while((opt = getopt(argc, argv, "vhtcgfdsDCn:m:a:r:i:o:")) != -1) {
         switch(opt){
             case 'v': 
                 verbose =  true; break;
@@ -43,6 +44,10 @@ int parse_arguments(int argc, char **argv){
                 a = atoi(optarg); break;
             case 'r':
                 dr = atoi(optarg); break;
+            case 'i':
+                ui = atoi(optarg); break;
+            case 'o':
+                uo = atoi(optarg); break;
             default:
                 fprintf(stderr, "Invalid option given\n");
                 print_usage();
@@ -53,7 +58,8 @@ int parse_arguments(int argc, char **argv){
 }
 
 void print_usage(){
-    printf("Finite element method - single element solution GPU program\n");
+    printf("\n==============================================================================\n");
+    printf("\nFinite element method - single element solution GPU program\n");
     printf("This program numerically calculates the solution to a PDE using FEM\n");
     printf("Usage:\n");
     printf("fem_solver [options]\n");
@@ -67,13 +73,16 @@ void print_usage(){
     printf("    -s          : will use dense assembly & conversion to CSR, sparse solver\n");
     printf("    -D          : turns onn debugging mode\n");
     printf("    -C          : turns off mesh deformation from rectangle to annulus\n");
-    printf("    -n          : number of rectangles in x-axis\n");
-    printf("    -m          : number of rectangles in y-axis\n");
-    printf("    -a          : radius of inner circle in annulus/left corner of rectangle\n");
-    printf("    -r          : difference between inner radius and outer radius\n");
-    printf("        \n");
+    printf("    -n          : number of rectangles in x-axis (default: 2)\n");
+    printf("    -m          : number of rectangles in y-axis (deafult: 2)\n");
+    printf("    -a          : radius of inner circle in annulus/left corner of rectangle (default: 3)\n");
+    printf("    -r          : difference between inner radius and outer radius (default: 7)\n");
+    printf("    -ui         : inside/left, dirichlet boundary condition (default: 2.0)\n");
+    printf("    -uo         : outside/right, dirichlet boundary condition (default: 6.0)\n");
+    printf("\n==============================================================================\n\n");
 }
 
+//////////////////// Returns SSE of two vectors a,b ////////////////////////
 float sse(float *a, float *b, int n){
     float sse = 0.0;
 
@@ -82,9 +91,25 @@ float sse(float *a, float *b, int n){
 
     return sse;
 }
+//////
 
-//// FIX THIS //////
-void output_csv(char *fname, Mesh &M, float *u, int order){
+
+//////////////// Analytical solution to annulus problem ////////////////////
+void analytical(float *u, Mesh &M, int a, int b, int order){
+    float xy[2];
+    float r;
+
+    for(int v=0; v<order; v++){
+        M.get_xy(xy, v);
+        r = sqrt(xy[0]*xy[0] + xy[1]*xy[1]);
+        u[v] = (uo*log(a) - ui*log(b) + ui*log(r) - uo*log(r)) /(log(a) - log(b));
+    }
+}
+//////
+
+
+///////////////////////// FIXME //////
+void output_csv(char *fname, Mesh &M, float *u, float *u_an, int order){
     FILE* fptr;
     float xy[2];
 
@@ -95,12 +120,15 @@ void output_csv(char *fname, Mesh &M, float *u, int order){
     fprintf(fptr, "x, y, u(x,y)\n");
     for(int v=0; v<order; v++){
         M.get_xy(xy, v);
-        fprintf(fptr,"%f, %f, %f\n", xy[0], xy[1], u[v]);
+        fprintf(fptr,"%f, %f, %f, %f\n", xy[0], xy[1], u[v], u_an[v]);
     }
 
     fclose(fptr);
 }
+////////
 
+
+/////////////// Allocates and assigns 2d pointers ////////////////////
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m){
     float **arr_tmp, *tmp_vals;
 
@@ -126,7 +154,10 @@ void assign_ptrs(int*** arr_ptr, int** arr, int n, int m){
     for(int i=0; i<n; i++)
         arr_tmp[i] = &tmp_vals[i*m];
 }
+///////
 
+
+////////////////// Prints out CSR matrix /////////////////////////////
 void print_csr(int m, const float *csrValA, const int *csrRowPtrA, const int *csrColIndA){
 
     for(int row = 0; row < m; row++){
@@ -139,3 +170,5 @@ void print_csr(int m, const float *csrValA, const int *csrRowPtrA, const int *cs
         }
     }
 }
+///////
+
