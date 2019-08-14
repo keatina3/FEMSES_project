@@ -22,7 +22,7 @@ All code is stored in `/src/`
 The program `fem_solver` was built on `cuda01` with the following dependencies:
 * gcc 5.4.0
 * CUDA 10.1
-* Intel MKL 10.0.4  
+* Intel MKL 18.0.4  
 
 To uphold these, make sure enviroment variables `PATH` and `LD_LIBRARY_PATH` are corrected, ammending them by:
 ```
