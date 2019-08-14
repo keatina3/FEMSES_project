@@ -13,6 +13,7 @@ There are three separate implementations within the code:
 * Serial code implementing standard FEM in C++.
 * CUDA version implementing standard FEM with linear system decomposed across threads.
 * CUDA version implementing novel FEM-SES (Single Element Solution) approach.  
+
 All code is stored in `/src/`
 
 ### Installing
@@ -28,9 +29,17 @@ export PATH=$PATH:/usr/local/cuda-10.1/bin:/home/support/apps/intel/18.0.4/bin/
 export LD_LIBRARY_PATH="/usr/local/cuda-10.1/lib64:/home/support/apps/intel/18.0.4/mkl/lib/intel64/
 ```
 #### Make
-
+To make the program, simply run
+```
+make
+```
 ### Usage
+To get detailed usage information, run
+```
+./fem_solver -h
+```
 
 ### Testing
 
 ### Author
+Alex Keating completed as part of a research project for the attainment of an MSc. High Performance Computing.
