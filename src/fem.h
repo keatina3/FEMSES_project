@@ -3,6 +3,7 @@
 // mesh M. PDE in question is the Poisson equation defined over the mesh.
 // Contains vectors to store stiffness matrix in both CSR and dense storage
 // formats.
+// Uses intel MKL library to solve linear system
 // =========================================================================== //
 
 #ifndef _FEM_H_
@@ -20,7 +21,7 @@ private:
     std::vector<int> rowPtrL;       // storing rowPtrs of stiffness matrix
     std::vector<int> colIndL;       // storing column indices of stiffness matrix
 
-    // Note: reason for arrau/vector mix was due to 
+    // Note: reason for array/vector mix was due to 
     // needing contiguous 2d data for cuda transfer
 
     std::vector<std::vector<std::vector<float> > > Le;  // vector of all element matrices
@@ -42,7 +43,6 @@ public:
     void elem_mat(const int e);
     float area(float xi[3][3]) const;
     void output(char* fname, float *u_an) const;
-    // int sparsity_pass();
 };
 
 #endif
