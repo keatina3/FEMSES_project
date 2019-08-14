@@ -298,10 +298,10 @@ extern void gpu_fem(float *u, Mesh &M){
     
     if(!dense) M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU, nnz);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
 
 
-    //////////// Allocating memory for mesh/stiffness matrix/stress vector//////////
+    //////////// Allocating memory for mesh/stiffness matrix/stress vector //////////
 
     cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
@@ -367,7 +367,7 @@ extern void gpu_fem(float *u, Mesh &M){
     //////////////////////////////////////////////////////////////////////////////
      
     
-    ///////////Solving linear system in dense, dense-sparse conversion, CSR format ////////
+    /////////// Solving linear system in dense, dense-sparse conversion, CSR format ////////
 
     if(dense){
         if(dnsspr)  dnsspr_solve(L, b, order);

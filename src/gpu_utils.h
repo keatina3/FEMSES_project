@@ -1,3 +1,8 @@
+// =========================================================================== //
+// Collection of utility functions for the GPU
+// Includes linear solvers, card choosers and dot product
+// =========================================================================== //
+
 #ifndef _GPU_UTILS_H_
 #define _GPU_UTILS_H_
 

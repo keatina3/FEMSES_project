@@ -1,5 +1,5 @@
 // =========================================================================== //
-// Functions to apply the FEM to solve a PDE on an GPU
+// Functions to apply the FEM to solve a PDE on a GPU
 // Uses decomposition of linear system and cuSparse/cuSolver libraries
 // to solve the linear system
 // Will solve dense/sparse systems. Will also assemble into dense and convert

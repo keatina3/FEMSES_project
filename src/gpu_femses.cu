@@ -1,7 +1,6 @@
+#include <iostream>
 #include <cmath>
 #include <cassert>
-#include <cstdio>
-#include <iostream>
 #include <vector>
 #include "mesh.h"
 #include "utils.h"
@@ -9,7 +8,9 @@
 #include "gpu_fem.h"
 #include "gpu_femses.h"
 
-// need to change to DOF for more than P1 //
+//////////// Calculates weighting for assembling single element solution ///////////
+// One weight is evaluated for each node
+// Added back to global memory
 __device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int idy){
     float *Le;
     int v;
@@ -19,7 +20,10 @@ __device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int id
 
     atomicAdd(&we[v], Le[(idy*3) + idy]);
 }
+////////
 
+
+/////////// Copies element matrices/element vector from global-shared memory //////////
 __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int idy){
     float *Le_shrd, *be_shrd;
 
@@ -32,7 +36,10 @@ __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int 
         Le[(idx*9) + (idy*3) + i] = Le_shrd[(idy*3) + i];
     }
 }
+////////
 
+
+/////////// Copies element matrices/element vector from shared-global memory //////////
 __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, int idy){
     float *Le_shrd, *be_shrd;
 
@@ -45,7 +52,10 @@ __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, in
     }
     __syncthreads();
 }
+////////
 
+
+////////////// Performs Jacobi iteration to get updated approximation of u ////////////
 __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
     float *Le_shrd, *be_shrd, ue_loc;
 
@@ -55,16 +65,21 @@ __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
     ue_loc = be_shrd[idy];
     
     for(int i=0; i<3; i++){
-        if(i==idy) 
+        if(i==idy)
             continue;
         ue_loc -= Le_shrd[(idy*3) + i] * ue[(idx*3) + i];
     }
     ue_loc /= Le_shrd[(idy*3) + idy];
 
     __syncthreads();
-    atomicExch(&ue[(idx*3) + idy], ue_loc);
+    atomicExch(&ue[(idx*3) + idy], ue_loc); // transferring element solution of u to global mem
 }
+//////
 
+
+/////////////////// Kernel to assemble element solutions ///////////////////////////
+// Element solutions are calculated in shared memory
+// Element solutions are then transferred to an array in global memory
 __global__ void assemble_elems_gpu(
                 float *Le, 
                 float *be, 
@@ -74,11 +89,10 @@ __global__ void assemble_elems_gpu(
                 int *is_bound, 
                 float *bdry_vals)
 {
-    int idx = blockIdx.x*blockDim.x + threadIdx.x;
-    int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;      // idx = cell number
+    int idy = blockIdx.y*blockDim.y + threadIdx.y;      // idy = local node number
     extern __shared__ float temp1[];
 
-    // check blockDim.y //
     if(idx < gridDim.x && idy < blockDim.y){
         // __device__ fn taken from other header to avoid code-reuse //
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
@@ -86,7 +100,12 @@ __global__ void assemble_elems_gpu(
         elems_glob_cpy(Le, be, temp1, idx, idy);
     }
 }
+//////
 
+
+/////////////// Kernel to calculate local approximation of solution ue /////////////
+// Each cell has its own local solution for its element matrix and element vector
+// These are apprimated with a jacobi iteration
 __global__ void local_sols(float *Le, float *be, float *ue){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -99,26 +118,38 @@ __global__ void local_sols(float *Le, float *be, float *ue){
     }
 
 }
+///////
 
+
+///////////// Kernel to calculate global approximation of u //////////////////
+// Calculated by combining all local solutions ue with a weighting
 __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     int v;
     float Lii, weight;
 
-    if(idx < gridDim.x && idy < 3){
-        v = cells[(idx*3) + idy];
-        Lii = Le[(idx*9) + (idy*3) + idy];
+    if(idx < gridDim.x && idy < blockDim.y){
+        v = cells[(idx*3) + idy];               // getting global cell number
+        Lii = Le[(idx*9) + (idy*3) + idy];      
         
         weight = Lii/we[v];
-
+        
         atomicAdd(&u[v], weight * ue[(idx*3) + idy]);
     }
 }
+///////
 
+
+/////////////// C++ function invoked to apply FEM-SES to solve PDE /////////////////////
+// Applies the novel FEM - Single Element Solution approach to solve PDE
+// Calculates element matrices as standard in regular approach
+// Gets local solution approximations to these using a jacobi iteration
+// Combines these to a global solution using a weighing
+// Repeats until convergence of global solution
 extern void gpu_femses(float *u, Mesh &M){
     int nr[2];
-    int num_nodes, dim, order, num_cells;
+    int order, num_cells;
     int block_size_X, block_size_Y, shared;
     float *vertices_gpu, *vertices;
     int *cells_gpu, *cells;
@@ -129,75 +160,107 @@ extern void gpu_femses(float *u, Mesh &M){
     float *up_gpu, *un_gpu;
     float err = 1E16;
 
+    //////////////////////////// Gathering info from mesh /////////////////////////////
+
     M.get_recs(nr);
 
-    num_nodes = (nr[0]+1)*(nr[1]+1);
-    dim = 2+1;      // needs expansion here //
-    order = num_nodes + 0;
+    order = (nr[0]+1)*(nr[1]+1);
     num_cells = 2*nr[0]*nr[1];
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
 
-    cudaMalloc( (void**)&vertices_gpu, 2*num_nodes*sizeof(float));
-    cudaMalloc( (void**)&cells_gpu, dim*num_cells*sizeof(int));
-    cudaMalloc( (void**)&dof_gpu, dim*num_cells*sizeof(int));
-    cudaMalloc( (void**)&is_bound_gpu, num_nodes*sizeof(int));
-    cudaMalloc( (void**)&bdry_vals_gpu, num_nodes*sizeof(float));
+    ///////////////////////////////////////////////////////////////////////////////////
+    
+    
+    ////////////// Allocating memory for mesh/stiffnesss matrix/stress vector//////////
+    ///////////  /array of element matrics/array of stress vectors/weighting //////////
 
-    cudaMemcpy(vertices_gpu, vertices, 2*num_nodes*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(cells_gpu, cells, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(dof_gpu, dof, dim*num_cells*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(is_bound_gpu, is_bound, num_nodes*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(bdry_vals_gpu, bdry_vals, num_nodes*sizeof(float), cudaMemcpyHostToDevice);
-    //////////////////
+    cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
+    cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
+    cudaMalloc( (void**)&dof_gpu, 3*num_cells*sizeof(int));
+    cudaMalloc( (void**)&is_bound_gpu, order*sizeof(int));
+    cudaMalloc( (void**)&bdry_vals_gpu, order*sizeof(float));
 
-    cudaMalloc( (void**)&Le, num_cells*dim*dim*sizeof(float));
-    cudaMalloc( (void**)&be, num_cells*dim*sizeof(float));
-    cudaMalloc( (void**)&ue, num_cells*dim*sizeof(float));
+    cudaMalloc( (void**)&Le, num_cells*3*3*sizeof(float));
+    cudaMalloc( (void**)&be, num_cells*3*sizeof(float));
+    cudaMalloc( (void**)&ue, num_cells*3*sizeof(float));
     cudaMalloc( (void**)&un_gpu, order*sizeof(float));
     cudaMalloc( (void**)&up_gpu, order*sizeof(float));
     cudaMalloc( (void**)&we, order*sizeof(float));
-    
-    cudaMemcpy(up_gpu, u, order*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(un_gpu, u, order*sizeof(float), cudaMemcpyHostToDevice);
 
+    ///////////////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////// Copying data for Mesh from host to device ///////////////////////
+
+    cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(is_bound_gpu, is_bound, order*sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(bdry_vals_gpu, bdry_vals, order*sizeof(float), cudaMemcpyHostToDevice);
+
+    cudaMemset(up_gpu, 0.0, order*sizeof(float));
+    cudaMemset(un_gpu, 0.0, order*sizeof(float));
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+
+    //////////// DIMENSIONS OF SYSTEM => block per cell, 1 thread per node ////////////
+    
     block_size_X = 1, block_size_Y = 3;
-    // check these dimensions //
-    // this will be scope for efficency experimentation //
     dim3 dimBlock(block_size_X, block_size_Y);
     dim3 dimGrid((num_cells/dimBlock.x)+(!(num_cells%dimBlock.x)?0:1),
             (1/dimBlock.y)+(!(1%dimBlock.y)?0:1));
 
     shared = 31;
 
+    //////////////////////////////////////////////////////////////////////////////////
+
+
+    ////// Kernel to assemble element matrices and store in an array on glob mem /////
+
     assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+
+    //////////////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////// Iterates through kernels until convergence /////////////////////
 
     float *tmp;
     int count = 0;
     while(err > EPS && count < MAX_ITERS){
-        // change shared memory accordingly //
+        // getting local solutions ue and storing on global mem //
         local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
   
-        cudaMemset(un_gpu, 0.0, order*sizeof(float)); 
+        // setting un_gpu to 0 //
+        cudaMemset(un_gpu, 0.0, order*sizeof(float));
+        // assembling global solution estimate from weightings //
         glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, un_gpu, ue, cells_gpu);
 
+        // calculating error using 2-norm //
         error_dot_prod(un_gpu, up_gpu, order, err);
-        std::cout << "error " << err <<std::endl;
 
         tmp = un_gpu;
         un_gpu = up_gpu;
         up_gpu = tmp;
 
         count++;
-        std::cout << count << std::endl;
         if(count == MAX_ITERS){
-            std::cout << "Maximum iterations reached!\n";
+            std::cerr << "FEMSES - maximum iterations reached.\n";
             exit(1);
         }
     }
+
+    //////////////////////////////////////////////////////////////////////////////////
+
+    
+    //////////////// Tranferring soln to host from device & tidy //////////////////////
 
     cudaMemcpy(u, up_gpu, order*sizeof(float), cudaMemcpyDeviceToHost);
 
     cudaFree(vertices_gpu);     cudaFree(cells_gpu);    cudaFree(dof_gpu);
     cudaFree(is_bound_gpu);     cudaFree(bdry_vals_gpu);
     cudaFree(Le); cudaFree(be); cudaFree(un_gpu);       cudaFree(up_gpu);
+
+    //////////////////////////////////////////////////////////////////////////////////
 }
+////////
