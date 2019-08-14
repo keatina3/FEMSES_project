@@ -23,6 +23,7 @@ The program `fem_solver` was built on `cuda01` with the following dependencies:
 * gcc 5.4.0
 * CUDA 10.1
 * Intel MKL 10.0.4  
+
 To uphold these, make sure enviroment variables `PATH` and `LD_LIBRARY_PATH` are corrected, ammenfing them by:
 ```
 export PATH=$PATH:/usr/local/cuda-10.1/bin:/home/support/apps/intel/18.0.4/bin/
