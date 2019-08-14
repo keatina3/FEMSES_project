@@ -1,9 +1,9 @@
-# Investigation of Finite Element Method Approaches on Nvidia GPUs
+## Investigation of Finite Element Method Approaches on Nvidia GPUs
 
-## Installing
+### Installing
 
-## Usage
+### Usage
 
-## Testing
+### Testing
 
-## Author
+### Author
