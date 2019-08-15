@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <vector>
 #include <cmath>
-#include <cstdio>
 #include <mkl.h>
 #include "mesh.h"
 #include "utils.h"
@@ -18,7 +17,6 @@ FEM::FEM(Mesh &M){
     num_cells = 2*nr[0]*nr[1];
     
     this->M = &M;
-
     // assigning memory whether dense or CSR format //
     if(dense){
         L = new float*[order];

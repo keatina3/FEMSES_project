@@ -1,8 +1,19 @@
+// =========================================================================== //
+// Name:            fem_solver
+// Author:          Alex Keating
+// Version:         02/09/19
+// Description:     Performs the finite element method on the poisson equation,
+//                  utilising serial, standard GPU and FEMSES GPU approaches.
+//
+// WRITTEN FOR COMPLETION OF MSC. HIGH PERFORMANCE COMPUTING RESEARCH PROJECT
+// =========================================================================== //
+
 #include <ctime>
 #include <cmath>
 #include <set>
 #include <iostream>
 #include <vector>
+#include <chrono>
 #include "mesh.h"
 #include "fem.h"
 #include "utils.h"
@@ -13,7 +24,7 @@ extern void gpu_femses(float *u, Mesh &M);
 int main(int argc, char** argv){
     int nr[2];
     float x[2], y[2];
-    float *u, *u_gpu, *u_gpu_femses;
+    float *u, *u_cpu, *u_gpu, *u_gpu_femses;
     int order;
     tau tau_cpu, tau_gpu_f, tau_gpu_fs;
 
@@ -25,29 +36,37 @@ int main(int argc, char** argv){
     //if(annulus)
     //    y[0] = 0.0, y[1] = 1.0;
     //else
-        y[0] = a, y[1] = a + 0.25*dr;
+        y[0] = a, y[1] = a + dr;
 
-    order = (nr[0]+1)*(nr[0]+1);
+    order = (n+1)*(m+1);
     
     Mesh M(nr,x,y);
     //M.deform(annulus_seg_map, 1.0);
     M.deform(annulus_seg_map, -M_PI/6);
      
+    std::cout << "test\n";
+    /*
     float xy[2];
-    for(int v=0; v<nr[0]*nr[1]*2; v++){
+    for(int v=0; v<order; v++){
         M.get_xy(xy, v);
         std::cout << xy[0] << " " << xy[1] << std::endl;
     }
-
+    */
     u = new float[order];
     analytical(u, M, x[0], x[1], order);
-
-    if(cpu){ 
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    if(cpu){
+        u_cpu = new float[order]; 
         FEM F(M);
         F.solve();
         F.output("output_cpu.csv", u);
     }
-    
+    auto end = std::chrono::high_resolution_clock::now(); 
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    tau_cpu.tot = duration.count();
+    std::cout << "Time = " << tau_cpu.tot << std::endl;
+
     if(gpu_f){
         u_gpu = new float[order]();
         gpu_fem(u_gpu, M);
@@ -60,7 +79,8 @@ int main(int argc, char** argv){
         output_csv("output_femses.csv", M, u_gpu_femses, u, order);
     }
 
-    delete[] u; delete[] u_gpu; delete[] u_gpu_femses;
+    delete[] u;     delete[] u_cpu; 
+    delete[] u_gpu; delete[] u_gpu_femses;
 
     return 0;
 }

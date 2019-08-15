@@ -41,13 +41,13 @@ int parse_arguments(int argc, char **argv){
             case 'm':
                 m = atoi(optarg); break;
             case 'a':
-                a = atoi(optarg); break;
+                a = atof(optarg); break;
             case 'r':
-                dr = atoi(optarg); break;
+                dr = atof(optarg); break;
             case 'i':
-                ui = atoi(optarg); break;
+                ui = atof(optarg); break;
             case 'o':
-                uo = atoi(optarg); break;
+                uo = atof(optarg); break;
             default:
                 fprintf(stderr, "Invalid option given\n");
                 print_usage();

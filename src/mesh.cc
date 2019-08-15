@@ -6,6 +6,8 @@
 #include "mesh.h"
 #include "utils.h"
 
+#include <iostream>
+
 Mesh::Mesh(const int* nr, const float* x, const float *y){
     float dx, dy;
     int count=0;
@@ -18,8 +20,7 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
         this->x[i] = x[i];
         this->y[i] = y[i];
     }
-    dx = (this->x[1]-this->x[0])/nr[0], dy = (this->y[1]-this->y[0])/nr[1];
-    
+    dx = (this->x[1]-this->x[0])/(float)nr[0], dy = (this->y[1]-this->y[0])/(float)nr[1];
     
     /////////////// Allocating memory for mesh //////////////
     assign_ptrs(&vertices, &vert_vals, order, 2);
@@ -51,10 +52,12 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
     }
     ///////////////////////////////////////////////////////////////
 
+    std::cout << "Test mesh\n";    
+    
     ///////// Setting global vertex values for each cell //////////
     for(int i=0; i<this->nr[1]; i++){
         for(int j=0; j<this->nr[0]; j++){
-            cells[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
+            cells[2* (j + (i*nr[1]) )][0] = j + i*(nr[0]+1); 
             cells[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
             cells[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
             
@@ -62,7 +65,7 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
             cells[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1);
             cells[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
 
-            dof[2* (j + (i*nr[1]) ) ][0] = j + i*(nr[0]+1); 
+            dof[2* (j + (i*nr[1]) )][0] = j + i*(nr[0]+1); 
             dof[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
             dof[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
             
@@ -72,6 +75,7 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
         }
     }
     //////////////////////////////////////////////////////////////
+    std::cout << "Test mesh\n";    
 }
 
 Mesh::~Mesh(){
