@@ -23,14 +23,17 @@ cu_objs: $(CU_SOURCES)
 objs: $(SOURCES)
 	$(CC) $(CFLAGS) -c $^ $(INCPATH)
 
-.PHONY: test mem_test clean
+.PHONY: test timings mem_test clean
 
 test: all
-	./$(TARGET) -m 95000 -t 350 -s 17 1> results.out 2> error.log
+	./fem_solver
 
-mem_test: all
-#ADD cuda-memcheck test here
-	#valgrind ./$(TARGET) -m 900 -t 350 -s 17
+timings: all
+	./test_scripts/timing_tests.sh
+
+error_tests: all
+	./test_scripts/error_tests.sh
+	cat error.log
 
 clean:
-	$(RM) $(OBJECTS) $(TARGET) results/* timings/* results.out error.log
+	$(RM) $(OBJECTS) $(TARGET) results/* timings/* a.out error.log

@@ -145,16 +145,6 @@ void output(tau &t_cpu, tau &t_gpu, tau &t_gpufs, float sse_cpu, float sse_gpu, 
 
 
 //////////////////// Returns SSE of two vectors a,b ////////////////////////
-/*
-float sse(float *a, float *b, int n){
-    float sse = 0.0;
-
-    for(int i=0; i<n; i++)
-        sse += (a[i] -b[i]) * (a[i] - b[i]);
-
-    return sse;
-}
-*/
 float sse(float *u, float *u_hat, int dim){
     const MKL_INT n = dim;
     const MKL_INT incx = 1, incy = 1;
