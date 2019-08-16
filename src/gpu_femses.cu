@@ -8,6 +8,8 @@
 #include "gpu_fem.h"
 #include "gpu_femses.h"
 
+#include <cstdio>
+
 //////////// Calculates weighting for assembling single element solution ///////////
 // One weight is evaluated for each node
 // Added back to global memory
@@ -57,22 +59,27 @@ __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, in
 
 ////////////// Performs Jacobi iteration to get updated approximation of u ////////////
 __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
-    float *Le_shrd, *be_shrd, ue_loc;
+    float *Le_shrd, *be_shrd;
+    float ue_new, *ue_old;
 
     Le_shrd = temp1;
     be_shrd = &temp1[9];
+    ue_old  = &temp1[12];
     
-    ue_loc = be_shrd[idy];
+    ue_new = be_shrd[idy];
+    ue_old[idy] = ue[(idx*3) + idy];
+
+    __syncthreads();
     
     for(int i=0; i<3; i++){
         if(i==idy)
             continue;
-        ue_loc -= Le_shrd[(idy*3) + i] * ue[(idx*3) + i];
+        ue_new -= Le_shrd[(idy*3) + i] * ue_old[i];
     }
-    ue_loc /= Le_shrd[(idy*3) + idy];
+    ue_new /= Le_shrd[(idy*3) + idy];
 
     __syncthreads();
-    atomicExch(&ue[(idx*3) + idy], ue_loc); // transferring element solution of u to global mem
+    atomicExch(&ue[(idx*3) + idy], ue_new); // transferring element solution of u to global mem
 }
 //////
 
@@ -111,7 +118,6 @@ __global__ void local_sols(float *Le, float *be, float *ue){
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[]; 
 
-    // CAN I NOT DO ATMOMIC ADD OF ELEMENT SOLUTION VALES AT EACH ITERATION ?? //
     if(idx < gridDim.x && idy < blockDim.y){
         elems_shared_cpy(Le, be, temp1, idx, idy);
         jacobi_iter(ue, temp1, idx, idy);
@@ -130,7 +136,7 @@ __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells)
     float Lii, weight;
 
     if(idx < gridDim.x && idy < blockDim.y){
-        v = cells[(idx*3) + idy];               // getting global cell number
+        v = cells[(idx*3) + idy];               // getting global vertex number
         Lii = Le[(idx*9) + (idy*3) + idy];      
         
         weight = Lii/we[v];
@@ -240,7 +246,14 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
     std::cout << "      Getting element matrices...\n";
     
-    assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+    cudaEventRecord(start,0);
+    
+    assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>
+                    (Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+
+    cudaEventRecord(finish);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.elem_mats, start, finish);
 
     //////////////////////////////////////////////////////////////////////////////////
 
@@ -264,6 +277,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
         // calculating error using 2-norm //
         error_dot_prod(un_gpu, up_gpu, order, err);
+        // std::cout << err << std::endl;
 
         tmp = un_gpu;
         un_gpu = up_gpu;

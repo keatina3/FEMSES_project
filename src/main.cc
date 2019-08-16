@@ -116,7 +116,7 @@ int main(int argc, char** argv){
         tau_gpu_fs.tot = duration.count();
         
         output_results(M, u, u_gpu_femses, order, 2);
-        sse_gpufs = sse(u, u_gpu, order);
+        sse_gpufs = sse(u, u_gpu_femses, order);
     }
     
     /////////////////////////////////////////////////
