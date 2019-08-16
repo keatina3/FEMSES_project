@@ -37,13 +37,17 @@ To make the program, simply run
 cd src/
 make
 ```
+UNFINISHED
+
 ### Usage
 To get detailed usage information, run
 ```
 ./fem_solver -h
 ```
+UNFINISHED
 
 ### Testing
+UNFINISHED
 
 ### Author
 Alex Keating  
