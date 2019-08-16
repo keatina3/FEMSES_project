@@ -1,4 +1,7 @@
 #include <cstring>
+#include <iostream>
+#include <stdexcept>
+#include <chrono>
 #include <cassert>
 #include <cstdlib>
 #include <vector>
@@ -8,7 +11,7 @@
 #include "utils.h"
 #include "fem.h"
 
-FEM::FEM(Mesh &M){
+FEM::FEM(Mesh &M, Tau &t){
     int nr[2];
     
     M.get_recs(nr);
@@ -19,25 +22,37 @@ FEM::FEM(Mesh &M){
     this->M = &M;
     // assigning memory whether dense or CSR format //
     if(dense){
-        L = new float*[order];
-        L_vals = new float[order*order]();
-
+        auto start = std::chrono::high_resolution_clock::now();
+        try {
+            L = new float*[order];
+            L_vals = new float[order*order];
+        } catch(std::bad_alloc const &err) {
+            std::cerr << "Bad allocation of stiffness matrix\n";
+            std::cerr << err.what() << std::endl;
+            std::exit(1);
+        }
         for(int i=0;i<order;i++)
             L[i] = &L_vals[i*order];
-
-    } else {
-        // See mesh.h for function info //
-        M.sparsity_pass_half(valsL, rowPtrL, colIndL, this->nnz);
+        auto end = std::chrono::high_resolution_clock::now(); 
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        t.alloc += duration.count();
     }
- 
-    this->b = new float[order]();
-    Le.resize(num_cells, std::vector<std::vector <float> >(3, std::vector<float>(3,0.0)));
-    be.resize(num_cells, std::vector<float>(3,0.0));
+    try {
+        this->b = new float[order]();
+        Le.resize(num_cells, std::vector<std::vector <float> >(3, std::vector<float>(3,0.0)));
+        be.resize(num_cells, std::vector<float>(3,0.0));
+    } catch(std::bad_alloc const &err) {
+        std::cerr << "Bad allocation of stress vector matrix\n";
+        std::cerr << err.what() << std::endl;
+        std::exit(1);
+    }
 }
 
 FEM::~FEM(){
-    delete[] L;
-    delete[] L_vals;
+    if(dense) {
+        delete[] L;
+        delete[] L_vals;
+    }
     delete[] b;
 }
 
@@ -99,29 +114,55 @@ void FEM::assemble_csr(){
 ////////////////////// Overall solver function //////////////////////////////
 // Takes FEM object, gets element matrices, assembles L, 
 // solves linear system
-void FEM::solve(){
-    MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;
-    
+void FEM::solve(Tau &t){
+    MKL_INT n = order, nrhs = 1, lda = order, ldb = 1, info;    
+    std::cout << GREEN "\nCPU Solver...\n" RESET;
+
+    // See mesh.h for function info //
+    if(!dense){  
+        std::cout << "      Sparsity pass...\n";
+        M->sparsity_pass_half(valsL, rowPtrL, colIndL, this->nnz);
+    }
+
     ///////// GENERATING ELEMENT MATRICES //////////////
+   
+    std::cout << "      Getting element matrices...\n";
+    auto start = std::chrono::high_resolution_clock::now();
     for(unsigned int e=0; e<Le.size(); e++)
         elem_mat(e);
+    auto end = std::chrono::high_resolution_clock::now(); 
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    t.elem_mats += duration.count();
     
     /////////////////////////////////////////////////////
 
     /////////// ASSEMBLING GLOBAL STIFFNESS MATRIX //////
+    
+    std::cout << "      Assembling stiffness matrix...\n";
+    start = std::chrono::high_resolution_clock::now();
     if(dense) 
         assemble();
     else 
         assemble_csr();
+    end = std::chrono::high_resolution_clock::now(); 
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    t.assembly += duration.count();
 
     /////////////////////////////////////////////////////
     
     //////////// SOLVING LINEAR SYSTEM //////////////////
+    
+    std::cout << "      Solving linear system...\n";
+    if(!dense) std::cout << "      (nnz = " << nnz << ")\n";
+    start = std::chrono::high_resolution_clock::now();
     if(dense){
         info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
         assert(!info);
     } else
         MKL_solve();
+    end = std::chrono::high_resolution_clock::now(); 
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    t.solve += duration.count();
 
     /////////////////////////////////////////////////////
 }
@@ -257,7 +298,11 @@ float FEM::area(float xi[3][3]) const {
 }
 
 // need an updated version of this //
-void FEM::output(char* fname, float *u_an) const {
-    
-    output_csv(fname, *M, b, u_an, order);
+void FEM::output(float *u_an) const {
+
+    output_results(*M, u_an, b, order, 0);
+}
+
+float FEM::sse_fem(float *u) const {
+    return sse(u, b, order);
 }

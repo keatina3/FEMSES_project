@@ -21,6 +21,7 @@ All code is stored in `/src/`
 
 #### Dependencies
 The program `fem_solver` was built on `cuda01` with the following dependencies:
+* C++11
 * gcc 5.4.0
 * CUDA 10.1
 * Intel MKL 18.0.4  

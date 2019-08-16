@@ -33,16 +33,17 @@ private:
     int nnz;                        // number of non-zeros in CSR of stifness matrix
 
 public:
-    FEM(Mesh &M);
+    FEM(Mesh &M, Tau &t);
     ~FEM();
     
     void assemble();
     void assemble_csr();
-    void solve();
+    void solve(Tau &t);
     void MKL_solve();
     void elem_mat(const int e);
     float area(float xi[3][3]) const;
-    void output(char* fname, float *u_an) const;
+    void output(float *u_an) const;
+    float sse_fem(float *u) const;
 };
 
 #endif

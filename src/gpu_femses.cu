@@ -147,7 +147,7 @@ __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells)
 // Gets local solution approximations to these using a jacobi iteration
 // Combines these to a global solution using a weighing
 // Repeats until convergence of global solution
-extern void gpu_femses(float *u, Mesh &M){
+extern void gpu_femses(float *u, Mesh &M, Tau &t){
     int nr[2];
     int order, num_cells;
     int block_size_X, block_size_Y, shared;
@@ -159,7 +159,11 @@ extern void gpu_femses(float *u, Mesh &M){
     float *Le, *be, *ue, *we;
     float *up_gpu, *un_gpu;
     float err = 1E16;
+    cudaEvent_t start, finish;
+    float tau = 0.0;
 
+    std::cout << GREEN "\nFEMSES Solver...\n" RESET;
+    
     //////////////////////////// Gathering info from mesh /////////////////////////////
 
     M.get_recs(nr);
@@ -170,9 +174,13 @@ extern void gpu_femses(float *u, Mesh &M){
 
     ///////////////////////////////////////////////////////////////////////////////////
     
+    cudaEventCreate(&start);
+    cudaEventCreate(&finish);
     
     ////////////// Allocating memory for mesh/stiffnesss matrix/stress vector//////////
     ///////////  /array of element matrics/array of stress vectors/weighting //////////
+
+    cudaEventRecord(start,0);
 
     cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
     cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
@@ -186,17 +194,29 @@ extern void gpu_femses(float *u, Mesh &M){
     cudaMalloc( (void**)&un_gpu, order*sizeof(float));
     cudaMalloc( (void**)&up_gpu, order*sizeof(float));
     cudaMalloc( (void**)&we, order*sizeof(float));
+    
+    cudaEventRecord(finish);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.alloc, start, finish);
 
     ///////////////////////////////////////////////////////////////////////////////////
 
 
     ///////////////// Copying data for Mesh from host to device ///////////////////////
 
+    std::cout << "      Copying data from host...\n";
+    
+    cudaEventRecord(start,0);
+
     cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(is_bound_gpu, is_bound, order*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(bdry_vals_gpu, bdry_vals, order*sizeof(float), cudaMemcpyHostToDevice);
+    
+    cudaEventRecord(finish);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.transfer, start, finish);
 
     cudaMemset(up_gpu, 0.0, order*sizeof(float));
     cudaMemset(un_gpu, 0.0, order*sizeof(float));
@@ -218,12 +238,18 @@ extern void gpu_femses(float *u, Mesh &M){
 
     ////// Kernel to assemble element matrices and store in an array on glob mem /////
 
+    std::cout << "      Getting element matrices...\n";
+    
     assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
 
     //////////////////////////////////////////////////////////////////////////////////
 
 
     ///////////////// Iterates through kernels until convergence /////////////////////
+
+    std::cout << "      Applying Jacobi relaxation scheme...\n";
+    
+    cudaEventRecord(start,0);
 
     float *tmp;
     int count = 0;
@@ -250,12 +276,27 @@ extern void gpu_femses(float *u, Mesh &M){
         }
     }
 
+    cudaEventRecord(finish);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.solve, start, finish);
+
+    std::cout << "      Solved in " << count << " iterations...\n";
+    
     //////////////////////////////////////////////////////////////////////////////////
 
     
     //////////////// Tranferring soln to host from device & tidy //////////////////////
 
+    std::cout << "      Transferring result back to host...\n";
+    
+    cudaEventRecord(start,0);
+    
     cudaMemcpy(u, up_gpu, order*sizeof(float), cudaMemcpyDeviceToHost);
+    
+    cudaEventRecord(finish);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&tau, start, finish);
+    t.transfer += tau;
 
     cudaFree(vertices_gpu);     cudaFree(cells_gpu);    cudaFree(dof_gpu);
     cudaFree(is_bound_gpu);     cudaFree(bdry_vals_gpu);

@@ -1,3 +1,4 @@
+#include <iostream>
 #include <cassert>
 #include <vector>
 #include <cuda_runtime.h>
@@ -8,6 +9,8 @@
 #include "utils.h"
 #include "gpu_utils.h"
 #include "gpu_fem.h"
+
+#include <iostream>
 
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
@@ -273,7 +276,7 @@ __global__ void assemble_gpu_csr(
 ///////////////// C++ Function to be invoked from host to apply FEM to PDE ///////////////////
 // Applies standard approach of assmebling stiffness matrix and
 // decomposing the linear system on the GPU to solve
-extern void gpu_fem(float *u, Mesh &M){
+extern void gpu_fem(float *u, Mesh &M, Tau &t){
     int nr[2];
     int order, num_cells, nnz;
     int block_size_X, block_size_Y, shared;
@@ -287,8 +290,16 @@ extern void gpu_fem(float *u, Mesh &M){
     std::vector<float> valsLCPU;
     std::vector<int> rowPtrLCPU;
     std::vector<int> colIndLCPU;
-
+    cudaError_t stat;
+    cudaEvent_t start, finish;
+    float tau = 0.0;
+   
     //////////////////////// Gathering info from mesh ////////////////////////////////
+    
+    std::cout << GREEN "\nGPU Solver...\n" RESET;
+
+    cudaEventCreate(&start);
+    cudaEventCreate(&finish);
 
     M.get_recs(nr);
 
@@ -296,33 +307,62 @@ extern void gpu_fem(float *u, Mesh &M){
     num_cells = 2*nr[0]*nr[1];
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
     
-    if(!dense) M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU, nnz);
-
+    cudaEventRecord(start, 0);
+    if(!dense) {
+        std::cout << "      Sparsity pass...\n";
+        M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU, nnz);
+    }
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.sparsity_scan, start, finish);
+    
     //////////////////////////////////////////////////////////////////////////////////
 
 
     //////////// Allocating memory for mesh/stiffness matrix/stress vector //////////
+    
 
-    cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
-    cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
-    cudaMalloc( (void**)&dof_gpu, 3*num_cells*sizeof(int));
-    cudaMalloc( (void**)&is_bound_gpu, order*sizeof(int));
-    cudaMalloc( (void**)&bdry_vals_gpu, order*sizeof(float));
+    cudaEventRecord(start, 0);
+    
+    stat = cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&dof_gpu, 3*num_cells*sizeof(int));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&is_bound_gpu, order*sizeof(int));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&bdry_vals_gpu, order*sizeof(float));
+    assert(stat == cudaSuccess);
     
     if(dense){
-        cudaMalloc( (void**)&L, order*order*sizeof(float));
+        stat = cudaMalloc( (void**)&L, order*order*sizeof(float));
+        assert(stat == cudaSuccess);
     } else {
-        cudaMalloc( (void**)&valsL, nnz*sizeof(float)); 
-        cudaMalloc( (void**)&colIndL, nnz*sizeof(int)); 
-        cudaMalloc( (void**)&rowPtrL, (order+1)*sizeof(int)); 
+        stat = cudaMalloc( (void**)&valsL, nnz*sizeof(float)); 
+        assert(stat == cudaSuccess);
+        stat = cudaMalloc( (void**)&colIndL, nnz*sizeof(int)); 
+        assert(stat == cudaSuccess);
+        stat = cudaMalloc( (void**)&rowPtrL, (order+1)*sizeof(int)); 
+        assert(stat == cudaSuccess);
     }
-    cudaMalloc( (void**)&b, order*sizeof(float));
+    stat = cudaMalloc( (void**)&b, order*sizeof(float));
+    assert(stat == cudaSuccess);
+    
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&tau, start, finish);
+    t.alloc += tau;
 
     ////////////////////////////////////////////////////////////////////////////////
 
 
     /////////////// Copying data of Mesh from Host to Device ///////////////////////
+    
+    std::cout << "      Copying data from host...\n";
 
+    cudaEventRecord(start, 0);
+    
     cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
@@ -339,6 +379,10 @@ extern void gpu_fem(float *u, Mesh &M){
         cudaMemcpy(colIndL, &colIndLCPU[0], nnz*sizeof(int), cudaMemcpyHostToDevice);
     }
 
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.transfer, start, finish);
+    
     ///////////////////////////////////////////////////////////////////////////////
 
 
@@ -356,6 +400,9 @@ extern void gpu_fem(float *u, Mesh &M){
     
     //////// Kernel to assemble Stiffness matrix and store in global mem //////////
 
+    std::cout << "      Main stiffness matrix assembly kernel...\n";
+    // cudaEventRecord(start, 0);
+    
     if(dense) {
         assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
                        cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
@@ -363,12 +410,23 @@ extern void gpu_fem(float *u, Mesh &M){
         assemble_gpu_csr<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
                         b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
     }
+    /*
+    NEED TO PASS BACK 3 FLOATS FOR CONVERSION, ASSEMBLY & ELEM MATS
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&, start, finish);
+    */
     
     //////////////////////////////////////////////////////////////////////////////
      
     
     /////////// Solving linear system in dense, dense-sparse conversion, CSR format ////////
 
+    std::cout << "      Solving linear system...\n";
+    if(!dense) std::cout << "      (nnz = " << nnz << ")\n";
+    
+    cudaEventRecord(start, 0);
+    
     if(dense){
         if(dnsspr)  dnsspr_solve(L, b, order);
         else        dense_solve(L, b, order);
@@ -376,13 +434,25 @@ extern void gpu_fem(float *u, Mesh &M){
         sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
     }
     
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.solve, start, finish);
+    
     ///////////////////////////////////////////////////////////////////////////////////
 
 
     ////////////////// Transfer solution back to Host & tidy //////////////////////////
 
+    std::cout << "      Transferring result back to host...\n";
+    
+    cudaEventRecord(start, 0);
+    
     cudaMemcpy(u, b, order*sizeof(float), cudaMemcpyDeviceToHost);
-
+    
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&tau, start, finish);
+    t.transfer += tau;
     
     cudaFree(vertices_gpu);      cudaFree(cells_gpu);   cudaFree(dof_gpu);
     cudaFree(is_bound_gpu);      cudaFree(bdry_vals_gpu);

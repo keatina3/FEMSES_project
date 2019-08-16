@@ -5,6 +5,14 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
+#define MAX_UNKNOWNS 2E29
+
+#define RED  "\x1B[91m"     // for colour setting in print
+#define GREEN  "\x1B[92m"
+#define BLUE  "\x1B[94m"
+#define MAG  "\x1B[95m"
+#define RESET "\x1B[0m"
+
 // command line arguments - see usage function for explanations //
 extern bool verbose, timing, cpu, gpu_f, gpu_fs;
 extern bool annulus, dense, dnsspr, debug;
@@ -23,14 +31,15 @@ typedef struct Tau {
     float convert;
 } tau, *tau_ptr;
 
-// need new output functions //
-// need to fix fname string parse //
+extern const struct Tau tau_default;
+
 int parse_arguments(int argc, char **argv);
 void print_usage();
-
+void init_screen();
+void output(Tau &t_cpu, Tau &t_gpu, Tau &t_gpufs, float sse_cpu, float sse_gpu, float sse_gpufs);
 float sse(float *a, float *b, int n);
 void analytical(float *u, Mesh &M, int a, int b, int order);
-void output_csv(char *fname, Mesh &M, float *u, float *u_an, int order);
+void output_results(Mesh &M, float *u, float *u_hat, int order, int routine);
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m);
 void assign_ptrs(int*** arr_ptr, int** arr, int n, int m);
 void print_csr(int m, const float *csrValA, const int *csrRowPtrA, 

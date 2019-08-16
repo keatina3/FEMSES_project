@@ -1,8 +1,11 @@
+#include <iostream>
+#include <string>
 #include <cmath>
 #include <vector>
 #include <cstdlib>
 #include <cstdio>
 #include <unistd.h>
+#include <mkl.h>
 #include "mesh.h"
 #include "utils.h"
 
@@ -10,7 +13,9 @@ bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = true, dense = false, dnsspr = false, debug =  false;
 int n = 2, m = 2; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
+const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
+////////////////// Parse command line arguments //////////////////////////
 int parse_arguments(int argc, char **argv){
     int opt;
 
@@ -56,7 +61,10 @@ int parse_arguments(int argc, char **argv){
     }
     return 0;
 }
+///////
 
+
+////////////////////////// Prints usage information /////////////////////////
 void print_usage(){
     printf("\n==============================================================================\n");
     printf("\nFinite element method - single element solution GPU program\n");
@@ -71,7 +79,7 @@ void print_usage(){
     printf("    -f          : will skip FEMSES GPU test\n");
     printf("    -d          : will use dense linear solvers\\matrix assembly\n");
     printf("    -s          : will use dense assembly & conversion to CSR, sparse solver\n");
-    printf("    -D          : turns onn debugging mode\n");
+    printf("    -D          : turns on debugging mode\n");
     printf("    -C          : turns off mesh deformation from rectangle to annulus\n");
     printf("    -n          : number of rectangles in x-axis (default: 2)\n");
     printf("    -m          : number of rectangles in y-axis (deafult: 2)\n");
@@ -81,13 +89,81 @@ void print_usage(){
     printf("    -uo         : outside/right, dirichlet boundary condition (default: 6.0)\n");
     printf("\n==============================================================================\n\n");
 }
+//////
+
+
+//////////////////// Prints initial screen for program run ////////////////////
+void init_screen(){
+    printf("\n==============================================================================\n\n");
+    printf(BLUE "fem_solver - Finite Element Method GPU Implementation\n");
+    printf("Alex Keating\n" RESET);
+    printf("\n================================================\n");
+    printf(GREEN "Intial setup...\n" RESET);
+    printf("                Dirichlet BCs   : %0.00f, %0.00f\n", ui, uo);
+    printf("                Range           : %0.00f, %0.00f\n", a, a+dr);    
+    printf("                CPU enabled     : %d\n", cpu);
+    printf("                GPU enabled     : %d\n", gpu_f);
+    printf("                FEMSES enabled  : %d\n", gpu_fs);   
+    if(dnsspr)      printf("                Solver          : Dense-Sparse conv\n");
+    else if(dense)  printf("                Solver          : Dense\n");
+    else            printf("                Solver          : Sparse\n");
+    printf("                # of unknowns   : %d\n", (n+1)*(m+1));   
+    printf("================================================\n\n");
+}
+//////
+
+
+/////////////////////// Prints output from program run //////////////////////
+void output(tau &t_cpu, tau &t_gpu, tau &t_gpufs, float sse_cpu, float sse_gpu, float sse_gpufs){
+    printf("\n================================================\n");
+    printf(GREEN "Performance results...\n" RESET);
+    printf("               CPU         GPU         FEMSES\n");
+    printf("SSE" RED "            %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        sse_cpu, sse_gpu, sse_gpufs);
+    if(timing){
+    printf("Total(ms)   " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.tot, t_gpu.tot, t_gpufs.tot);
+    printf("Alloc(ms)   " RED"   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.alloc, t_gpu.alloc, t_gpufs.alloc);
+    printf("Trans(ms)   " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.transfer, t_gpu.transfer, t_gpufs.transfer);
+    printf("Elem Mats(ms)" RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.elem_mats, t_gpu.elem_mats, t_gpufs.elem_mats);
+    printf("Assembly(ms)" RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.assembly, t_gpu.assembly, t_gpufs.assembly);
+    printf("Solver(ms)  " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.solve, t_gpu.solve, t_gpufs.solve);
+    printf("Convert(ms) " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.convert, t_gpu.convert, t_gpufs.convert);
+    printf("Sparsity(ms)" RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.sparsity_scan, t_gpu.sparsity_scan, t_gpufs.sparsity_scan);
+    }
+    printf("================================================\n");
+    printf("\n==============================================================================\n\n");
+}
+//////
+
 
 //////////////////// Returns SSE of two vectors a,b ////////////////////////
+/*
 float sse(float *a, float *b, int n){
     float sse = 0.0;
 
     for(int i=0; i<n; i++)
         sse += (a[i] -b[i]) * (a[i] - b[i]);
+
+    return sse;
+}
+*/
+float sse(float *u, float *u_hat, int dim){
+    const MKL_INT n = dim;
+    const MKL_INT incx = 1, incy = 1;
+    const float alpha = -1.0;
+    float sse = 0.0;
+    
+    cblas_saxpy(n, alpha, u, incx, u_hat, incy);
+
+    sse = cblas_snrm2(n, u_hat, incx);
 
     return sse;
 }
@@ -108,22 +184,28 @@ void analytical(float *u, Mesh &M, int a, int b, int order){
 //////
 
 
-///////////////////////// FIXME //////
-void output_csv(char *fname, Mesh &M, float *u, float *u_an, int order){
-    FILE* fptr;
+//////////////////////// Outputs solution to CSV file ////////////////////
+void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
+    FILE *fptr;
     float xy[2];
+    std::string fname = "results/output_";
+    
+    if(routine==0)      fname.append("cpu.csv");
+    else if(routine==1) fname.append("gpu.csv");
+    else                fname.append("femses.csv");
 
-    fptr = fopen(fname,"w");
+    fptr = fopen(&fname[0],"w");
     if(!fptr)
-        printf("Couldn't open file %s\n",fname);
+        printf("Couldn't open file %s\n",&fname[0]);
 
-    fprintf(fptr, "x, y, u(x,y)\n");
+    fprintf(fptr, "x, y, u(x,y), u_analytical\n");
     for(int v=0; v<order; v++){
         M.get_xy(xy, v);
-        fprintf(fptr,"%f, %f, %f, %f\n", xy[0], xy[1], u[v], u_an[v]);
+        fprintf(fptr,"%f, %f, %f, %f\n", xy[0], xy[1], u_hat[v], u[v]);
     }
 
     fclose(fptr);
+    std::cout << "      Successfully written to file.\n";
 }
 ////////
 

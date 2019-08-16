@@ -8,6 +8,7 @@
 // WRITTEN FOR COMPLETION OF MSC. HIGH PERFORMANCE COMPUTING RESEARCH PROJECT
 // =========================================================================== //
 
+#include <cassert>
 #include <ctime>
 #include <cmath>
 #include <set>
@@ -15,20 +16,27 @@
 #include <vector>
 #include <chrono>
 #include "mesh.h"
-#include "fem.h"
 #include "utils.h"
+#include "fem.h"
 
-extern void gpu_fem(float *u, Mesh &M);
-extern void gpu_femses(float *u, Mesh &M);
+extern void gpu_fem(float *u, Mesh &M, Tau &t);
+extern void gpu_femses(float *u, Mesh &M, Tau &t);
 
 int main(int argc, char** argv){
     int nr[2];
     float x[2], y[2];
-    float *u, *u_cpu, *u_gpu, *u_gpu_femses;
+    float *u, *u_gpu, *u_gpu_femses;
+    float sse_cpu, sse_gpuf, sse_gpufs;
     int order;
-    tau tau_cpu, tau_gpu_f, tau_gpu_fs;
+    Tau tau_cpu = tau_default, tau_gpu_f = tau_default, tau_gpu_fs = tau_default;
 
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now(); 
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    
     parse_arguments(argc, argv);
+
+    if(verbose) init_screen();
 
     nr[0] = n, nr[1] = m;
     x[0] = a; x[1] = a + dr;
@@ -40,46 +48,84 @@ int main(int argc, char** argv){
 
     order = (n+1)*(m+1);
     
+    // FIXME //
+    if(order >= 5E4 && dense){
+        std::cout << "Too many unknowns to create dense matrix. Changing to sparse solver\n";
+        dense = false;
+    }
+    if(order >= 5E5){
+        std::cerr << "Problem too large. Exiting.\n";
+        std::exit(1);
+    }
+
     Mesh M(nr,x,y);
     //M.deform(annulus_seg_map, 1.0);
     M.deform(annulus_seg_map, -M_PI/6);
-     
-    std::cout << "test\n";
-    /*
-    float xy[2];
-    for(int v=0; v<order; v++){
-        M.get_xy(xy, v);
-        std::cout << xy[0] << " " << xy[1] << std::endl;
-    }
-    */
+
     u = new float[order];
     analytical(u, M, x[0], x[1], order);
-    
-    auto start = std::chrono::high_resolution_clock::now();
+   
+    //////////////      CPU       ///////////////////
+ 
     if(cpu){
-        u_cpu = new float[order]; 
-        FEM F(M);
-        F.solve();
-        F.output("output_cpu.csv", u);
+        start = std::chrono::high_resolution_clock::now();
+        
+        FEM F(M, tau_cpu);
+        F.solve(tau_cpu);
+        
+        end = std::chrono::high_resolution_clock::now(); 
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        tau_cpu.tot = duration.count();
+        
+        F.output(u);
+        sse_cpu = F.sse_fem(u);
     }
-    auto end = std::chrono::high_resolution_clock::now(); 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    tau_cpu.tot = duration.count();
-    std::cout << "Time = " << tau_cpu.tot << std::endl;
+    
+    /////////////////////////////////////////////////
 
+
+    //////////////      GPU       ///////////////////
+    
     if(gpu_f){
+        start = std::chrono::high_resolution_clock::now();
+        
         u_gpu = new float[order]();
-        gpu_fem(u_gpu, M);
-        output_csv("output_gpu.csv", M, u_gpu, u, order);
+        gpu_fem(u_gpu, M, tau_gpu_f);
+        
+        end = std::chrono::high_resolution_clock::now(); 
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        tau_gpu_f.tot = duration.count();
+        
+        output_results(M, u, u_gpu, order, 1);
+        sse_gpuf = sse(u, u_gpu, order);
     }
+        
+    /////////////////////////////////////////////////
+    
+    
+    /////////////      FEMSES       /////////////////
     
     if(gpu_fs){
+        start = std::chrono::high_resolution_clock::now();
+        
         u_gpu_femses = new float[order](); 
-        gpu_femses(u_gpu_femses, M);
-        output_csv("output_femses.csv", M, u_gpu_femses, u, order);
+        gpu_femses(u_gpu_femses, M, tau_gpu_fs);
+    
+        end = std::chrono::high_resolution_clock::now(); 
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        tau_gpu_fs.tot = duration.count();
+        
+        output_results(M, u, u_gpu_femses, order, 2);
+        sse_gpufs = sse(u, u_gpu, order);
     }
-
-    delete[] u;     delete[] u_cpu; 
+    
+    /////////////////////////////////////////////////
+    
+    
+    // need to calculate SSEs //
+    if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpuf, sse_gpufs);
+    
+    delete[] u;
     delete[] u_gpu; delete[] u_gpu_femses;
 
     return 0;

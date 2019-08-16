@@ -6,8 +6,6 @@
 #include "mesh.h"
 #include "utils.h"
 
-#include <iostream>
-
 Mesh::Mesh(const int* nr, const float* x, const float *y){
     float dx, dy;
     int count=0;
@@ -23,15 +21,18 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
     dx = (this->x[1]-this->x[0])/(float)nr[0], dy = (this->y[1]-this->y[0])/(float)nr[1];
     
     /////////////// Allocating memory for mesh //////////////
+    
     assign_ptrs(&vertices, &vert_vals, order, 2);
     assign_ptrs(&cells, &cells_vals, num_cells, 3);
     assign_ptrs(&dof, &dof_vals, num_cells, 3);
     boundary = (int*)calloc(order,sizeof(int));
     bdry_vals = (float*)calloc(order,sizeof(int));
+    
     /////////////////////////////////////////////////////////////
     
 
     //////// Setting mesh vertices & boundary values ////////////
+    
     for(int i=0; i<=nr[1]; i++){
         for(int j=0; j<=nr[0]; j++){
             // fix this bit //
@@ -50,32 +51,33 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
             count++;
         }
     }
+    
     ///////////////////////////////////////////////////////////////
 
-    std::cout << "Test mesh\n";    
     
     ///////// Setting global vertex values for each cell //////////
+    
     for(int i=0; i<this->nr[1]; i++){
         for(int j=0; j<this->nr[0]; j++){
-            cells[2* (j + (i*nr[1]) )][0] = j + i*(nr[0]+1); 
-            cells[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
-            cells[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
+            cells[2* (j + (i*nr[0]) )][0] = j + i*(nr[0]+1); 
+            cells[2* (j + (i*nr[0]) )][1] = j + i*(nr[0]+1) + 1;
+            cells[2* (j + (i*nr[0]) )][2] = j + (i+1)*(nr[0]+1); 
             
-            cells[2* (j + (i*nr[1]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
-            cells[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1);
-            cells[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
+            cells[2* (j + (i*nr[0]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
+            cells[2* (j + (i*nr[0]) ) + 1][2] = j + (i+1)*(nr[0]+1);
+            cells[2* (j + (i*nr[0]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
 
-            dof[2* (j + (i*nr[1]) )][0] = j + i*(nr[0]+1); 
-            dof[2* (j + (i*nr[1]) )][1] = j + i*(nr[0]+1) + 1;
-            dof[2* (j + (i*nr[1]) )][2] = j + (i+1)*(nr[0]+1); 
+            dof[2* (j + (i*nr[0]) )][0] = j + i*(nr[0]+1); 
+            dof[2* (j + (i*nr[0]) )][1] = j + i*(nr[0]+1) + 1;
+            dof[2* (j + (i*nr[0]) )][2] = j + (i+1)*(nr[0]+1); 
             
-            dof[2* (j + (i*nr[1]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
-            dof[2* (j + (i*nr[1]) ) + 1][2] = j + (i+1)*(nr[0]+1);
-            dof[2* (j + (i*nr[1]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
+            dof[2* (j + (i*nr[0]) ) + 1][0] = j + i*(nr[0]+1) + 1; 
+            dof[2* (j + (i*nr[0]) ) + 1][2] = j + (i+1)*(nr[0]+1);
+            dof[2* (j + (i*nr[0]) ) + 1][1] = j + (i+1)*(nr[0]+1) + 1;
         }
     }
+    
     //////////////////////////////////////////////////////////////
-    std::cout << "Test mesh\n";    
 }
 
 Mesh::~Mesh(){
@@ -166,8 +168,10 @@ void Mesh::get_arrays(float **vertices, int **cells, int **dof, int **is_bound, 
 
 
 ///////////////////// Returns sparsity pattern of matrix /////////////////////////////////
-// Passes through the matrix, ammending any nodes which connect into a vector of sets
-// The vector of sets is then converted into the rowPtr and colInd vectors of a CSR matrix
+// Passes through the matrix, ammending any nodes which 
+// connect into a vector of sets
+// The vector of sets is then converted into the rowPtr 
+// and colInd vectors of a CSR matrix
 void Mesh::sparsity_pass(
             std::vector<float> &valsL,
             std::vector<int> &rowPtrL,
@@ -175,16 +179,15 @@ void Mesh::sparsity_pass(
             int &nnz)
 {
     std::vector<std::set<int> > sparsity;       // one set of connected nodes for each node //
-    std::vector<int> colTmp;                    // tmp vector for colInd array //
     int v1, v2;
     int n = 0;
     int *rowTmp;
-    int count=0;
+    unsigned int count=0;
     int num_cells = nr[0]*nr[1]*2;
     int order = (nr[0]+1)*(nr[1]+1);
 
     sparsity.resize(order);                     // order = num_nodes        //
-    colTmp.resize(order*order, 0);              // max size => 0 non-zeros  //
+    colIndL.resize(50*order, 0);                // max size => 0 non-zeros  //
     rowPtrL.resize(order+1,0);                  // nodes+1 rows 
 
     rowTmp = &rowPtrL[0];
@@ -211,7 +214,10 @@ void Mesh::sparsity_pass(
     rowTmp++;
     for(std::vector<std::set<int> >::iterator v = sparsity.begin(); v != sparsity.end(); ++v){
         for(std::set<int>::iterator vi = (*v).begin(); vi != (*v).end(); ++vi){
-            colTmp[count] = (*vi);
+            if(count >= colIndL.size()){
+                colIndL.resize(colIndL.size() + order);
+            }
+            colIndL[count] = (*vi);
             count++;
         }
         n += (*v).size();
@@ -222,9 +228,6 @@ void Mesh::sparsity_pass(
     valsL.resize(n,0.0);
     colIndL.resize(n,0);
     
-    //// populated tmp column index vector copied to main column vector ////
-    std::memcpy(&colIndL[0], &colTmp[0], n*sizeof(int));
-
     nnz = n;
 }
 ///////
@@ -235,24 +238,23 @@ void Mesh::sparsity_pass(
 void Mesh::sparsity_pass_half(
             std::vector<float> &valsL,
             std::vector<int> &rowPtrL,
-            std::vector<int> &colPtrL,
+            std::vector<int> &colIndL,
             int &nnz)
 {
     std::vector<std::set<int> > sparsity;
-    std::vector<int> colTmp;
     int v1, v2;
     int n = 0;
     int *rowTmp;
-    int count=0;
+    unsigned int count=0;
     int num_cells = nr[0]*nr[1]*2;
     int order = (nr[0]+1)*(nr[1]+1);
 
     sparsity.resize(order);
-    colTmp.resize(order*order, 0);
+    colIndL.resize(50*order, 0);
     rowPtrL.resize(order+1,0);
 
     rowTmp = &rowPtrL[0];
-
+    
     for(int e=0; e<num_cells; e++){
         for(int i=0; i<3; i++){
             v1 = get_vertex(e, i);
@@ -268,8 +270,11 @@ void Mesh::sparsity_pass_half(
     int row = 0;
     for(std::vector<std::set<int> >::iterator v = sparsity.begin(); v != sparsity.end(); ++v){
         for(std::set<int>::iterator vi = (*v).begin(); vi != (*v).end(); ++vi){
+            if(count >= colIndL.size()){
+                colIndL.resize(colIndL.size() + order);
+            }
             if((*vi) >= row){           // if upper half of matrix //
-                colTmp[count] = (*vi);
+                colIndL[count] = (*vi);
                 count++;
             } else
                 continue;
@@ -280,10 +285,8 @@ void Mesh::sparsity_pass_half(
     n = count;
 
     valsL.resize(n,0.0);
-    colPtrL.resize(n,0);
+    colIndL.resize(n,0);
     
-    std::memcpy(&colPtrL[0], &colTmp[0], n*sizeof(int));
-
     nnz = n;
 }
 //////////

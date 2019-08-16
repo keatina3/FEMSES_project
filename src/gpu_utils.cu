@@ -74,14 +74,16 @@ void dnsspr_solve(float *L, float *b, int order){
 
     // convert from dense to sparse //
     cusparseSdense2csr(handle,order,order,desc,L,order,nnzLrow,csrValL,csrRowPtrL,csrColIndL);
-
+    assert(CUSPARSE_STATUS_SUCCESS == status);
+    
     // set stream to cuSolver //
     status2 = cusolverSpSetStream(handleS, stream);
-    assert(CUSOLVER_STATUS_SUCCESS == status);
+    assert(CUSOLVER_STATUS_SUCCESS == status2);
 
     // solver using Cholesky factorisation //
     status2 = cusolverSpScsrlsvchol(handleS, order, nnzL, desc, csrValL, csrRowPtrL,
                                             csrColIndL, b, err, reorder, b, &singularity);
+    assert(CUSOLVER_STATUS_SUCCESS == status2);
     
     // destroy handles, desc & stream //
     cusparseDestroy(handle);
@@ -110,7 +112,7 @@ void sparse_solve(float *valsL,int *rowPtrL, int *colPtrL, float *b, int order, 
     assert(cudaSuccess == cudaStat1);
     
     status2 = cusolverSpCreate(&handle);
-    assert(CUSPARSE_STATUS_SUCCESS == status2);
+    assert(CUSOLVER_STATUS_SUCCESS == status2);
 
     status = cusparseCreateMatDescr(&desc);
     assert(CUSPARSE_STATUS_SUCCESS == status);
@@ -120,10 +122,12 @@ void sparse_solve(float *valsL,int *rowPtrL, int *colPtrL, float *b, int order, 
     cusparseSetMatFillMode(desc, CUSPARSE_FILL_MODE_LOWER);
     
     status2 = cusolverSpSetStream(handle, stream);
-    assert(CUSOLVER_STATUS_SUCCESS == status);
-
+    assert(CUSOLVER_STATUS_SUCCESS == status2);
+    
     status2 = cusolverSpScsrlsvchol(handle, order, nnz, desc, valsL, rowPtrL,
                                             colPtrL, b, err, reorder, b, &singularity);
+    //assert(CUSOLVER_STATUS_EXECUTION_FAILED  == status2);
+    assert(CUSOLVER_STATUS_SUCCESS == status2);
     
     cusolverSpDestroy(handle);
     cudaStreamDestroy(stream);
@@ -163,8 +167,10 @@ void dense_solve(float *L, float *b, int order){
     assert(CUSOLVER_STATUS_SUCCESS == status);
     
     // allocating space for buffer on GPU //
-    cudaMalloc( (void**)&info, sizeof(int));
-    cudaMalloc( (void**)&buffer, bufferSize*sizeof(float));
+    cudaStat1 = cudaMalloc( (void**)&info, sizeof(int));
+    assert(cudaSuccess == cudaStat1);
+    cudaStat1 = cudaMalloc( (void**)&buffer, bufferSize*sizeof(float));
+    assert(cudaSuccess == cudaStat1);
     cudaMemset(info, 0, sizeof(int));
 
     // applying Cholesky factorisation to matrix //

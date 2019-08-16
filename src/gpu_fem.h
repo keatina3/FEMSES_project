@@ -10,7 +10,7 @@
 
 #ifdef __cplusplus
 
-extern void gpu_fem(float *u, Mesh &M);
+extern void gpu_fem(float *u, Mesh &M, Tau &t);
 
 #endif
 
