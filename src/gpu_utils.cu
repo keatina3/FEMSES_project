@@ -4,6 +4,9 @@
 #include <cusolverSp.h>
 #include <cusparse.h>
 #include <cublas_v2.h>
+#include <vector>
+#include "mesh.h"
+#include "utils.h"
 #include "gpu_utils.h"
 
 

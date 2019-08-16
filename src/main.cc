@@ -124,7 +124,13 @@ int main(int argc, char** argv){
     
     // need to calculate SSEs //
     if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpuf, sse_gpufs);
-    
+
+    if(timing){
+        if(cpu)     output_times(tau_cpu, 0);
+        if(gpu_f)   output_times(tau_gpu_f, 1);
+        if(gpu_fs)  output_times(tau_gpu_fs, 2);
+    }
+
     delete[] u;
     delete[] u_gpu; delete[] u_gpu_femses;
 

@@ -210,6 +210,48 @@ void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
 ////////
 
 
+////////////////// Checks if existing file is empty //////////////////
+int is_empty(FILE *file){
+    size_t size;
+
+    fseek(file, 0, SEEK_END);
+    size=ftell(file);
+
+    return size ? 0 : 1;
+}
+///////
+
+
+/////////////////////// Output timings to file ////////////////////////
+void output_times(Tau &t, int routine){
+    FILE *fptr;
+    std::string fname = "timings/";
+    
+    if(routine==0)      fname.append("cpu_");
+    else if(routine==1) fname.append("gpu");
+    else                fname.append("femses");
+
+    if(dnsspr && routine != 0)   fname.append("dnsspr");
+    else if(dense)              fname.append("dense");
+    else                        fname.append("sparse");
+
+    fname.append("_times.csv");
+
+    fptr = fopen(&fname[0],"a");
+    if(!fptr)
+        printf("Couldn't open file %s\n",&fname[0]);
+
+    if(is_empty(fptr))
+        fprintf(fptr, "n, m, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan\n");
+
+    fprintf(fptr, "%d, %d, %f, %f, %f, %f, %f, %f, %f, %f\n", 
+            n, m, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan);
+
+    fclose(fptr);
+}
+////////
+
+
 /////////////// Allocates and assigns 2d pointers ////////////////////
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m){
     float **arr_tmp, *tmp_vals;

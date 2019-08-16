@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <cassert>
+#include <cstdio>
 #include <vector>
 #include "mesh.h"
 #include "utils.h"
@@ -8,12 +9,10 @@
 #include "gpu_fem.h"
 #include "gpu_femses.h"
 
-#include <cstdio>
-
 //////////// Calculates weighting for assembling single element solution ///////////
 // One weight is evaluated for each node
 // Added back to global memory
-__device__ void calc_weights(float *we, int*cells, float *temp1, int idx, int idy){
+__device__ void calc_weights(float *we, int *cells, float *temp1, int idx, int idy){
     float *Le;
     int v;
 
