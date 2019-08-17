@@ -1,14 +1,37 @@
 \clearpage
 \chapter{Finite Element Method}
-...
 
-\section{Projection Methods}
+This paper focuses its mathematics on implementing the finite element method to solve PDEs. This chapter will go through the necessary mathematics behind each of the steps behind the finite element method such as variational calculus, approximation theory and the finite elements themselves. The chapter also goes through the actual approach itself, alongside the worked example for the case of this study of the Laplace equation.
+
+\section{General Problem}
+
+Before the nuts and bolts of the finite element method are discussed, let us first consider an $n$-dimensional, general n\textsuperscript{th} order PDE of the form,
+\begin{equation}
+	f(\textbf{x}; u(\textbf{x}), \frac{\partial u}{\partial x_1},\dots, \frac{\partial u}{\partial x_n}; \frac{\partial^2 u}{\partial x_1 \partial x_1},\dots, \frac{\partial^2 u}{\partial x_1 \partial x_n}; \dots) = 0,
+\end{equation}
+where $\textbf{x} = \{x_1,x_2,\dots,x_n\}$.
+For a case of a 2-dimensional, 2\textsuperscript{nd} order PDE, we end up with the equation,
+\begin{equation}
+	a \frac{\partial^2 u}{\partial x^2} + b \frac{\partial^2 u}{\partial x \partial y} + c \frac{\partial^2 u}{\partial y^2} + F\left(x,y; u; \frac{\partial u}{\partial x}, \frac{\partial u}{\partial y}\right) = f(x,y).
+\end{equation}
+This can be rewritten, treating the right-hand side as a linear operator, leaving the equation,
+\begin{equation}
+	\mathcal{L}u = f,
+\end{equation}
+which is going to be our entire basis for this study - attempting to approximate the function $u$. This problem can then be bounded by three types of boundary conditions in order to have a unique/non-trivial solution:
+\begin{enumerate}
+	\item Dirichlet condition: $u=g(x,y)$.
+	\item Neumann condition: $\frac{\partial u}{\partial \textbf{n}} = g(x,y)$.
+	\item Robin condition: $\frac{\partial u}{\partial \textbf{n}} + \sigma(s)u = g(x,y)$.
+\end{enumerate}
+\section{Approximation Theory}
 ...
-\section{Finite Elements}
 
 \section{Variational Calculus}
 ...
-\section{General Problem}
+
+\section{Finite Elements}
+...
 
 \section{Implemented Example}
 
