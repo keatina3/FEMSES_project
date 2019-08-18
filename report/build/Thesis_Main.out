@@ -5,14 +5,22 @@
 \BOOKMARK [0][-]{chapter.2}{Finite Element Method}{}% 5
 \BOOKMARK [1][-]{section.2.1}{General Problem}{chapter.2}% 6
 \BOOKMARK [1][-]{section.2.2}{Approximation Theory}{chapter.2}% 7
-\BOOKMARK [1][-]{section.2.3}{Variational Calculus}{chapter.2}% 8
-\BOOKMARK [1][-]{section.2.4}{Finite Elements}{chapter.2}% 9
-\BOOKMARK [1][-]{section.2.5}{Implemented Example}{chapter.2}% 10
-\BOOKMARK [0][-]{chapter.3}{GPU Implementations}{}% 11
-\BOOKMARK [1][-]{section.3.1}{Current Approaches}{chapter.3}% 12
-\BOOKMARK [1][-]{section.3.2}{FEM-SES}{chapter.3}% 13
-\BOOKMARK [1][-]{section.3.3}{Issues???}{chapter.3}% 14
-\BOOKMARK [0][-]{chapter.4}{Results}{}% 15
-\BOOKMARK [1][-]{section.4.1}{Test-bed Architecture}{chapter.4}% 16
-\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 17
-\BOOKMARK [0][-]{Appendix.1.A}{Appendix}{}% 18
+\BOOKMARK [2][-]{subsection.2.2.1}{Least Squares}{section.2.2}% 8
+\BOOKMARK [2][-]{subsection.2.2.2}{Galerkin}{section.2.2}% 9
+\BOOKMARK [2][-]{subsection.2.2.3}{Weighted Residuals}{section.2.2}% 10
+\BOOKMARK [1][-]{section.2.3}{Variational Calculus}{chapter.2}% 11
+\BOOKMARK [2][-]{subsection.2.3.1}{Weak Formulation}{section.2.3}% 12
+\BOOKMARK [2][-]{subsection.2.3.2}{Functionals}{section.2.3}% 13
+\BOOKMARK [1][-]{section.2.4}{Finite Elements}{chapter.2}% 14
+\BOOKMARK [2][-]{subsection.2.4.1}{Cells \046 Basis Functions}{section.2.4}% 15
+\BOOKMARK [2][-]{subsection.2.4.2}{Assembling the Stiffness Matrix}{section.2.4}% 16
+\BOOKMARK [2][-]{subsection.2.4.3}{Enforcing Boundary Conditions}{section.2.4}% 17
+\BOOKMARK [1][-]{section.2.5}{Implemented Example}{chapter.2}% 18
+\BOOKMARK [0][-]{chapter.3}{GPU Implementations}{}% 19
+\BOOKMARK [1][-]{section.3.1}{Current Approaches}{chapter.3}% 20
+\BOOKMARK [1][-]{section.3.2}{FEM-SES}{chapter.3}% 21
+\BOOKMARK [1][-]{section.3.3}{Issues???}{chapter.3}% 22
+\BOOKMARK [0][-]{chapter.4}{Results}{}% 23
+\BOOKMARK [1][-]{section.4.1}{Test-bed Architecture}{chapter.4}% 24
+\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 25
+\BOOKMARK [0][-]{Appendix.1.A}{Appendix}{}% 26

@@ -7,31 +7,230 @@ This paper focuses its mathematics on implementing the finite element method to 
 
 Before the nuts and bolts of the finite element method are discussed, let us first consider an $n$-dimensional, general n\textsuperscript{th} order PDE of the form,
 \begin{equation}
-	f(\textbf{x}; u(\textbf{x}), \frac{\partial u}{\partial x_1},\dots, \frac{\partial u}{\partial x_n}; \frac{\partial^2 u}{\partial x_1 \partial x_1},\dots, \frac{\partial^2 u}{\partial x_1 \partial x_n}; \dots) = 0,
+	f\left(\mathbf{x}; u(\mathbf{x}), \frac{\partial u}{\partial x_1},\dots, \frac{\partial u}{\partial x_n}; \frac{\partial^2 u}{\partial x_1 \partial x_1},\dots, \frac{\partial^2 u}{\partial x_1 \partial x_n}; \dots\right) = 0,
 \end{equation}
-where $\textbf{x} = \{x_1,x_2,\dots,x_n\}$.
-For a case of a 2-dimensional, 2\textsuperscript{nd} order PDE, we end up with the equation,
+where $\mathbf{x} = \{x_1,x_2,\dots,x_n\}$.
+For a case of a 2-dimensional, 2\textsuperscript{nd} order PDE, we end up with the operator,
 \begin{equation}
-	a \frac{\partial^2 u}{\partial x^2} + b \frac{\partial^2 u}{\partial x \partial y} + c \frac{\partial^2 u}{\partial y^2} + F\left(x,y; u; \frac{\partial u}{\partial x}, \frac{\partial u}{\partial y}\right) = f(x,y).
+	\mathcal{L} = a \frac{\partial^2 u}{\partial x^2} + b \frac{\partial^2 u}{\partial x \partial y} + c \frac{\partial^2 u}{\partial y^2} + F\left(x,y; u; \frac{\partial u}{\partial x}, \frac{\partial u}{\partial y}\right).
 \end{equation}
-This can be rewritten, treating the right-hand side as a linear operator, leaving the equation,
+This can be used, applied to a function to leave a PDE,
 \begin{equation}
-	\mathcal{L}u = f,
+	\mathcal{L}u = 0,
 \end{equation}
-which is going to be our entire basis for this study - attempting to approximate the function $u$. This problem can then be bounded by three types of boundary conditions in order to have a unique/non-trivial solution:
+which is going to be our entire basis for this study - attempting to approximate the function $u$. This problem can then be bounded by three types of non-homogeneous boundary conditions in order to be properly posed and have a unique/non-trivial solution:
 \begin{enumerate}
-	\item Dirichlet condition: $u=g(x,y)$.
-	\item Neumann condition: $\frac{\partial u}{\partial \textbf{n}} = g(x,y)$.
-	\item Robin condition: $\frac{\partial u}{\partial \textbf{n}} + \sigma(s)u = g(x,y)$.
+	\item Dirichlet condition: $u=g(s)$.
+	\item Neumann condition: $\frac{\partial u}{\partial \mathbf{n}} = h(s)$.
+	\item Robin condition: $\frac{\partial u}{\partial \mathbf{n}} + \sigma(s)u = k(s)$,
 \end{enumerate}
+where $s$ is he arc length of the boundary $C$ and $\mathbf{n}$ is a vector, externally normal to $C$. How these conditions are imposed and handled will be seen later in the report.
+
 \section{Approximation Theory}
-...
+
+Suppose there exists some function $u(x)$ that we wish to approximate. The most common way to is to estimate the value of the function using a collection of \textit{basis functions} $\psi_i(x)$, and unknown coefficients, $c_i$, giving,
+\begin{equation}
+	u(x) \approx \sum_{i=0}^N c_i\psi_i(x).
+\end{equation}
+There are a collection of ways to construct your basis functions and obtain solutions to the approximation (REFERENCE EQ) and this paper looks at three in particular:
+\begin{itemize}
+	\item least squares.
+	\item Galerkin.
+	\item weighted residuals.
+\end{itemize}
+There are other methods of approximation such as collocation and regression but they are not discussed here. Before these approaches are explained, two things must first be defined. Firstly, consider a function space $V$ defined by the span of set of basis functions,
+\begin{equation}
+	V = \text{span}\{\psi_0,\dots,\psi_N\},
+\end{equation}
+then it can be said the any function $u\in V$ can be written as a linear combination of the basis functions,
+	\begin{equation}
+		u(x) = \sum_i c_i \psi_i. 
+	\end{equation}
+Consider now, functions $f,g$ - the squared norm or inner-product of these two functions is defined as,
+\begin{equation}
+	\langle f,g\rangle = \int f(x)g(x)dx
+\end{equation}
+\subsection{Least Squares}
+Suppose we are given a function $f(x)$ which needs to be approximated by a function $u(x)$ $\in V$ as defined above. The most obvious way to approximate this function would be to minimise the differential between the two, $f-u$. Subbing this into the inner product we are left with,
+\begin{align}
+	e &= \langle f-u, f-u\rangle = \langle f-\sum_i c_i \psi_i,f-\sum_i c_i \psi_i\rangle,\\
+	e &= \langle f,f\rangle - 2~\sum_i c_i\langle f,\psi_i\rangle + \sum_{i,j} c_i c_j \langle\psi_i, \psi_j\rangle. 
+\end{align}
+Of course, now as is well known from optimisation, to minimise this residual function, its derivative must be taken at each of the $N$ points, $\frac{\partial e}{\partial c_i}$. Evaluating and setting $\frac{\partial e}{\partial c_i}$, results in the equation,
+\begin{equation}
+	- \langle f,\psi_i\rangle + \sum_j c_j\langle \psi_i, \psi_j\rangle = 0,\quad i \in \{0,\dots,N\},
+\end{equation}
+which can equally be written as,
+\begin{equation}
+	\sum_j A_{i,j}c_j = b_i,
+\end{equation}
+where,
+\begin{align}
+	A_{i,j} &= \langle \psi_i, \psi_j\rangle,\\
+	b_i &= \langle f, \psi_i \rangle.
+\end{align}
+Now there is a system of linear equations which can be solved by usual means to obtain the approximation $u(x)$ of the function $f(x)$. Mathematically, it is equivalent to say that the method of least squares utilises the inner-product of the residuals, and solves by minimising it,
+\begin{equation}
+	\min_{c_0,\dots,c_N} \langle e, e\rangle,
+\end{equation}
+giving the system of $N+1$ equations,
+\begin{equation}
+	\left\langle e, \frac{\partial e}{\partial c_i}\right\rangle = 0, \quad i\in\{1,\dots,N\}.
+\end{equation}
+
+\subsection{Galerkin}
+
+	In the previous subsection, it was seen that the least squares method operates by minimising the error term between the two functions, or alternatively, forcing the error to be orthogonal to the function space $V$. However, in reality, we do not actually know the true error as $f$ is not explicitly known and so instead a residual $R$ is used. Take for example, Eq.~(REFERENCE HERE), if we sub in an approximation $\hat{u} = \sum_i c_i \psi_i$, we get,
+\begin{equation}
+	R = \mathcal{L}\left(\sum_i c_i \psi_i\right) \neq 0.
+\end{equation}
+Now, the residual $R$ can be made orthogonal to the space $V$ by imposing,
+\begin{equation}
+	\langle R, v \rangle=0, \forall v \in V,
+\end{equation}
+and since any function in $V$ can be approximated using (REFERENCE), it can be said that,
+\begin{equation}
+	\langle R, \psi_i \rangle=0,\quad i\in\{1,\dots,N\},
+\end{equation}
+thus leaving another system of linear equations to solve. This is also known as projecting $R$ onto $V$.
+
+\subsection{Weighted Residuals}
+
+The method of weighted residuals is a relatively simple generalisation of the standard Galerkin method. Rather than imposing that the residual is orthogonal to the space $V$ known as the trial space, it is chosen to be orthogonal to some other space $W$, also known as the test space. This leaves the equation,
+\begin{equation}
+	\langle R, v \rangle=0, \forall v \in W,
+\end{equation},
+where,
+\begin{equation}
+	W = \text{span}\{w_0,\dots,w_n\}
+\end{equation}
+and so this leaves,
+\begin{equation}
+	\langle R, w_i \rangle=0,\quad i\in\{1,\dots,N\},
+\end{equation}
+again, leaving a system of $N+1$ linear equations.
 
 \section{Variational Calculus}
-...
+
+\subsection{Weak Formulation}
+As it should be clear by now, the overall aim of the finite element method is the minimise a residual in order to get an approximation of the function $u$ as seen in (REFERENCE). What may not seem immediately obvious at a first glance, but an important thing to factor in, (REFERENCE) is not how the PDE problem is usually posed when trying to apply FEM. In fact, usually, the problem is posed in its \textit{weak formulation}. The weak form of this equation is one which contains at most first-order derivative, as opposed to its strong form containing second-order derivatives. Usually, if only approximating a function, this issue wouldn't crop up. However, when dealing with calculus of variations, one must remember that boundary conditions must be imposed and reducing the order of derivatives weakens the demands on the test and trial functions, allowing them to not need be continuous in their second derivative.
+
+Take for example a general PDE defined,
+\begin{align}
+	\mathbf{v}\cdot\nabla u + \beta u &= \nabla\cdot(\alpha\nabla u) + f,\quad  \mathbf{x} \in \Omega \\
+	u &= u_D,\quad \mathbf{x} \in \Gamma_D\\
+	-\alpha\frac{\partial u}{\partial \mathbf{n}} &= g,\quad \mathbf{x} \in \Gamma_N,
+\end{align}
+multiplying this by a test function $v$ and getting the inner product over the domain $\Omega$, just like was seen in the method of weighted residuals leaves the equation,
+\begin{equation}
+		\int_{\Omega}(\mathbf{v}\cdot\nabla u + \beta u)v~d\mathbf{x} = \int_{\Omega}\nabla\cdot(\alpha\nabla u)v~d\mathbf{x} + \int_{\Omega}fv~d\mathbf{x}.
+\end{equation}
+Applying Green's lemma to the second-order term then results in the following equation,
+\begin{equation}
+	\int_{\Omega}\nabla\cdot(\alpha\nabla u)v~d\mathbf{x} = -\int_{\Omega}\alpha\nabla u\cdot \nabla v~d\mathbf{x} + \oint_{\Gamma} \alpha \frac{\partial u}{\partial \mathbf{n}} v~ds + \int fv~d\mathbf{x}.
+\end{equation}
+Since the boundary integral is $0$ on $\Gamma_D$ and $g$ on $\Gamma_N$, it can be rewritten as,
+\begin{equation}
+	\int_{\Omega}\nabla\cdot(\alpha\nabla u)v~d\mathbf{x} = -\int_{\Omega}\alpha\nabla u\cdot \nabla v~d\mathbf{x} + \oint_{\Gamma_N} gv~ds + \int fv~d\mathbf{x},
+\end{equation}
+and the entire PDE can be shown in terms of the inner product defined in (REFERENCE),
+\begin{equation}
+	\left\langle\mathbf{v}\cdot\nabla u,v\right\rangle + \left\langle\beta u,v\right\rangle = -\left\langle\alpha\nabla u, \nabla v\right\rangle + \left\langle g,v\right\rangle_N + \left\langle f,v\right\rangle.
+\end{equation}
+This PDE has now been transformed into its weak formulation. Looking at the (REF SECTION), it's quite obvious now that $u$ can be approximated by subbing in an estimate, applying the method of weighted residuals and achieving a system of linear equations. Thus the solution space has been reduced to a finite dimension.
+
+\subsection{Functionals}
+
+While regular calculus deals with changes in ordinary variables, calculus of variations by contrast deals with changes in functions - handling special functions  known as functionals which take functions as inputs compared to just variables. These are beneficial for the FEM as if we consider the problem posed in the previous section, much of what is trying to be accomplished is finding the function which minimises an integral i.e. minimising a functional. Take for example, the functional 
+\begin{equation}
+	F[y(x)] = \int_\Omega f(x, y(x),y'(x))~dx,
+\end{equation}
+in this instance, one would search for what function $y(x)$ would minimise the integral.
+
+
+Before discussing how to derive these functionals, first look at an abstract notation for variational forms we saw in the previous sections. Consider a function with trial functions $u$, and test functions $v$, supported on $V$, then define the problem as,
+\begin{equation}
+	a(u,v) = L(v),\quad v\in V,
+\end{equation}
+where $a(u,v)$ is in bilinear form and contains all terms which have both test and trial functions, whereas, $L(v)$ is linear, containing only test functions. This is equivalent to the integrals seen in (REFERENCE) which we wish to minimise. This equation is equivalent to minimising the functional,
+\begin{equation}
+	I[v] = \frac{1}{2}a(u,v) - L(v). 
+\end{equation}
+NEED TO CITE THIS....
+In a multidimensional case, consider the PDE,
+\begin{align}
+	-\nabla(\alpha\nabla u) + \beta u &= f,\quad \mathbf{x} \in \Omega\\
+	u &= u_D,\quad \mathbf{x} \in \Gamma_D\\
+	-\alpha \frac{\partial u}{\partial \mathbf{n}} + \sigma(s) u &= k,\quad \mathbf{x}\in \Gamma_R	
+\end{align}
+ADD DERIVATION HERE.
+The resulting functional is,
+\begin{equation}
+	I[u] = \int_\Omega (\nabla u\cdot \alpha \nabla u) + \beta u^2 - 2 u f)~d\mathbf{x} + \oint_{\Gamma_R} (\sigma u^2 - 2 u k)~ds
+\end{equation}
+These functionals are an alternative and mathematically equivalent variant on attempting to minimising the problem at hand and a commonly seen in papers discussing the FEM. 
+PAGE 234!!
 
 \section{Finite Elements}
-...
+
+Up to this point, the basis functions that have been used have all been defined across the entire domain $\Omega$. In this section, piecewise polynomial basis functions will be used, defined with compact support across what are known as elements or cells. These cells will contribute their own weighted value to an assembly process, generating an overall linear system $Lu = b$, where $L$ is known as the global stiffness matrix and $b$ the stress vector. This system will result in the solution to the PDE problem at hand.
+
+\subsection{Cells \& Basis Functions}
+
+For illustrative purposes, a single dimensional problem is used here to demonstrate the actual concept of the finite elements or cells. Consider now a domain,
+\begin{equation}
+	\Omega = \Omega^{(0)}\cup\Omega^{(1)}\cdots\Omega^{(N_e)},
+\end{equation}
+where 
+\begin{equation}
+	\Omega^{(i)}\cap\Omega^{(j)} = \null \forall i,j \in \{0,\dots,N_e\}.
+\end{equation}
+Within this domain, define $N_n$ nodes, equally spaced out. Suppose a node has a \textit{global index} $i \in \{0,\dots,d\}$ and are laid out in no particular order. We define the node's \textit{local index} in cell $e$ as $r \in \{0,\dots,d\}$, again these do not need to necessarily be in order or equally spaced. No that the local and global numbering of the nodes are defined, we define the function,
+\begin{equation}
+	i = q(e,r),
+\end{equation}
+where $q(e,r)$ is a mapping function from local index $r$ in cell $e$, back to the node's global index across the domain. Figure (REFERENCE) demonstrates these definitions. Now, basis functions must be defined across the domain in order to make an approximation for $u$. Consider a node, globally numbered $i$, locally numbered $r$, on cell $e$, with $d+1$ nodes in said cell, we define its corresponding basis function $\psi_i(x)$ as a Lagrange polynomial of degree $d$, defined,
+\begin{equation}
+	l_d(x) = \prod_{\substack{0\leq m\leq k \\ m\neq j}}\frac{x-x_m}{x_j-x_m} 
+\end{equation}
+which is $1$ at node $r$ and $0$ everywhere else. If the node is internal, than the function is simply defined as is, if the node is shared with a neighbouring cell, then the basis function is a piecewise combination of the Lagrange polynomial from both cells which share the node. The value $d$ is known as the degree of freedom and is related to the order of polynomial used as the basis function - the higher the order, the more nodes per cell. Figures BLAH BLAH illustrate these piecewise polynomials in both 1D and 2D. Now it can be said that
+\begin{equation}
+	u(x) \approx \sum_{\mathcal{I}_s} c_i \psi_i(x),
+\end{equation}
+where $\mathcal{I}_s$ is the set of indices for which $u(x_i)$ is unknown.
+
+\subsection{Assembling the Stiffness Matrix}
+
+The next and most obvious step to do is a linear system must be assembled from these basis functions in order to solve for these unknowns $\{c)i\}_{\mathcal{I}_s}$ and achieve an approximation for $u$. It was shown in REFERENCE SECTION, that a variational form can be written in an abstract means form as,
+\begin{equation}
+	a(u,v) = L(v),\quad v\in V.
+\end{equation}
+With that in mind, consider the PDE (REFERENCE), moving all the terms with both test and trial function to the left-hand side, this can be rewritten as,
+\begin{equation}
+	\left\langle\mathbf{v}\cdot\nabla u,v\right\rangle + \left\langle\beta u,v\right\rangle + \left\langle\alpha\nabla u, \nabla v\right\rangle = \left\langle g,v\right\rangle_N + \left\langle f,v\right\rangle,
+\end{equation}
+or subbing in (REFERENCE), leaves,
+\begin{equation}
+	\sum_{\mathcal{I}_s}\left(\left\langle\mathbf{v}\cdot\nabla \psi_j,\psi_i\right\rangle + \left\langle\beta \psi_j,\psi_i\right\rangle + \left\langle\alpha\nabla \psi_j, \nabla \psi_i\right\rangle\right)c_j = \left\langle g,\psi_i\right\rangle_N + \left\langle f,\psi_i\right\rangle,
+\end{equation}
+which clearly demonstrates a linear system,
+\begin{equation}
+	\sum_{\mathcal{I}_s} A_{i,j}c_j = b_i,
+\end{equation}
+where,
+\begin{align}
+	A_{i,j} &= \left\langle\mathbf{v}\cdot\nabla \psi_j,\psi_i\right\rangle + \left\langle\beta \psi_j,\psi_i\right\rangle + \left\langle\alpha\nabla \psi_j, \nabla \psi_i\right\rangle\\
+	b_i &= \left\langle g,\psi_i\right\rangle_N + \left\langle f,\psi_i\right\rangle.
+\end{align}
+Equation (REFERENCE) should clearly demonstrate now why it was important to convert the PDE into its weak formulation as now we have first-order derivatives of the basis and trial functions which need to be continuous. Had it been left in strong form these would have been second-order.
+
+This has now shown what the overall stiffness matrix will be comprised of but how does one achieve this from the elements and their basis functions? Remembering that these basis functions are compactly supported, it can be seen that $A_{i,j}$ can be assembled by incrementing the integral result from all cells which contain nodes $i,j$  i.e.
+\begin{align}
+	A_{i,j} &\coloneqq A_{q(e,r),q(e,s)} + \tilde{A}_{r,s}^{(e)}\\
+	b_i &\coloneqq b_{q(e,r)} + \tilde{b}_r^{(e)},
+\end{align}
+where $\tilde{A}_{r,s}^{(e)}$ and $\tilde{b}_r^{(e)}$ are known as the element matrix and element vector, respectively.
+\subsection{Enforcing Boundary Conditions}
 
 \section{Implemented Example}
 
