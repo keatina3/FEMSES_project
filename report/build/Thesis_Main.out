@@ -16,11 +16,13 @@
 \BOOKMARK [2][-]{subsection.2.4.2}{Assembling the Stiffness Matrix}{section.2.4}% 16
 \BOOKMARK [2][-]{subsection.2.4.3}{Enforcing Boundary Conditions}{section.2.4}% 17
 \BOOKMARK [1][-]{section.2.5}{Implemented Example}{chapter.2}% 18
-\BOOKMARK [0][-]{chapter.3}{GPU Implementations}{}% 19
-\BOOKMARK [1][-]{section.3.1}{Current Approaches}{chapter.3}% 20
-\BOOKMARK [1][-]{section.3.2}{FEM-SES}{chapter.3}% 21
-\BOOKMARK [1][-]{section.3.3}{Issues???}{chapter.3}% 22
-\BOOKMARK [0][-]{chapter.4}{Results}{}% 23
-\BOOKMARK [1][-]{section.4.1}{Test-bed Architecture}{chapter.4}% 24
-\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 25
-\BOOKMARK [0][-]{Appendix.1.A}{Appendix}{}% 26
+\BOOKMARK [2][-]{subsection.2.5.1}{Problem Statement}{section.2.5}% 19
+\BOOKMARK [2][-]{subsection.2.5.2}{Analytical Solution}{section.2.5}% 20
+\BOOKMARK [0][-]{chapter.3}{GPU Implementations}{}% 21
+\BOOKMARK [1][-]{section.3.1}{Current Approaches}{chapter.3}% 22
+\BOOKMARK [1][-]{section.3.2}{FEM-SES}{chapter.3}% 23
+\BOOKMARK [1][-]{section.3.3}{Issues???}{chapter.3}% 24
+\BOOKMARK [0][-]{chapter.4}{Results}{}% 25
+\BOOKMARK [1][-]{section.4.1}{Test-bed Architecture}{chapter.4}% 26
+\BOOKMARK [0][-]{chapter.5}{Conclusion}{}% 27
+\BOOKMARK [0][-]{Appendix.1.A}{Appendix}{}% 28

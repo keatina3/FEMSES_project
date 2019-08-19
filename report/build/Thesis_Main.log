@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2019.1.20)  18 AUG 2019 21:18
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017/Debian) (preloaded format=pdflatex 2019.1.20)  19 AUG 2019 13:00
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -739,7 +739,7 @@ Package caption Info: End \AtBeginDocument code.
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
 (./Template/Title.tex
-<./Figures/tcd.jpg, id=108, 1719.42375pt x 593.21625pt>
+<./Figures/tcd.jpg, id=116, 1719.42375pt x 593.21625pt>
 File: ./Figures/tcd.jpg Graphic file (type jpg)
 <use ./Figures/tcd.jpg>
 Package pdftex.def Info: ./Figures/tcd.jpg  used on input line 21.
@@ -821,30 +821,30 @@ File: omscmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10.95> not available
 (Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 37.
  [4] [5] [6]
-[7] [8]) (./Sections/GPU.tex [9]
+[7] [8] [9] [10] [11] [12] [13]) (./Sections/GPU.tex [14]
 Chapter 3.
-) (./Sections/Results.tex [10
+) (./Sections/Results.tex [15
 
 
 ]
 Chapter 4.
-) (./Sections/Conclusion.tex [11
+) (./Sections/Conclusion.tex [16
 
 
 ]
 Chapter 5.
-) [12
+) [17
 
 
 ]
 No file Thesis_Main.bbl.
-(./Appendices/Appendix_1.tex [13
+(./Appendices/Appendix_1.tex [18
 
 ]
 Appendix A.
 )
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 128.
- [14
+ [19
 
 
 ]
@@ -857,10 +857,10 @@ Package rerunfilecheck Info: File `Thesis_Main.out' has not changed.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 128.
  ) 
 Here is how much of TeX's memory you used:
- 8647 strings out of 494805
- 127770 string characters out of 6178000
- 218962 words of memory out of 5000000
- 11721 multiletter control sequences out of 15000+600000
+ 8690 strings out of 494805
+ 128342 string characters out of 6178000
+ 221953 words of memory out of 5000000
+ 11723 multiletter control sequences out of 15000+600000
  20249 words of font info for 50 fonts, out of 8000000 for 9000
  81 hyphenation exceptions out of 8191
  36i,9n,38p,1386b,363s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -885,11 +885,12 @@ type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf-dist/fonts/type1/p
 ublic/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/am
 sfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/c
 m/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy
-8.pfb>
-Output written on build/Thesis_Main.pdf (21 pages, 480135 bytes).
+8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10
+.pfb>
+Output written on build/Thesis_Main.pdf (26 pages, 506488 bytes).
 PDF statistics:
- 776 PDF objects out of 1000 (max. 8388607)
- 357 compressed objects within 4 object streams
- 102 named destinations out of 1000 (max. 500000)
- 214 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 863 PDF objects out of 1000 (max. 8388607)
+ 428 compressed objects within 5 object streams
+ 143 named destinations out of 1000 (max. 500000)
+ 230 words of extra memory for PDF output out of 10000 (max. 10000000)
 
