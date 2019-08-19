@@ -147,13 +147,30 @@ void FEM::solve(Tau &t){
     end = std::chrono::high_resolution_clock::now(); 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.assembly += duration.count();
-
+   
+    int count = 0;
+    int count2 = 0; 
+    for(std::vector<std::vector<std::vector<float> > >::iterator e=Le.begin(); e!=Le.end(); ++e){
+        for(std::vector<std::vector<float> >::iterator i=(*e).begin(); i!=(*e).end(); ++i){
+            for(std::vector<float>::iterator j=(*i).begin(); j!=(*i).end(); ++j){
+                std::cout << *j << " ";
+            }
+            std::cout <<" b = " << be[count][count2] << std::endl;
+            count2++;
+        }
+        count++;
+        count2 = 0;
+        std::cout << std::endl;
+        
+    }
+    print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
     /////////////////////////////////////////////////////
     
     //////////// SOLVING LINEAR SYSTEM //////////////////
     
     std::cout << "      Solving linear system...\n";
     if(!dense) std::cout << "      (nnz = " << nnz << ")\n";
+    
     start = std::chrono::high_resolution_clock::now();
     if(dense){
         info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);

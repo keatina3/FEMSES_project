@@ -71,12 +71,17 @@ __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
     __syncthreads();
     
     for(int i=0; i<3; i++){
-        if(i==idy)
-            continue;
+        if(i==idy)  continue;
+
         ue_new -= Le_shrd[(idy*3) + i] * ue_old[i];
     }
     ue_new /= Le_shrd[(idy*3) + idy];
 
+    /*
+    if(idx==2 && idy ==0){
+        printf("u_new = %f\n", ue_new);
+    }
+    */
     __syncthreads();
     atomicExch(&ue[(idx*3) + idy], ue_new); // transferring element solution of u to global mem
 }
@@ -89,7 +94,8 @@ __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
 __global__ void assemble_elems_gpu(
                 float *Le, 
                 float *be, 
-                float *we, 
+                float *we,
+                float *ue,
                 float *vertices, 
                 int *cells, 
                 int *is_bound, 
@@ -104,6 +110,7 @@ __global__ void assemble_elems_gpu(
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         calc_weights(we, cells, temp1, idx, idy);
         elems_glob_cpy(Le, be, temp1, idx, idy);
+        ue[(idx*3) + idy] = 1.0;
     }
 }
 //////
@@ -117,10 +124,35 @@ __global__ void local_sols(float *Le, float *be, float *ue){
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[]; 
 
+    /*
+    if(idx ==0 && idy == 0){
+        for(int e=0; e<gridDim.x; e++){
+            for(int i=0; i<3; i++){
+                for(int j=0; j<3; j++){
+                    printf("%f ", Le[(e*9) + (i*3) + j]);
+                }
+                printf(" b = %f,\n",be[(e*3) + i]);
+            }
+            printf("\n");
+        }
+    }
+    */
+
     if(idx < gridDim.x && idy < blockDim.y){
         elems_shared_cpy(Le, be, temp1, idx, idy);
         jacobi_iter(ue, temp1, idx, idy);
     }
+   
+    /* 
+    if(idx == 2 && idy == 0){
+        for(int i=0; i<3; i++){
+            for(int j=0;j<3;j++){
+                printf("%f ", temp1[(i*3) + j]);
+            }
+            printf("\n");
+        }
+    }
+    */
 
 }
 ///////
@@ -141,6 +173,12 @@ __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells)
         weight = Lii/we[v];
         
         atomicAdd(&u[v], weight * ue[(idx*3) + idy]);
+        /*
+        if(idy==0 && idx ==0){
+            for(int i=0; i<16; i++)
+                printf("%f\n", we[i]);
+        }
+        */
     }
 }
 ///////
@@ -223,8 +261,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     cudaEventSynchronize(finish);
     cudaEventElapsedTime(&t.transfer, start, finish);
 
-    cudaMemset(up_gpu, 0.0, order*sizeof(float));
-    cudaMemset(un_gpu, 0.0, order*sizeof(float));
+    cudaMemset(up_gpu, 0, order*sizeof(float));
 
     ///////////////////////////////////////////////////////////////////////////////////
 
@@ -248,7 +285,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     cudaEventRecord(start,0);
     
     assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>
-                    (Le, be, we, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+                    (Le, be, we, ue, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
 
     cudaEventRecord(finish);
     cudaEventSynchronize(finish);
@@ -268,9 +305,10 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     while(err > EPS && count < MAX_ITERS){
         // getting local solutions ue and storing on global mem //
         local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
-  
+        
         // setting un_gpu to 0 //
         cudaMemset(un_gpu, 0.0, order*sizeof(float));
+        
         // assembling global solution estimate from weightings //
         glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, un_gpu, ue, cells_gpu);
 
@@ -298,7 +336,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     //////////////////////////////////////////////////////////////////////////////////
 
     
-    //////////////// Tranferring soln to host from device & tidy //////////////////////
+    //////////////// Tranferring soln to host from device & tidy /////////////////////
 
     std::cout << "      Transferring result back to host...\n";
     
