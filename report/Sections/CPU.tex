@@ -82,12 +82,13 @@ IJ = [ 0 2 5 7 10 13 ].
 \end{lstlisting}
 Clearly here, IJ has dimensions $m+1$, where $m$ is the number of columns.
 
-The last commonly used sparse storage format is COO, which stores the values and their coordinates in both row and column. Keeping with the same example gives,
+The last commonly used sparse storage format is \textit{coordinate lists} or COO, which stores the values and their coordinates in both row and column. Keeping with the same example gives,
 \begin{lstlisting}
  A = [ 3 1 20 15 1 4 1 9 1 6 8 7 11 ]
 IA = [ 0 0 1 1 1 2 2 3 3 3 3 4 5 ]
-IJ = [ 0 1 1 2 4 3 4 0 1 2 3 3 4 ]
+IJ = [ 0 1 1 2 4 3 4 0 1 2 3 3 4 ].
 \end{lstlisting}
+This can of course be done in either row-major or column-major directions.
 \subsection{Graph Theory}
 
 Looking at the sparsity of a matrix, can be equated to graph traversal problems in graph theory.
