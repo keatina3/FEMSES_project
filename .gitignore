@@ -1,0 +1,12 @@
+*.o
+*.csv
+*.log
+*.aux
+*.lof
+*.lot
+*.out
+*.toc
+*.gz
+*.sty
+fem_solver
+References/*
