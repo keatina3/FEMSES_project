@@ -175,6 +175,10 @@ PAGE 234!!
 
 Up to this point, the basis functions that have been used have all been defined across the entire domain $\Omega$. In this section, piecewise polynomial basis functions will be used, defined with compact support across what are known as elements or cells. These cells will contribute their own weighted value to an assembly process, generating an overall linear system $Lu = b$, where $L$ is known as the global stiffness matrix and $b$ the stress vector. This system will result in the solution to the PDE problem at hand.
 
+\begin{remark}
+	As is convention in the FEM to refer to basis functions as $\varphi(x)$, from here on out in the paper, $\psi_i(x)$ will be replaced by $\varphi_i(x)$ - though note they are completely equivalent.
+\end{remark}
+
 \subsection{Cells \& Basis Functions}
 
 For illustrative purposes, a single-dimensional problem is used here to demonstrate the actual concept of the finite elements or cells. Consider now a domain,
@@ -189,13 +193,13 @@ Within this domain, define $N_n$ nodes, equally spaced out. Suppose a node has a
 \begin{equation}
 	i = q(e,r),
 \end{equation}
-where $q(e,r)$ is a mapping function from local index $r$ in cell $e$, back to the node's global index across the domain. Figure (REFERENCE) demonstrates these definitions. Now, basis functions must be defined across the domain in order to make an approximation for $u$. Consider a node, globally numbered $i$, locally numbered $r$, on cell $e$, with $d+1$ nodes in said cell, we define its corresponding basis function $\psi_i(x)$ as a Lagrange polynomial of degree $d$, defined,
+where $q(e,r)$ is a mapping function from local index $r$ in cell $e$, back to the node's global index across the domain. Figure (REFERENCE) demonstrates these definitions. Now, basis functions must be defined across the domain in order to make an approximation for $u$. Consider a node, globally numbered $i$, locally numbered $r$, on cell $e$, with $d+1$ nodes in said cell, we define its corresponding basis function $\varphi_i(x)$ as a Lagrange polynomial of degree $d$, defined,
 \begin{equation}
 	l_d(x) = \prod_{\substack{0\leq m\leq k \\ m\neq j}}\frac{x-x_m}{x_j-x_m} 
 \end{equation}
 which is $1$ at node $r$ and $0$ everywhere else. If the node is internal, than the function is simply defined as is, if the node is shared with a neighbouring cell, then the basis function is a piecewise combination of the Lagrange polynomial from both cells which share the node. The value $d$ is known as the degree of freedom and is related to the order of polynomial used as the basis function - the higher the order, the more nodes per cell. More often than not, cells are made up into triagular or tetrahedral shapes, however, they can if ones wishes be any shape one wishes such as squares or octagons as long as the degree of freedom mapping is correct. Figures BLAH BLAH illustrate these piecewise polynomials in both 1D and 2D. Now it can be said that
 \begin{equation}
-	u(x) \approx \sum_{\mathcal{I}_s} c_i \psi_i(x),
+	u(x) \approx \sum_{\mathcal{I}_s} c_i \varphi_i(x),
 \end{equation}
 where $\mathcal{I}_s$ is the set of indices for which $u(x_i)$ is unknown.
 
@@ -211,7 +215,7 @@ With that in mind, consider the PDE (REFERENCE), moving all the terms with both 
 \end{equation}
 or subbing in (REFERENCE), leaves,
 \begin{equation}
-	\sum_{\mathcal{I}_s}\left(\left\langle\mathbf{v}\cdot\nabla \psi_j,\psi_i\right\rangle + \left\langle\beta \psi_j,\psi_i\right\rangle + \left\langle\alpha\nabla \psi_j, \nabla \psi_i\right\rangle\right)c_j = \left\langle g,\psi_i\right\rangle_N + \left\langle f,\psi_i\right\rangle,
+	\sum_{\mathcal{I}_s}\left(\left\langle\mathbf{v}\cdot\nabla \varphi_j,\varphi_i\right\rangle + \left\langle\beta \varphi_j,\varphi\right\rangle + \left\langle\alpha\nabla \varphi_j, \nabla \varphi_i\right\rangle\right)c_j = \left\langle g,\varphi_i\right\rangle_N + \left\langle f,\varphi_i\right\rangle,
 \end{equation}
 which clearly demonstrates a linear system,
 \begin{equation}
@@ -219,8 +223,8 @@ which clearly demonstrates a linear system,
 \end{equation}
 where,
 \begin{align}
-	A_{i,j} &= \left\langle\mathbf{v}\cdot\nabla \psi_j,\psi_i\right\rangle + \left\langle\beta \psi_j,\psi_i\right\rangle + \left\langle\alpha\nabla \psi_j, \nabla \psi_i\right\rangle,\\
-	b_i &= \left\langle g,\psi_i\right\rangle_N + \left\langle f,\psi_i\right\rangle.
+	A_{i,j} &= \left\langle\mathbf{v}\cdot\nabla \varphi_j,\varphi_i\right\rangle + \left\langle\beta \varphi_j,\varphi_i\right\rangle + \left\langle\alpha\nabla \varphi_j, \nabla \varphi_i\right\rangle,\\
+	b_i &= \left\langle g,\varphi_i\right\rangle_N + \left\langle f,\varphi_i\right\rangle.
 \end{align}
 Equation (REFERENCE) should clearly demonstrate now why it was important to convert the PDE into its weak formulation as now we have first-order derivatives of the basis and trial functions which need to be continuous. Had it been left in strong form these would have been second-order.
 
@@ -231,8 +235,8 @@ This has now shown what the overall stiffness matrix will be calculated over the
 \end{align}
 where $\tilde{A}^{(e)}$ and $\tilde{b}^{(e)}$ are known as the element matrix and element vector, respectively and $r,$ are local node numberings as defined previously. Both of these evaluate the same integrals but over their compact support instead of the entire domain, so looking at equations (REFERENCE REFERENCE), both of their element evaluated counterparts on cell $e$ become,
 \begin{align}
-	\tilde{A}_{r,s}^{(e)} &= \left\langle\mathbf{v}\cdot\nabla \psi_j,\psi_i\right\rangle_{\Omega^{(e)}} + \left\langle\beta \psi_j,\psi_i\right\rangle_{\Omega^{(e)}} + \left\langle\alpha\nabla \psi_j, \nabla \psi_i\right\rangle_{\Omega^{(e)}}, \\
-	\tilde{b}_r^{(e)} &= \left\langle g,\psi_i\right\rangle_{\Gamma_N\cap\Omega^{(e)}} + \left\langle f,\psi_i\right\rangle_{\Omega^{(e)}}.
+	\tilde{A}_{r,s}^{(e)} &= \left\langle\mathbf{v}\cdot\nabla \varphi_j,\varphi_i\right\rangle_{\Omega^{(e)}} + \left\langle\beta \varphi_j,\varphi_i\right\rangle_{\Omega^{(e)}} + \left\langle\alpha\nabla \varphi_j, \nabla \varphi_i\right\rangle_{\Omega^{(e)}}, \\
+	\tilde{b}_r^{(e)} &= \left\langle g,\varphi_i\right\rangle_{\Gamma_N\cap\Omega^{(e)}} + \left\langle f,\varphi_i\right\rangle_{\Omega^{(e)}}.
 \end{align}
 Take the small P1, 2D example seen in Figure (REFERENCE). Clearly, in this example, each cell contains three nodes, so the resulting element matrix $\tilde{A}^{(e)} \in \mathbb{R}^{3\times 3}$ and element vector $\tilde{b}^{(e)} \in \mathbb{R}^3$. Evaluating both of these, by the nature of all the calculations being dot products, results in a symmetric positive definite element matrix,
 \begin{equation}
@@ -279,7 +283,7 @@ Boundary conditions have been conveniently ignored up to this point in the repor
 
 The Dirichlet conditions on the other hand, are a little more tricky - these must be manually enforced and are thus known as \textit{essential boundary conditions}. Robin conditions contain both essential and natural components so won't be looked at here as you simply separate the two and handle as usual. There are a number of ways of handling the essential boundaries, one would be to compress your degrees of freedom set $\mathcal{I}_s$, such that it no longer contains any of the nodes which are boundaries and are this emitted from the stiffness matrix, since $A \in \mathbb{R}^{\text{dim} \mathcal{I}_s \times \text{dim}\mathcal{I}_s}$. In this instance, the function being approximated would look like,
 \begin{equation}
-	u(x) \approx \sum_{j\in\mathcal{I}_b}U_j\psi_j(x) + \sum_{j\in\mathcal{I}_s}c_j\psi_{\tilde j}(x),
+	u(x) \approx \sum_{j\in\mathcal{I}_b}U_j\varphi_j(x) + \sum_{j\in\mathcal{I}_s}c_j\varphi_{\tilde j}(x),
 \end{equation}
 where $\mathcal{I}_b$ is the set of all boundary points, $U_j$ is the boundary value at node $j$ and $\tilde{j}$ is the updated node index for $\mathcal{I}_s$ less the boundary nodes. This can cause some hassle with bookkeeping as you are messing around with the nodes' indices and can cause issues when mapping back to the global indices.
 
@@ -290,7 +294,7 @@ Instead of this approach, modification of the linear system approach was taken, 
 	\item $A_{j,j} = 1$,
 	\item $b_j = U_j$.
 \end{enumerate}
-Looking at the example in (REFERENCE), if supposing an essential boundary condition $U_0$ is enforced at global node $0$, the updated element matrix would be,
+Looking at the example in (REFERENCE), if supposing an essential boundary condition $U_0$ is enforced at local node $0$, the updated element matrix would be,
 \begin{equation}
 	\tilde{A}^{(e)} =
 	\left[\begin{matrix} 
@@ -312,13 +316,13 @@ These can now be assmebled into the global stiffness matrix and stress vector ju
 
 \subsubsection{Physical or Local Coordinates}
 
-The last outstanding piece of mathematics that needs to be touched upon in the FEM is the coordinate mapping of the nodes. In EQREFERENCE,  clearly the integrals or inner products are all calculated with respect to the pysical coordinates of $x$ across the domain within which they are defined - compact or whole domain. However, as was mentioned, much of the advantage of the FEM is that you can shape a complex domain into many smaller domains with easier to calculate elements. In this case, it might be much more within one's interest to locally define the coordinates in each cell and then map back. For example, take a 2D, P1 case again, it might be much more convenient for all the node's local coordinates to be (0,0), (0,1) and (1,0). For example, denote the local coordinate system by $\mathbf{X}$ and the new, easier local basis functions $\tilde\psi_r(\mathbf{X})$, consider the integral,
+The last outstanding piece of mathematics that needs to be touched upon in the FEM is the coordinate mapping of the nodes. In EQREFERENCE,  clearly the integrals or inner products are all calculated with respect to the pysical coordinates of $x$ across the domain within which they are defined - compact or whole domain. However, as was mentioned, much of the advantage of the FEM is that you can shape a complex domain into many smaller domains with easier to calculate elements. In this case, it might be much more within one's interest to locally define the coordinates in each cell and then map back. For example, take a 2D, P1 case again, it might be much more convenient for all the node's local coordinates to be (0,0), (0,1) and (1,0). For example, denote the local coordinate system by $\mathbf{X}$ and the new, easier local basis functions $\tilde\varphi_r(\mathbf{X})$, consider the integral,
 \begin{equation}
-	\int_{\Omega^{(e)}} \alpha(\mathbf{x})\nabla \psi_i(\mathbf{x}) \cdot \nabla \psi_j(\mathbf{x})~d\mathbf{x}.
+	\int_{\Omega^{(e)}} \alpha(\mathbf{x})\nabla \varphi_i(\mathbf{x}) \cdot \nabla \varphi_j(\mathbf{x})~d\mathbf{x}.
 \end{equation}
 using the transformation,
 \begin{equation}
-	\nabla_\mathbf{X}\tilde\psi_r(\mathbf{X}) = \mathbf{J}\cdot \psi_i(\mathbf{x}),
+	\nabla_\mathbf{X}\tilde\varphi_r(\mathbf{X}) = \mathbf{J}\cdot \varphi_i(\mathbf{x}),
 \end{equation}
 where $\mathbf{J}$ is the Jacobian,
 \begin{equation}
@@ -330,13 +334,13 @@ where $\mathbf{J}$ is the Jacobian,
 \end{equation}
 Subbing these in we get the equivalency,
 \begin{equation}
-	\int_{\Omega^{(e)}} \alpha(x)\nabla \psi_i(\mathbf{x}) \cdot \nabla \psi_i(\mathbf{x})~d\mathbf{x} = \int_{\tilde{\Omega}^{(e)}} \alpha(\mathbf{x}(\mathbf{X}))(\mathbf{J}^{-1}\cdot\nabla_\mathbf{X}~\tilde\psi_r(\mathbf{X}) )\cdot(\mathbf{J}^{-1}\cdot\nabla_\mathbf{X}~\tilde\psi_s(\mathbf{X}))~\vert\mathbf{J}\vert~d\mathbf{X},
+	\int_{\Omega^{(e)}} \alpha(x)\nabla \varphi_i(\mathbf{x}) \cdot \nabla \varphi_i(\mathbf{x})~d\mathbf{x} = \int_{\tilde{\Omega}^{(e)}} \alpha(\mathbf{x}(\mathbf{X}))(\mathbf{J}^{-1}\cdot\nabla_\mathbf{X}~\tilde\varphi_r(\mathbf{X}) )\cdot(\mathbf{J}^{-1}\cdot\nabla_\mathbf{X}~\tilde\varphi_s(\mathbf{X}))~\vert\mathbf{J}\vert~d\mathbf{X},
 \end{equation}
 where ${\tilde{\Omega}^{(e)}} = [0,1]\times[0,1]$. This mapping can easily be performed on all of the elements in the weak form equation. The clear advantage here is, previously the basis functions were written as Lagrange polynomials, no since the range of values only spans from 0 to 1,
 \begin{align}
-	\tilde\psi_0(\mathbf{X}) &= 1 - X_0 - X_1,\\
-	\tilde\psi_1(\mathbf{X}) &= X_0,\\
-	\tilde\psi_2(\mathbf{X}) &= X_1,
+	\tilde\varphi_0(\mathbf{X}) &= 1 - X_0 - X_1,\\
+	\tilde\varphi_1(\mathbf{X}) &= X_0,\\
+	\tilde\varphi_2(\mathbf{X}) &= X_1,
 \end{align}
 thus leaving far easier integrals to evaluate.
 
@@ -357,7 +361,7 @@ where $\Omega = [a,b]\times[a,b]$ FIX HERE. This, when converted into its weak f
 \end{align}
 So it can be said that,
 \begin{align}
-	A_{i,j} &= \left\langle \alpha \nabla \psi_j, \nabla \psi_i\right\rangle\\
+	A_{i,j} &= \left\langle \alpha \nabla \varphi_j, \nabla \varphi_i\right\rangle\\
 	b_i &= 0.
 \end{align}
 Figure (REFERENCE) demonstrates the mesh being arranged into downward sloping, triangular cells where the node numbering is done in anti-clockwise direction to maintain orientation of the integrals. For more convenience, for the sake of the paper, to avoid manually calculating the Jacobian and performing numerical integration, as seen in section (REFERENCE), P1 problems were used and some handy analytical solutions to the LHS integral which only work for 2D, P1, triangular meshes. If the physical, non-local, coordinates of the nodes in a cell are defined by, $x_i, y_i~\forall i \in \mathcal{I}_s$, then define two constants,
@@ -376,7 +380,7 @@ and the area of the cell,
 \end{equation}
 Without going into large amounts of detail, it can be deduced mathematically that the LHS integral,
 \begin{align}
-	\int_{\Omega^{(e)}} \alpha \nabla \psi_j \cdot \nabla \psi_i~d\mathbf{x} &= \int_{\Omega^{(e)}}\frac{\Delta^2}{4}(\beta_i\beta_j + \gamma_i\gamma_j)~d\mathbf{x}\\
+	\int_{\Omega^{(e)}} \alpha \nabla \varphi_j \cdot \nabla \varphi_i~d\mathbf{x} &= \int_{\Omega^{(e)}}\frac{\Delta^2}{4}(\beta_i\beta_j + \gamma_i\gamma_j)~d\mathbf{x}\\
 	&= \frac{\Delta^3}{4}(\beta_i\beta_j + \gamma_i\gamma_j).
 \end{align}
 \subsection{Analytical Solution}

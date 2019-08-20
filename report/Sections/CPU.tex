@@ -1,0 +1,102 @@
+\clearpage
+\chapter{Design \& Implementation}
+
+Now that the foundation mathematics of numerical technique has been covered, in this chapter, the general approach to implementing the finite element method in serial is discussed. The design structure of the code is explained, such as data structures and classes used, and storage approaches such as the benefits of applying sparse storage formats and sparse solvers. The u se of linear algebra libraries, specifically Intel's MKL, are detailed as they were necessary to avoid reinventing the wheel when solving the final linear system. 
+ 
+\section{General Approach}
+
+Given that there is a lot of machinery involved in programming the FEM as a numerical method, steps were taken to break the code up into as many logical partitions and structure it in a way which made sense from a glance. All the serial code was written in C++11, allowing use of object oriented programming and many of the newer features of the standard library (STL) such as auto types and ordered sets. A large benefit here also was the inbuilt RAII features of C++, reducing the need for manual memory management - important here when it will become clear there is much memory to be allocated to code a FEM implementation.
+
+\subsection{Design Structure}
+
+Figure (REFERENCE) illustrates the overall design structure of the code - in both serial and parallel, though the GPU code will be discussed in more detail in Chapter (REFERENCE). The code is split into four main files and their respective headers,
+\begin{enumerate}
+	\item \texttt{main.cc} - Main C++ code, used for invoking the FEM operation and calling results to be output.
+	\item \texttt{mesh.cc} - Contains the code for a Mesh class, storing all necessary operations and data structures to create a mesh.
+	\item \texttt{fem.cc} - Code for a FEM class which contains the routines needed to perform the method on a given mesh.
+	\item \texttt{utils.cc} - General utility functions, such as SSE, arguments parsing etc.
+\end{enumerate}
+The approach here would be that a Mesh object be created, passed to a FEM object as an input parameter to a constructor, the FEM would complete the routine and the utility functions would perform sundry operations after this to tidy up. Figure (REFERENCE) demonstrates a flowchart of the serial code process.
+
+\section{Data Structures}
+
+Objects are a massive sell for using C++ over C when programming up a numerical method, for reasons stated already. For this paper, two classes were written, one to handle the mesh creation and one to handle actually performing FEM. In terms of other data structures, there was also a struct \texttt{Tau} to manage timings of all the operations without needing to pass multiple variables.
+
+\subsection{Mesh}
+
+The mathematics of the mesh has been illustrated, the next logical step would be to port it over to code. The data structure for the mesh holds a handful of key components and routines needed for its generation. Given the mesh itself is of course, a collection of interconnected nodes on a plane, upon each numerical calculations must be performed, it was naturally necessary to stores these nodes and their corresponding coordinates. In the implementation of this paper, a 2D mesh was used, though the extension to higher dimensions is rather arbitrary - another benefit of the FEM. The nodes' coordinates were stored in an array, \texttt{vertices}, which had a dimension of \texttt{order}, where order is the number of nodes. Looking back at the previous section however, simply knowing the nodes coordinates for the FEM isn't enough, one also needs to know their global indices and degree of freedom mapping back to the stiffness matrix. These were respectively stored in two 2D arrays, \texttt{cells} and \texttt{dof}. Note that this is the exact same as performing the mapping function $q(e,r)$ seen previously. For example, \texttt{dof[e][r]} will provide the global node index of local node $r$ in cell $e$. Figure (REFERENCE) gives and example of a small mesh, the populated version of these three arrays are described in (LISTING). Note also in this example that each cell's array is numbered in anti-clockwise direction - this is important for the orientation of the integrals calculated later. Since in this paper, only P1 examples were used, the degree of freedom mapping and global node indices are actually equal and so having two separate arrays for these was rather unnecessary but it allows for potential further expansion of the code with ease.
+
+\begin{remark}
+	Standard library vectors were not used for the 2D arrays as the contiguity of the data was important for transferring the data to the GPU and certain linear solvers.
+\end{remark}
+
+In terms of what routines are contained in the Mesh class, during instantiation, the constructor creates a generic, rectangular mesh and populates the three arrays. There is a routine, whereby one can pass a mapping function as a parameter and deform the mesh. The aim of the deformation function is simply the fact that most FEM meshes aren't standard rectangles apart from this particular test case - since the focus here is on a GPU optimisation. Other routines in the class then are merely return various properties of the object, coordinates, pointers to the arrays (for CUDA purposes), number of nodes etc. There is also a routine to do a pass over the mesh and return its sparsity pattern which will be detailed in Section (REFERENCE).
+
+\subsection{FEM}
+
+Once the mesh has been generated, the next aim for the software was to create as generic a FEM class as possible, one which could take any mesh in the structure of the Mesh class, and solve the given PDE - in this case the Laplace equation. The FEM class, will of course need to allocate data to store the global stiffness matrix and global stress vectors. The stress vector is simply stored in \texttt{b} and has a dimension of \texttt{order}, the stiffness matrix on the other hand can be stored in either dense or CSR format. Since CSR is stored in three separate, single dimensional arrays, this allowed the benefit of using standard library vectors, reducing the need for \texttt{new} and \texttt{delete}, the dense format on the other hand is 2D and has the same issue with contiguity as mentioned in the remark above. The CSR matrix is stored in \texttt{valsL}, \texttt{rowPtrL} and \texttt{colIndL} and the dense matrix is stored in \texttt{L}. The class then also stores certain properties needed, such as the dimensions of the problem \texttt{order}, the number of cells in the mesh and the number of non-zeros in the CSR matrix.
+
+From a routine perspective, this is where all the real nuts and bolts of the FEM come into play.  There are three primary routines here which need to be completed in order to obtain a solution:
+\begin{itemize}
+	\item element matrix generation.
+	\item global stiffness matrix and stress vector assembly.
+	\item linear system solver.
+\end{itemize}
+The element matrix calculation is detailed in Algorithm (REFERENCE), utilising the convenient formulas stated in (REFERENCE). The assembly routine on the other hand, has two different variants, one to handle the dense matrix assembly and one to handle assembling in CSR. Algorithm (REFRENCEx2) show both variants of this assembly. The last main routine, solving the linear system was handled by Intel's MKL library, taking advantage of pre-existing, optimised kernels.
+
+\section{Sparse Storage}
+
+The idea of sparse matrices and CSR storage has been thrown about in this paper a handful of times. The idea here is that a matrix is considered sparse, if if consists of mostly 0 valued entries. This is important in the FEM as, if the basis functions are considered, one must remember that these are defined on a compact support $\Omega^{(e)}$, and will be 0 everywhere outside of this domain. Due to this, the global stiffness matrix will be a SPD, sparse matrix. Consider again Figure (REFERENCE), at no point is there any connection between nodes X and Y, thus the resulting integral there will be 0. Why is this important? It can be hugely beneficial to computation time if one can take advantage of the sparsity pattern of a matrix, clearly as there is going to potentially orders less null operations to iterate through.
+
+These matrices can be stored in a number of different ways, three will be looked at here, although only one was used in the implementation:
+\begin{enumerate}
+	\item CSR.
+	\item CSC.
+	\item COO.
+\end{enumerate}
+CSR or \textit{compressed sparse row} storage is the most commonly used variant of sparse storage. As mentioned, it works by storing the matrix into three separate arrays, $A$, containing all the non-zero values, $IA$, the indices of the beginning of each row in the array $A$ and has a length of $n+1$ where $n$ is the number or rows, and finally $JA$, the indices of the column each value in $A$ is in. For more clarity, consider the matrix,
+\begin{equation}
+	A = 
+	\left[\begin{matrix}
+		3 & 1 & 0 & 0 & 0\\
+		0 & 20 & 15 & 0 & 1\\
+		0 & 0 & 0 & 4 & 1\\
+		9 & 1 & 6 & 8 & 0\\
+		0 & 0 & 0 & 7 & 0\\
+		0 & 0 & 0 & 0 & 11
+	\end{matrix}\right],
+\end{equation}
+in CSR format this can be written as,
+\begin{lstlisting}
+ A = [ 3 1 20 15 1 4 1 9 1 6 8 7 11 ]
+IA = [ 0 2 5 7 11 12 13 ]
+IJ = [ 0 1 1 2 4 3 4 0 1 2 3 3 4 ]
+\end{lstlisting}
+In the case of this implementation, \texttt{valsL} = A, \texttt{rowPtrL} = AI and \texttt{colIndL} = IJ. An important thing to note is that these can be either 0-based indexing or 1-based indexing. Since this report didn't utilise any FORTRAN code, 0-based indexing was used in all cases.
+
+\textit{Compressed sparse column} is almost identical to CSR storage, except it is column-major format instead. The same example matrix in CSC would give,
+\begin{lstlisting}
+ A = [ 3 9 1 20 1 15 6 4 8 7 1 1 11 ]
+IA = [ 0 3 0 1 3 1 3 2 3 4 1 2 5 ]
+IJ = [ 0 2 5 7 10 13 ].
+\end{lstlisting}
+Clearly here, IJ has dimensions $m+1$, where $m$ is the number of columns.
+
+The last commonly used sparse storage format is \textit{coordinate lists} or COO, which stores the values and their coordinates in both row and column. Keeping with the same example gives,
+\begin{lstlisting}
+ A = [ 3 1 20 15 1 4 1 9 1 6 8 7 11 ]
+IA = [ 0 0 1 1 1 2 2 3 3 3 3 4 5 ]
+IJ = [ 0 1 1 2 4 3 4 0 1 2 3 3 4 ].
+\end{lstlisting}
+This can of course be done in either row-major or column-major directions.
+\subsection{Graph Theory}
+
+Looking at the sparsity of a matrix, can be equated to graph traversal problems in graph theory.
+
+\subsection{Sparsity Scan}
+
+\section{Solver Libraries}
+
+\subsection{Intel's MKL}
+
+CITE INTEL'S DOCUMENTATION
