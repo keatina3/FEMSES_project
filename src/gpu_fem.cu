@@ -230,15 +230,24 @@ __global__ void assemble_gpu(
                 int *cells, 
                 int *is_bound, 
                 float *bdry_vals, 
-                int order)
+                int order
+                float *tau_d)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;      // idx = cell number
     int idy = blockIdx.y*blockDim.y + threadIdx.y;      // idy = local node number
     extern __shared__ float temp1[];            // shared mem to store elem mats & constants
 
     if(idx < gridDim.x && idy < blockDim.y){
+        
+        clock_t start = clock();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        clock_t end = clock();
+        tau_d[(idx*blockDim.y) + idy] = (float)(stop - start);
+
+        clock_t start = clock();
         assemble_mat(L, b, vertices, cells, temp1, idx, idy, order);
+        clock_t end = clock();
+        tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (float)(stop - start);
     }
 }
 ///////
@@ -257,7 +266,8 @@ __global__ void assemble_gpu_csr(
                 int *cells, 
                 int *is_bound, 
                 float *bdry_vals, 
-                int order)
+                int order
+                float *tau_d)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -291,13 +301,17 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     cudaError_t stat;
     cudaEvent_t start, finish;
     float tau = 0.0;
-   
-    //////////////////////// Gathering info from mesh ////////////////////////////////
-    
-    std::cout << GREEN "\nGPU Solver...\n" RESET;
+    float *tau_d;
+    float tau_d_max[2];
 
+    std::cout << GREEN "\nGPU Solver...\n" RESET;
+    
+    setCudaDevice(k);
+    
     cudaEventCreate(&start);
     cudaEventCreate(&finish);
+
+    //////////////////////// Gathering info from mesh ////////////////////////////////
 
     M.get_recs(nr);
 
@@ -352,6 +366,11 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     cudaEventElapsedTime(&tau, start, finish);
     t.alloc += tau;
 
+    if(timing){
+        stat = cudaMalloc( (void**)&tau_d, num_cells*3*2);
+        assert(stat == cudaSuccess);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -403,10 +422,15 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     
     if(dense) {
         assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
-                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order, tau_d);
     } else {
         assemble_gpu_csr<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
-                        b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order);
+                        b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order, tau_d);
+    }
+
+    if(timing){
+        array_max(tau_d, num_cells*3, tau.elem_mats);
+        array_max(tau_d, num_cells*3, tau.assembly);
     }
     /*
     NEED TO PASS BACK 3 FLOATS FOR CONVERSION, ASSEMBLY & ELEM MATS
@@ -454,8 +478,9 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     
     cudaFree(vertices_gpu);      cudaFree(cells_gpu);   cudaFree(dof_gpu);
     cudaFree(is_bound_gpu);      cudaFree(bdry_vals_gpu);
+    if(timing)  cudaFree(tau_d);
     if(dense)   cudaFree(L),     cudaFree(b);
     else        cudaFree(valsL), cudaFree(colIndL),     cudaFree(rowPtrL); 
-
+    
     /////////////////////////////////////////////////////////////////////////////////
 }

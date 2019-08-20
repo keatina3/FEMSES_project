@@ -18,7 +18,7 @@
 // command line arguments - see usage function for explanations //
 extern bool verbose, timing, cpu, gpu_f, gpu_fs;
 extern bool annulus, dense, dnsspr, debug;
-extern int n, m; 
+extern int n, m, k; 
 extern float a, dr, ui, uo;
 
 // struct containing all the various timings    //

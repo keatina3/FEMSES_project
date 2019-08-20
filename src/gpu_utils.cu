@@ -221,3 +221,24 @@ void error_dot_prod(float *a, float *b, int n, float &x){
     assert(status == CUBLAS_STATUS_SUCCESS);
 }
 ///////
+
+
+/////////////// Function gets max value of array /////////////////
+// Calculated using cuBLAS
+void array_max(float *a, int n, float &max){
+    cublasHandle_t handle;
+    cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
+    
+    // creating cuBLAS handle //
+    status = cublasCreate(&handle);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+
+    // getting maximum value of array //
+    status = cublasIsamax(handle, n, a, 0, &max);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+    
+    // destroys handle //
+    status = cublasDestroy(handle);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+}
+////////

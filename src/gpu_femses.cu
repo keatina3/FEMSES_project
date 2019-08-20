@@ -207,6 +207,11 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
     std::cout << GREEN "\nFEMSES Solver...\n" RESET;
     
+    setCudaDevice(k);
+    
+    cudaEventCreate(&start);
+    cudaEventCreate(&finish);
+    
     //////////////////////////// Gathering info from mesh /////////////////////////////
 
     M.get_recs(nr);
@@ -217,8 +222,6 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
     ///////////////////////////////////////////////////////////////////////////////////
     
-    cudaEventCreate(&start);
-    cudaEventCreate(&finish);
     
     ////////////// Allocating memory for mesh/stiffnesss matrix/stress vector//////////
     ///////////  /array of element matrics/array of stress vectors/weighting //////////

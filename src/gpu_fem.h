@@ -26,9 +26,10 @@ __device__ void assemble_mat_csr(float *valsL, int *rowPtrL, int *colPtrL, float
 
 
 __global__ void assemble_gpu(float *L, float *b, float *vertices, int *cells, 
-                        int *is_bound, float *bdry_vals, int order);
+                        int *is_bound, float *bdry_vals, int order, float *tau_d);
 __global__ void assemble_gpu_csr(float *valsL, int *rowPtrL, int *colPtrL, float *b, 
-                        float *vertices, int *cells, int *is_bound, float *bdry_vals, int order);
+                        float *vertices, int *cells, int *is_bound, 
+                        float *bdry_vals, int order, float *tau_d);
 
 
 #endif

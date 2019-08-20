@@ -11,7 +11,7 @@
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = true, dense = false, dnsspr = false, debug =  false;
-int n = 2, m = 2; 
+int n = 2, m = 2, k = 1; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
 const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
@@ -19,7 +19,7 @@ const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 int parse_arguments(int argc, char **argv){
     int opt;
 
-    while((opt = getopt(argc, argv, "vhtcgfdsDCn:m:a:r:i:o:")) != -1) {
+    while((opt = getopt(argc, argv, "vhtcgfdskDCn:m:a:r:i:o:")) != -1) {
         switch(opt){
             case 'v': 
                 verbose =  true; break;
@@ -37,6 +37,8 @@ int parse_arguments(int argc, char **argv){
                 dense = true; break;
             case 's':
                 dnsspr = true, dense = true; break;
+            case 'k':
+                k = 0; break;
             case 'D':
                 debug = true; break;
             case 'C':
@@ -79,6 +81,7 @@ void print_usage(){
     printf("    -f          : will skip FEMSES GPU test\n");
     printf("    -d          : will use dense linear solvers\\matrix assembly\n");
     printf("    -s          : will use dense assembly & conversion to CSR, sparse solver\n");
+    printf("    -k          : turns off Tesla K40, changes GPU to RTX2080 Super\n");
     printf("    -D          : turns on debugging mode\n");
     printf("    -C          : turns off mesh deformation from rectangle to annulus\n");
     printf("    -n          : number of rectangles in x-axis (default: 2)\n");

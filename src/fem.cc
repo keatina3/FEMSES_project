@@ -20,6 +20,7 @@ FEM::FEM(Mesh &M, Tau &t){
     num_cells = 2*nr[0]*nr[1];
     
     this->M = &M;
+
     // assigning memory whether dense or CSR format //
     if(dense){
         auto start = std::chrono::high_resolution_clock::now();
