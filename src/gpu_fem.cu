@@ -230,8 +230,9 @@ __global__ void assemble_gpu(
                 int *cells, 
                 int *is_bound, 
                 float *bdry_vals, 
-                int order
-                float *tau_d)
+                int order,
+                long long *tau_d,
+                int timing)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;      // idx = cell number
     int idy = blockIdx.y*blockDim.y + threadIdx.y;      // idy = local node number
@@ -239,15 +240,15 @@ __global__ void assemble_gpu(
 
     if(idx < gridDim.x && idy < blockDim.y){
         
-        clock_t start = clock();
+        long long start = clock64();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
-        clock_t end = clock();
-        tau_d[(idx*blockDim.y) + idy] = (float)(stop - start);
+        long long end = clock64();
+        if(timing)  tau_d[(idx*blockDim.y) + idy] = (end - start);
 
-        clock_t start = clock();
+        start = clock64();
         assemble_mat(L, b, vertices, cells, temp1, idx, idy, order);
-        clock_t end = clock();
-        tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (float)(stop - start);
+        end = clock64();
+        if(timing)  tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
     }
 }
 ///////
@@ -266,16 +267,24 @@ __global__ void assemble_gpu_csr(
                 int *cells, 
                 int *is_bound, 
                 float *bdry_vals, 
-                int order
-                float *tau_d)
+                int order,
+                long long *tau_d,
+                int timing)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[];
 
     if(idx < gridDim.x && idy < blockDim.y){
+        long long start = clock64();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        long long end = clock64();
+        tau_d[(idx*blockDim.y) + idy] = (end - start);
+        
+        start = clock64();
         assemble_mat_csr(valsL, rowPtrL, colIndL, b, vertices, cells, temp1, idx, idy, order);
+        end = clock64();
+        tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
     }
 }    
 ////////
@@ -301,12 +310,11 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     cudaError_t stat;
     cudaEvent_t start, finish;
     float tau = 0.0;
-    float *tau_d;
-    float tau_d_max[2];
+    long long *tau_d;
 
     std::cout << GREEN "\nGPU Solver...\n" RESET;
     
-    setCudaDevice(k);
+    cudaSetDevice(k);
     
     cudaEventCreate(&start);
     cudaEventCreate(&finish);
@@ -367,7 +375,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     t.alloc += tau;
 
     if(timing){
-        stat = cudaMalloc( (void**)&tau_d, num_cells*3*2);
+        stat = cudaMalloc( (void**)&tau_d, num_cells*3*2*sizeof(long long));
         assert(stat == cudaSuccess);
     }
 
@@ -380,11 +388,16 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
 
     cudaEventRecord(start, 0);
     
-    cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(is_bound_gpu, is_bound, order*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(bdry_vals_gpu, bdry_vals, order*sizeof(float), cudaMemcpyHostToDevice);
+    stat = cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(is_bound_gpu, is_bound, order*sizeof(int), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(bdry_vals_gpu, bdry_vals, order*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
     
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -392,8 +405,10 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     /////////////// Copying sparsity pattern if !dense ////////////////////////////
     
     if(!dense){
-        cudaMemcpy(rowPtrL, &rowPtrLCPU[0], (order+1)*sizeof(int), cudaMemcpyHostToDevice);
-        cudaMemcpy(colIndL, &colIndLCPU[0], nnz*sizeof(int), cudaMemcpyHostToDevice);
+        stat =cudaMemcpy(rowPtrL, &rowPtrLCPU[0], (order+1)*sizeof(int), cudaMemcpyHostToDevice);
+        assert(stat == cudaSuccess);
+        stat = cudaMemcpy(colIndL, &colIndLCPU[0], nnz*sizeof(int), cudaMemcpyHostToDevice);
+        assert(stat == cudaSuccess);
     }
 
     cudaEventRecord(finish, 0);
@@ -418,26 +433,34 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     //////// Kernel to assemble Stiffness matrix and store in global mem //////////
 
     std::cout << "      Main stiffness matrix assembly kernel...\n";
-    // cudaEventRecord(start, 0);
     
     if(dense) {
         assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
-                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order, tau_d);
+                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order, tau_d, timing);
     } else {
         assemble_gpu_csr<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
-                        b, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu, order, tau_d);
+                        b, vertices_gpu, cells_gpu, is_bound_gpu, 
+                        bdry_vals_gpu, order, tau_d, timing);
     }
 
+    //////// Getting timings from device functions ///////
+    
+    int ind = 0;
+    long long tmp;
+    int clocks_per_sec;
     if(timing){
-        array_max(tau_d, num_cells*3, tau.elem_mats);
-        array_max(tau_d, num_cells*3, tau.assembly);
+        cudaDeviceGetAttribute(&clocks_per_sec, cudaDevAttrClockRate, k);
+        
+        array_max((double*)tau_d, num_cells*3, ind);
+        stat = cudaMemcpy(&tmp, &tau_d[ind], sizeof(float), cudaMemcpyDeviceToHost);
+        assert(stat == cudaSuccess);
+        t.elem_mats = (float) tmp / (clocks_per_sec / 1000);
+
+        array_max((double*)&tau_d[num_cells*3], num_cells*3, ind);
+        stat = cudaMemcpy(&tmp, &tau_d[(num_cells*3)+ind],sizeof(float), cudaMemcpyDeviceToHost);
+        assert(stat == cudaSuccess);
+        t.assembly = (float) tmp / (clocks_per_sec / 1000);
     }
-    /*
-    NEED TO PASS BACK 3 FLOATS FOR CONVERSION, ASSEMBLY & ELEM MATS
-    cudaEventRecord(finish, 0);
-    cudaEventSynchronize(finish);
-    cudaEventElapsedTime(&, start, finish);
-    */
     
     //////////////////////////////////////////////////////////////////////////////
      

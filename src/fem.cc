@@ -148,7 +148,8 @@ void FEM::solve(Tau &t){
     end = std::chrono::high_resolution_clock::now(); 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.assembly += duration.count();
-   
+  
+    /* 
     int count = 0;
     int count2 = 0; 
     for(std::vector<std::vector<std::vector<float> > >::iterator e=Le.begin(); e!=Le.end(); ++e){
@@ -164,7 +165,8 @@ void FEM::solve(Tau &t){
         std::cout << std::endl;
         
     }
-    print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
+    */
+    //print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
     /////////////////////////////////////////////////////
     
     //////////// SOLVING LINEAR SYSTEM //////////////////

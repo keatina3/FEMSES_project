@@ -49,6 +49,7 @@ int main(int argc, char** argv){
     order = (n+1)*(m+1);
     
     // FIXME //
+    /*
     if(order >= 5E4 && dense){
         std::cout << "Too many unknowns to create dense matrix. Changing to sparse solver\n";
         dense = false;
@@ -57,7 +58,7 @@ int main(int argc, char** argv){
         std::cerr << "Problem too large. Exiting.\n";
         std::exit(1);
     }
-
+    */
     Mesh M(nr,x,y);
     //M.deform(annulus_seg_map, 1.0);
     M.deform(annulus_seg_map, -M_PI/6);

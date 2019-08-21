@@ -12,14 +12,14 @@
 //////////// Calculates weighting for assembling single element solution ///////////
 // One weight is evaluated for each node
 // Added back to global memory
-__device__ void calc_weights(float *we, int *cells, float *temp1, int idx, int idy){
+__device__ void calc_weights(float *w, int *cells, float *temp1, int idx, int idy){
     float *Le;
     int v;
 
     Le = temp1;
     v = cells[(idx*3) + idy];
 
-    atomicAdd(&we[v], Le[(idy*3) + idy]);
+    atomicAdd(&w[v], Le[(idy*3) + idy]);
 }
 ////////
 
@@ -57,16 +57,30 @@ __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, in
 
 
 ////////////// Performs Jacobi iteration to get updated approximation of u ////////////
-__device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
+__device__ void jacobi_iter(
+                float *ue,
+                float *up_glob,
+                float *w,
+                int *cells,
+                float *temp1,
+                int idx,
+                int idy)
+{
     float *Le_shrd, *be_shrd;
     float ue_new, *ue_old;
+    int v;
+    float weight;
 
     Le_shrd = temp1;
     be_shrd = &temp1[9];
     ue_old  = &temp1[12];
-    
+    // v = cells[(idx*3) + idy];
+    // weight = Le_shrd[(idy*3) + idy] / w[v]; 
+
     ue_new = be_shrd[idy];
     ue_old[idy] = ue[(idx*3) + idy];
+    // ue_old[idy] = weight * up_glob[v];
+    // ue_old[idy] = weight * up_glob[v];
 
     __syncthreads();
     
@@ -94,7 +108,7 @@ __device__ void jacobi_iter(float *ue, float *temp1, int idx, int idy){
 __global__ void assemble_elems_gpu(
                 float *Le, 
                 float *be, 
-                float *we,
+                float *w,
                 float *ue,
                 float *vertices, 
                 int *cells, 
@@ -108,7 +122,7 @@ __global__ void assemble_elems_gpu(
     if(idx < gridDim.x && idy < blockDim.y){
         // __device__ fn taken from other header to avoid code-reuse //
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
-        calc_weights(we, cells, temp1, idx, idy);
+        calc_weights(w, cells, temp1, idx, idy);
         elems_glob_cpy(Le, be, temp1, idx, idy);
         ue[(idx*3) + idy] = 1.0;
     }
@@ -119,7 +133,14 @@ __global__ void assemble_elems_gpu(
 /////////////// Kernel to calculate local approximation of solution ue /////////////
 // Each cell has its own local solution for its element matrix and element vector
 // These are apprimated with a jacobi iteration
-__global__ void local_sols(float *Le, float *be, float *ue){
+__global__ void local_sols(
+                float *Le,
+                float *be,
+                float *ue,
+                float *up_glob,
+                float *w,
+                int *cells)
+{
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[]; 
@@ -140,7 +161,7 @@ __global__ void local_sols(float *Le, float *be, float *ue){
 
     if(idx < gridDim.x && idy < blockDim.y){
         elems_shared_cpy(Le, be, temp1, idx, idy);
-        jacobi_iter(ue, temp1, idx, idy);
+        jacobi_iter(ue, up_glob, w, cells, temp1, idx, idy);
     }
    
     /* 
@@ -160,7 +181,7 @@ __global__ void local_sols(float *Le, float *be, float *ue){
 
 ///////////// Kernel to calculate global approximation of u //////////////////
 // Calculated by combining all local solutions ue with a weighting
-__global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells){
+__global__ void glob_sols(float *Le, float *w, float *u, float *ue, int *cells){
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     int v;
@@ -170,13 +191,13 @@ __global__ void glob_sols(float *Le, float *we, float *u, float *ue, int *cells)
         v = cells[(idx*3) + idy];               // getting global vertex number
         Lii = Le[(idx*9) + (idy*3) + idy];      
         
-        weight = Lii/we[v];
+        weight = Lii/w[v];
         
         atomicAdd(&u[v], weight * ue[(idx*3) + idy]);
         /*
         if(idy==0 && idx ==0){
             for(int i=0; i<16; i++)
-                printf("%f\n", we[i]);
+                printf("%f\n", w[i]);
         }
         */
     }
@@ -199,15 +220,16 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     int *dof_gpu, *dof;
     int *is_bound_gpu, *is_bound;
     float *bdry_vals_gpu, *bdry_vals;
-    float *Le, *be, *ue, *we;
+    float *Le, *be, *ue, *w;
     float *up_gpu, *un_gpu;
     float err = 1E16;
     cudaEvent_t start, finish;
+    cudaError_t stat = cudaSuccess;
     float tau = 0.0;
 
     std::cout << GREEN "\nFEMSES Solver...\n" RESET;
     
-    setCudaDevice(k);
+    cudaSetDevice(k);
     
     cudaEventCreate(&start);
     cudaEventCreate(&finish);
@@ -228,18 +250,29 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
     cudaEventRecord(start,0);
 
-    cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
-    cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
-    cudaMalloc( (void**)&dof_gpu, 3*num_cells*sizeof(int));
-    cudaMalloc( (void**)&is_bound_gpu, order*sizeof(int));
-    cudaMalloc( (void**)&bdry_vals_gpu, order*sizeof(float));
+    stat = cudaMalloc( (void**)&vertices_gpu, 2*order*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&cells_gpu, 3*num_cells*sizeof(int));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&dof_gpu, 3*num_cells*sizeof(int));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&is_bound_gpu, order*sizeof(int));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&bdry_vals_gpu, order*sizeof(float));
+    assert(stat == cudaSuccess);
 
-    cudaMalloc( (void**)&Le, num_cells*3*3*sizeof(float));
-    cudaMalloc( (void**)&be, num_cells*3*sizeof(float));
-    cudaMalloc( (void**)&ue, num_cells*3*sizeof(float));
-    cudaMalloc( (void**)&un_gpu, order*sizeof(float));
-    cudaMalloc( (void**)&up_gpu, order*sizeof(float));
-    cudaMalloc( (void**)&we, order*sizeof(float));
+    stat = cudaMalloc( (void**)&Le, num_cells*3*3*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&be, num_cells*3*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&ue, num_cells*3*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&un_gpu, order*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&up_gpu, order*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&w, order*sizeof(float));
+    assert(stat == cudaSuccess);
     
     cudaEventRecord(finish);
     cudaEventSynchronize(finish);
@@ -254,17 +287,23 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     
     cudaEventRecord(start,0);
 
-    cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(is_bound_gpu, is_bound, order*sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(bdry_vals_gpu, bdry_vals, order*sizeof(float), cudaMemcpyHostToDevice);
+    stat = cudaMemcpy(vertices_gpu, vertices, 2*order*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(cells_gpu, cells, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(dof_gpu, dof, 3*num_cells*sizeof(int), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(is_bound_gpu, is_bound, order*sizeof(int), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(bdry_vals_gpu, bdry_vals, order*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
     
     cudaEventRecord(finish);
     cudaEventSynchronize(finish);
     cudaEventElapsedTime(&t.transfer, start, finish);
 
-    cudaMemset(up_gpu, 0, order*sizeof(float));
+    stat = cudaMemset(up_gpu, 0, order*sizeof(float));
+    assert(stat == cudaSuccess);
 
     ///////////////////////////////////////////////////////////////////////////////////
 
@@ -288,7 +327,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     cudaEventRecord(start,0);
     
     assemble_elems_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>
-                    (Le, be, we, ue, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
+                    (Le, be, w, ue, vertices_gpu, cells_gpu, is_bound_gpu, bdry_vals_gpu);
 
     cudaEventRecord(finish);
     cudaEventSynchronize(finish);
@@ -307,13 +346,13 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     int count = 0;
     while(err > EPS && count < MAX_ITERS){
         // getting local solutions ue and storing on global mem //
-        local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue);
+        local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue, up_gpu, w, cells);
         
         // setting un_gpu to 0 //
         cudaMemset(un_gpu, 0.0, order*sizeof(float));
         
         // assembling global solution estimate from weightings //
-        glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, we, un_gpu, ue, cells_gpu);
+        glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, w, un_gpu, ue, cells_gpu);
 
         // calculating error using 2-norm //
         error_dot_prod(un_gpu, up_gpu, order, err);

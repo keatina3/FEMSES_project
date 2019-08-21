@@ -10,6 +10,6 @@ void dnsspr_solve(float *L, float *b, int order);
 void sparse_solve(float *valsL, int *rowPtrL, int *colIndL, float *b, int order, int nnz);
 void dense_solve(float *L, float *b, int order);
 void error_dot_prod(float *a, float *b, int n, float &x);
-void array_max(float *a, int n, float &max);
+void array_max(double *a, int n, int &max);
 
 #endif
