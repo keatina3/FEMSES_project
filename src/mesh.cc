@@ -296,20 +296,20 @@ void Mesh::sparsity_pass_half(
 // Maps a rectangle to an annulus portion
 void annulus_seg_map(float *vertex, float *x, float *y, float theta, int s){
     float x_hat, y_hat;
-    float x_hat2;
 
-    x_hat2 = x[0] + (x[1]-x[0]) * pow( (vertex[0]-x[0]) / (x[1]-x[0]), s);
-    //y_hat = vertex[1];
-    /*
+    x_hat = x[0] + (x[1]-x[0]) * pow( (vertex[0]-x[0]) / (x[1]-x[0]), s);
+    y_hat = vertex[1];
+    
     vertex[0] = x_hat*cos(theta*y_hat);
     vertex[1] = x_hat*sin(theta*y_hat);
-    */
     
+    /*
     x_hat = x_hat2*cos(theta) - vertex[1]*sin(theta);
     y_hat = x_hat2*sin(theta) + vertex[1]*cos(theta);
 
     vertex[0] = x_hat;
     vertex[1] = y_hat;
+    */
 }
 ///////
 

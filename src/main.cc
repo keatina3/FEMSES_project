@@ -59,9 +59,10 @@ int main(int argc, char** argv){
         std::exit(1);
     }
     */
+    
     Mesh M(nr,x,y);
     //M.deform(annulus_seg_map, 1.0);
-    M.deform(annulus_seg_map, -M_PI/6);
+    //M.deform(annulus_seg_map, -M_PI/6);
 
     u = new float[order];
     analytical(u, M, x[0], x[1], order);
@@ -84,7 +85,7 @@ int main(int argc, char** argv){
     
     /////////////////////////////////////////////////
 
-
+    
     //////////////      GPU       ///////////////////
     
     if(gpu_f){
@@ -121,8 +122,8 @@ int main(int argc, char** argv){
     }
     
     /////////////////////////////////////////////////
-    
-    
+     
+     
     // need to calculate SSEs //
     if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpuf, sse_gpufs);
 

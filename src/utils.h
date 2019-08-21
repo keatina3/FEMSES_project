@@ -6,7 +6,7 @@
 #define _UTILS_H_
 
 #define MAX_UNKNOWNS 2E29
-#define EPS 1.0E-08
+#define EPS 1.0E-05
 #define MAX_ITERS 1E6
 
 #define RED  "\x1B[91m"     // for colour setting in print

@@ -100,7 +100,6 @@ __device__ void assemble_elem(
         Le[(3*idy)+idy] = 1.0;
         atomicExch(&be[idy], bound);
     }                            
-    __syncthreads();
     
     /////////////////////////////////////////////////////////////////
 }
@@ -214,7 +213,6 @@ __device__ void assemble_mat_csr(
         atomicAdd(&valsL[row + off], Le[(3*idy) + i]);
         off = 0;
     }
-    __syncthreads();
 
     ///////////////////////////////////////////////////////////////////
 }
@@ -242,6 +240,7 @@ __global__ void assemble_gpu(
         
         long long start = clock64();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        __syncthreads();
         long long end = clock64();
         if(timing)  tau_d[(idx*blockDim.y) + idy] = (end - start);
 
@@ -278,6 +277,7 @@ __global__ void assemble_gpu_csr(
     if(idx < gridDim.x && idy < blockDim.y){
         long long start = clock64();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        __syncthreads();
         long long end = clock64();
         tau_d[(idx*blockDim.y) + idy] = (end - start);
         

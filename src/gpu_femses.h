@@ -24,7 +24,7 @@ __device__ void jacobi_iter(float *ue, float *up_glob, int *cells,
                                 float *temp1, int idx, int idy);
 
 __global__ void assemble_elems_gpu(float *Le, float *be, float *w, float *ue, float *vertices, 
-                                int *cells, int *is_bound, float *bdry_vals);
+                                int *cells, int *is_bound, float *bdry_vals, int order);
 __global__ void local_sols(float *Le, float *be, float *ue, 
                                 float *up_glob, int *cells);
 __global__ void glob_sols(float *Le, float *w, float *u_glob, 

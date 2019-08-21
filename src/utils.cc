@@ -10,7 +10,7 @@
 #include "utils.h"
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
-bool annulus = true, dense = false, dnsspr = false, debug =  false;
+bool annulus = false, dense = false, dnsspr = false, debug =  false;
 int n = 2, m = 2, k = 1; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
 const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -42,7 +42,7 @@ int parse_arguments(int argc, char **argv){
             case 'D':
                 debug = true; break;
             case 'C':
-                annulus = false; break;
+                annulus = true; break;
             case 'n':
                 n = atoi(optarg); break;
             case 'm':
@@ -83,7 +83,7 @@ void print_usage(){
     printf("    -s          : will use dense assembly & conversion to CSR, sparse solver\n");
     printf("    -k          : turns off Tesla K40, changes GPU to RTX2080 Super\n");
     printf("    -D          : turns on debugging mode\n");
-    printf("    -C          : turns off mesh deformation from rectangle to annulus\n");
+    printf("    -C          : turns on mesh deformation from rectangle to annulus\n");
     printf("    -n          : number of rectangles in x-axis (default: 2)\n");
     printf("    -m          : number of rectangles in y-axis (deafult: 2)\n");
     printf("    -a          : radius of inner circle in annulus/left corner of rectangle (default: 3)\n");
@@ -167,11 +167,17 @@ float sse(float *u, float *u_hat, int dim){
 void analytical(float *u, Mesh &M, int a, int b, int order){
     float xy[2];
     float r;
+    float m;
 
+    m = (uo - ui)/(b-a);
     for(int v=0; v<order; v++){
-        M.get_xy(xy, v);
-        r = sqrt(xy[0]*xy[0] + xy[1]*xy[1]);
-        u[v] = (uo*log(a) - ui*log(b) + ui*log(r) - uo*log(r)) /(log(a) - log(b));
+        if(annulus) {
+            r = sqrt(xy[0]*xy[0] + xy[1]*xy[1]);
+            u[v] = (uo*log(a) - ui*log(b) + ui*log(r) - uo*log(r)) /(log(a) - log(b));
+        } else {
+            M.get_xy(xy, v);
+            u[v] = m*(xy[0]-a) + ui;
+        }
     }
 }
 //////
