@@ -20,13 +20,14 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t);
 __device__ void calc_weights(float *w, float *cells, float *temp1, int idx, int idy);
 __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int idy);
 __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, int idy);
-__device__ void jacobi_iter(float *ue, float *up_glob, float *w, int *cells, 
+__device__ void jacobi_iter(float *ue, float *up_glob, int *cells, 
                                 float *temp1, int idx, int idy);
 
 __global__ void assemble_elems_gpu(float *Le, float *be, float *w, float *ue, float *vertices, 
                                 int *cells, int *is_bound, float *bdry_vals);
 __global__ void local_sols(float *Le, float *be, float *ue, 
-                                float *up_glob, float *w, int *cells);
-__global__ void glob_sols(float *Le, float *w, float *u, float *ue, int *cells);
+                                float *up_glob, int *cells);
+__global__ void glob_sols(float *Le, float *w, float *u_glob, 
+                                float *ue, int *cells);
 
 #endif

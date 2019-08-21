@@ -60,7 +60,6 @@ __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, in
 __device__ void jacobi_iter(
                 float *ue,
                 float *up_glob,
-                float *w,
                 int *cells,
                 float *temp1,
                 int idx,
@@ -69,18 +68,14 @@ __device__ void jacobi_iter(
     float *Le_shrd, *be_shrd;
     float ue_new, *ue_old;
     int v;
-    float weight;
 
     Le_shrd = temp1;
     be_shrd = &temp1[9];
     ue_old  = &temp1[12];
-    // v = cells[(idx*3) + idy];
-    // weight = Le_shrd[(idy*3) + idy] / w[v]; 
+    v = cells[(idx*3) + idy];
 
     ue_new = be_shrd[idy];
-    ue_old[idy] = ue[(idx*3) + idy];
-    // ue_old[idy] = weight * up_glob[v];
-    // ue_old[idy] = weight * up_glob[v];
+    ue_old[idy] = up_glob[v];
 
     __syncthreads();
     
@@ -124,7 +119,7 @@ __global__ void assemble_elems_gpu(
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         calc_weights(w, cells, temp1, idx, idy);
         elems_glob_cpy(Le, be, temp1, idx, idy);
-        ue[(idx*3) + idy] = 1.0;
+        // ue[(idx*3) + idy] = 1.0;
     }
 }
 //////
@@ -138,50 +133,29 @@ __global__ void local_sols(
                 float *be,
                 float *ue,
                 float *up_glob,
-                float *w,
                 int *cells)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[]; 
 
-    /*
-    if(idx ==0 && idy == 0){
-        for(int e=0; e<gridDim.x; e++){
-            for(int i=0; i<3; i++){
-                for(int j=0; j<3; j++){
-                    printf("%f ", Le[(e*9) + (i*3) + j]);
-                }
-                printf(" b = %f,\n",be[(e*3) + i]);
-            }
-            printf("\n");
-        }
-    }
-    */
-
     if(idx < gridDim.x && idy < blockDim.y){
         elems_shared_cpy(Le, be, temp1, idx, idy);
-        jacobi_iter(ue, up_glob, w, cells, temp1, idx, idy);
+        jacobi_iter(ue, up_glob, cells, temp1, idx, idy);
     }
-   
-    /* 
-    if(idx == 2 && idy == 0){
-        for(int i=0; i<3; i++){
-            for(int j=0;j<3;j++){
-                printf("%f ", temp1[(i*3) + j]);
-            }
-            printf("\n");
-        }
-    }
-    */
-
 }
 ///////
 
 
 ///////////// Kernel to calculate global approximation of u //////////////////
 // Calculated by combining all local solutions ue with a weighting
-__global__ void glob_sols(float *Le, float *w, float *u, float *ue, int *cells){
+__global__ void glob_sols(
+                float *Le, 
+                float *w, 
+                float *u_glob, 
+                float *ue, 
+                int *cells)
+{
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     int v;
@@ -193,13 +167,7 @@ __global__ void glob_sols(float *Le, float *w, float *u, float *ue, int *cells){
         
         weight = Lii/w[v];
         
-        atomicAdd(&u[v], weight * ue[(idx*3) + idy]);
-        /*
-        if(idy==0 && idx ==0){
-            for(int i=0; i<16; i++)
-                printf("%f\n", w[i]);
-        }
-        */
+        atomicAdd(&u_glob[v], weight * ue[(idx*3) + idy]);
     }
 }
 ///////
@@ -223,7 +191,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     float *Le, *be, *ue, *w;
     float *up_gpu, *un_gpu;
     float err = 1E16;
-    cudaEvent_t start, finish;
+    cudaEvent_t start, finish, start2, finish2;
     cudaError_t stat = cudaSuccess;
     float tau = 0.0;
 
@@ -346,17 +314,18 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     int count = 0;
     while(err > EPS && count < MAX_ITERS){
         // getting local solutions ue and storing on global mem //
-        local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue, up_gpu, w, cells);
+        local_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, be, ue, up_gpu, cells_gpu);
         
         // setting un_gpu to 0 //
         cudaMemset(un_gpu, 0.0, order*sizeof(float));
         
         // assembling global solution estimate from weightings //
-        glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>(Le, w, un_gpu, ue, cells_gpu);
+        glob_sols<<<dimGrid, dimBlock, shared*sizeof(float)>>>
+                                    (Le, w, un_gpu, ue, cells_gpu);
 
         // calculating error using 2-norm //
         error_dot_prod(un_gpu, up_gpu, order, err);
-        // std::cout << err << std::endl;
+        std::cout << err << std::endl;
 
         tmp = un_gpu;
         un_gpu = up_gpu;
