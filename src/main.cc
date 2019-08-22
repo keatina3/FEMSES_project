@@ -1,12 +1,12 @@
-// =========================================================================== //
-// Name:            fem_solver
-// Author:          Alex Keating
-// Version:         02/09/19
-// Description:     Performs the finite element method on the poisson equation,
-//                  utilising serial, standard GPU and FEMSES GPU approaches.
-//
-// WRITTEN FOR COMPLETION OF MSC. HIGH PERFORMANCE COMPUTING RESEARCH PROJECT
-// =========================================================================== //
+// ============================================================================= //
+// Name:            fem_solver                                                   //
+// Author:          Alex Keating                                                 //
+// Version:         02/09/19                                                     //
+// Description:     Performs the finite element method on the poisson equation,  //
+//                  utilising serial, standard GPU and FEMSES GPU approaches.    //
+//                                                                               //
+// WRITTEN FOR COMPLETION OF MSC. HIGH PERFORMANCE COMPUTING RESEARCH PROJECT    //
+// ============================================================================= //
 
 #include <cassert>
 #include <ctime>
@@ -19,6 +19,7 @@
 #include "utils.h"
 #include "fem.h"
 
+extern void dummy(float *dat, int n);
 extern void gpu_fem(float *u, Mesh &M, Tau &t);
 extern void gpu_femses(float *u, Mesh &M, Tau &t);
 
@@ -41,27 +42,26 @@ int main(int argc, char** argv){
     nr[0] = n, nr[1] = m;
     x[0] = a; x[1] = a + dr;
     
-    //if(annulus)
-    //    y[0] = 0.0, y[1] = 1.0;
-    //else
-        y[0] = a, y[1] = a + dr;
+    if(annulus)     y[0] = 0.0, y[1] = 1.0;
+    else            y[0] = a, y[1] = a + dr;
 
     order = (n+1)*(m+1);
     
-    // FIXME //
+    // FIXME // 
     /*
     if(order >= 5E4 && dense){
         std::cout << "Too many unknowns to create dense matrix. Changing to sparse solver\n";
         dense = false;
     }
-    if(order >= 5E5){
+    */
+    if(order >= MAX_UNKNOWNS){
         std::cerr << "Problem too large. Exiting.\n";
         std::exit(1);
     }
-    */
+
     
     Mesh M(nr,x,y);
-    //M.deform(annulus_seg_map, 1.0);
+    if(annulus)     M.deform(annulus_seg_map, 1.0);
     //M.deform(annulus_seg_map, -M_PI/6);
 
     u = new float[order];
@@ -79,13 +79,16 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_cpu.tot = duration.count();
         
-        F.output(u);
         sse_cpu = F.sse_fem(u);
+        F.output(u);
     }
     
     /////////////////////////////////////////////////
 
-    
+
+    if(gpu_f || gpu_fs)     dummy(u, order);        // dummy kernel to prevent slowdown
+
+
     //////////////      GPU       ///////////////////
     
     if(gpu_f){
@@ -98,8 +101,8 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_gpu_f.tot = duration.count();
         
-        output_results(M, u, u_gpu, order, 1);
         sse_gpuf = sse(u, u_gpu, order);
+        output_results(M, u, u_gpu, order, 1, sse_gpuf);
     }
         
     /////////////////////////////////////////////////
@@ -117,14 +120,13 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_gpu_fs.tot = duration.count();
         
-        output_results(M, u, u_gpu_femses, order, 2);
         sse_gpufs = sse(u, u_gpu_femses, order);
+        output_results(M, u, u_gpu_femses, order, 2, sse_gpufs);
     }
     
     /////////////////////////////////////////////////
      
      
-    // need to calculate SSEs //
     if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpuf, sse_gpufs);
 
     if(timing){

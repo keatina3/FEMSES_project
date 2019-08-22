@@ -29,6 +29,7 @@ private:
     int order;                      // order = num_nodes since P1
     int num_cells;
     int nnz;                        // number of non-zeros in CSR of stifness matrix
+    float SSE;
 
 public:
     FEM(Mesh &M, Tau &t);
@@ -41,7 +42,7 @@ public:
     void elem_mat(const int e);
     float area(float xi[3][3]) const;
     void output(float *u_an) const;
-    float sse_fem(float *u) const;
+    float sse_fem(float *u);
 };
 
 #endif

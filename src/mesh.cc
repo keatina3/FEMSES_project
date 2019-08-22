@@ -1,3 +1,5 @@
+#include <chrono>
+#include <cstdio>
 #include <set>
 #include <cstring>
 #include <cstdlib>
@@ -176,7 +178,9 @@ void Mesh::sparsity_pass(
             std::vector<float> &valsL,
             std::vector<int> &rowPtrL,
             std::vector<int> &colIndL,
-            int &nnz)
+            int &nnz,
+            float &alloc,
+            float &tau)
 {
     std::vector<std::set<int> > sparsity;       // one set of connected nodes for each node //
     int v1, v2;
@@ -186,14 +190,19 @@ void Mesh::sparsity_pass(
     int num_cells = nr[0]*nr[1]*2;
     int order = (nr[0]+1)*(nr[1]+1);
 
+    auto start = std::chrono::high_resolution_clock::now();
     sparsity.resize(order);                     // order = num_nodes        //
     colIndL.resize(50*order, 0);                // max size => 0 non-zeros  //
     rowPtrL.resize(order+1,0);                  // nodes+1 rows 
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    alloc = duration.count();
 
     rowTmp = &rowPtrL[0];
 
     /*  Incrementing through each cell 
     adding connected nodes into each set  */
+    start = std::chrono::high_resolution_clock::now();
     for(int e=0; e<num_cells; e++){
         for(int i=0; i<3; i++){
             v1 = get_vertex(e, i);
@@ -223,10 +232,17 @@ void Mesh::sparsity_pass(
         n += (*v).size();
         *(rowTmp++) = n;
     }
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    tau = duration.count();
     
     //// resized when number non-zeros known ////
+    start = std::chrono::high_resolution_clock::now();
     valsL.resize(n,0.0);
     colIndL.resize(n,0);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    alloc += duration.count();
     
     nnz = n;
 }
@@ -239,7 +255,9 @@ void Mesh::sparsity_pass_half(
             std::vector<float> &valsL,
             std::vector<int> &rowPtrL,
             std::vector<int> &colIndL,
-            int &nnz)
+            int &nnz,
+            float &alloc,
+            float &tau)
 {
     std::vector<std::set<int> > sparsity;
     int v1, v2;
@@ -249,12 +267,17 @@ void Mesh::sparsity_pass_half(
     int num_cells = nr[0]*nr[1]*2;
     int order = (nr[0]+1)*(nr[1]+1);
 
+    auto start = std::chrono::high_resolution_clock::now();
     sparsity.resize(order);
     colIndL.resize(50*order, 0);
     rowPtrL.resize(order+1,0);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    alloc = duration.count();
 
     rowTmp = &rowPtrL[0];
     
+    start = std::chrono::high_resolution_clock::now();
     for(int e=0; e<num_cells; e++){
         for(int i=0; i<3; i++){
             v1 = get_vertex(e, i);
@@ -283,9 +306,16 @@ void Mesh::sparsity_pass_half(
         *(rowTmp++) = count;
     }
     n = count;
-
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    tau = duration.count();
+    
+    start = std::chrono::high_resolution_clock::now();
     valsL.resize(n,0.0);
     colIndL.resize(n,0);
+    end = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    alloc += duration.count();
     
     nnz = n;
 }

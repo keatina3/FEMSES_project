@@ -309,7 +309,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     std::vector<int> colIndLCPU;
     cudaError_t stat;
     cudaEvent_t start, finish;
-    float tau = 0.0;
+    float tau = 0.0, sprs_tau = 0.0, dummy=0.0;
     long long *tau_d;
 
     std::cout << GREEN "\nGPU Solver...\n" RESET;
@@ -327,19 +327,16 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     num_cells = 2*nr[0]*nr[1];
     M.get_arrays(&vertices, &cells, &dof, &is_bound, &bdry_vals);
     
-    cudaEventRecord(start, 0);
     if(!dense) {
         std::cout << "      Sparsity pass...\n";
-        M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU, nnz);
+        M.sparsity_pass(valsLCPU, rowPtrLCPU, colIndLCPU, nnz, dummy, sprs_tau);
     }
-    cudaEventRecord(finish, 0);
-    cudaEventSynchronize(finish);
-    cudaEventElapsedTime(&t.sparsity_scan, start, finish);
-    
+    t.sparsity_scan = sprs_tau;
+
     //////////////////////////////////////////////////////////////////////////////////
 
 
-    //////////// Allocating memory for mesh/stiffness matrix/stress vector //////////
+    //////////// Allocating memory for mesh/stiffness matrix/stress vector ///////////
     
 
     cudaEventRecord(start, 0);
@@ -371,8 +368,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     
     cudaEventRecord(finish, 0);
     cudaEventSynchronize(finish);
-    cudaEventElapsedTime(&tau, start, finish);
-    t.alloc += tau;
+    cudaEventElapsedTime(&t.alloc, start, finish);
 
     if(timing){
         stat = cudaMalloc( (void**)&tau_d, num_cells*3*2*sizeof(long long));
@@ -470,10 +466,9 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     std::cout << "      Solving linear system...\n";
     if(!dense) std::cout << "      (nnz = " << nnz << ")\n";
     
-    cudaEventRecord(start, 0);
-    
+    cudaEventRecord(start, 0); 
     if(dense){
-        if(dnsspr)  dnsspr_solve(L, b, order);
+        if(dnsspr)  dnsspr_solve(L, b, order, start, finish, t.convert);
         else        dense_solve(L, b, order);
     } else { 
         sparse_solve(valsL, rowPtrL, colIndL, b, order, nnz);
@@ -482,6 +477,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     cudaEventRecord(finish, 0);
     cudaEventSynchronize(finish);
     cudaEventElapsedTime(&t.solve, start, finish);
+    t.solve -= t.convert;
     
     ///////////////////////////////////////////////////////////////////////////////////
 

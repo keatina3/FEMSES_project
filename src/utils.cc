@@ -184,20 +184,31 @@ void analytical(float *u, Mesh &M, int a, int b, int order){
 
 
 //////////////////////// Outputs solution to CSV file ////////////////////
-void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
+void output_results(Mesh &M, float *u, float *u_hat, int order, int routine, float sse){
     FILE *fptr;
     float xy[2];
     std::string fname = "results/output_";
     
-    if(routine==0)      fname.append("cpu.csv");
-    else if(routine==1) fname.append("gpu.csv");
-    else                fname.append("femses.csv");
+    if(routine==0)      fname.append("cpu_");
+    else if(routine==1) fname.append("gpu_");
+    else                fname.append("femses_");
 
+    if(routine != 0){
+        if(k==0)    fname.append("GTX2080_");
+        else        fname.append("Tesla_");
+    }
+    
+    if(dnsspr && routine != 0)  fname.append("dnsspr");
+    else if(dense)              fname.append("dense");
+    else                        fname.append("sparse");
+    
+    fname.append("_results.csv");
+    
     fptr = fopen(&fname[0],"w");
     if(!fptr)
         printf("Couldn't open file %s\n",&fname[0]);
 
-    fprintf(fptr, "x, y, u(x,y), u_analytical\n");
+    fprintf(fptr, "x, y, u(x,y), u_analytical, %f\n", sse);
     for(int v=0; v<order; v++){
         M.get_xy(xy, v);
         fprintf(fptr,"%f, %f, %f, %f\n", xy[0], xy[1], u_hat[v], u[v]);
@@ -227,10 +238,15 @@ void output_times(Tau &t, int routine){
     std::string fname = "timings/";
     
     if(routine==0)      fname.append("cpu_");
-    else if(routine==1) fname.append("gpu");
-    else                fname.append("femses");
+    else if(routine==1) fname.append("gpu_");
+    else                fname.append("femses_");
 
-    if(dnsspr && routine != 0)   fname.append("dnsspr");
+    if(routine != 0){
+        if(k==0)    fname.append("GTX2080_");
+        else        fname.append("Tesla_");
+    }
+    
+    if(dnsspr && routine != 0)  fname.append("dnsspr");
     else if(dense)              fname.append("dense");
     else                        fname.append("sparse");
 

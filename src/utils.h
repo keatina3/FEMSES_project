@@ -5,8 +5,8 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_
 
-#define MAX_UNKNOWNS 2E29
-#define EPS 1.0E-05
+#define MAX_UNKNOWNS 5E5
+#define EPS 1.0E-04
 #define MAX_ITERS 1E6
 
 #define RED  "\x1B[91m"     // for colour setting in print
@@ -41,9 +41,9 @@ void init_screen();
 void output(Tau &t_cpu, Tau &t_gpu, Tau &t_gpufs, float sse_cpu, float sse_gpu, float sse_gpufs);
 float sse(float *a, float *b, int n);
 void analytical(float *u, Mesh &M, int a, int b, int order);
-void output_results(Mesh &M, float *u, float *u_hat, int order, int routine);
+void output_results(Mesh &M, float *u, float *u_hat, int order, int routine, float sse);
 void output_times(Tau &t, int routine);
-//int is_empty(FILE *file);
+int is_empty(FILE *fptr);
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m);
 void assign_ptrs(int*** arr_ptr, int** arr, int n, int m);
 void print_csr(int m, const float *csrValA, const int *csrRowPtrA, 

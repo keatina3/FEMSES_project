@@ -32,9 +32,9 @@ public:
     void get_recs(int* nrecs) const;
     void get_arrays(float **vertices, int **cells, int **dof, int **is_bound, float **bdry_vals);
     void sparsity_pass(std::vector<float> &valsL, std::vector<int> &rowPtr, 
-                        std::vector<int> &colPtrL, int &nnz);
+                        std::vector<int> &colPtrL, int &nnz, float &alloc, float &tau);
     void sparsity_pass_half(std::vector<float> &valsL, std::vector<int> &rowPtrL,
-                        std::vector<int> &colPtrL, int &nnz);
+                        std::vector<int> &colPtrL, int &nnz, float &alloc, float &tau);
 };
 
 void annulus_seg_map(float *vertex, float *a, float *b, float theta, int s);

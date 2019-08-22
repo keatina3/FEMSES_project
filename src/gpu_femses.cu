@@ -328,7 +328,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
         // calculating error using 2-norm //
         error_dot_prod(un_gpu, up_gpu, order, err);
-        std::cout << err << std::endl;
+        // std::cout << err << std::endl;
 
         tmp = un_gpu;
         un_gpu = up_gpu;

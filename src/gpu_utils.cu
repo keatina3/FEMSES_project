@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cassert>
 #include <cuda_runtime.h>
 #include <cusolverDn.h>
@@ -14,7 +15,14 @@
 // function takes input of L, b and dim (order)
 // Returns soln overwritten on b
 // uses cuSolverSp and cuSparse
-void dnsspr_solve(float *L, float *b, int order){
+void dnsspr_solve(
+            float *L,
+            float *b,
+            int order,
+            cudaEvent_t start,
+            cudaEvent_t finish,
+            float &tau)
+{
     cusparseHandle_t handle = NULL;
     cusolverSpHandle_t handleS = NULL;
     cudaStream_t stream = NULL;
@@ -59,6 +67,7 @@ void dnsspr_solve(float *L, float *b, int order){
     cusparseSetMatType(desc, CUSPARSE_MATRIX_TYPE_GENERAL);
     cusparseSetMatFillMode(desc, CUSPARSE_FILL_MODE_LOWER);
     
+    cudaEventRecord(start,0);    
     // allocating memory for CSR arrays //
     cudaStat1 = cudaMalloc( (void**)&csrRowPtrL, sizeof(int)*(order+1));
     assert(cudaSuccess == cudaStat1);
@@ -78,7 +87,10 @@ void dnsspr_solve(float *L, float *b, int order){
     // convert from dense to sparse //
     cusparseSdense2csr(handle,order,order,desc,L,order,nnzLrow,csrValL,csrRowPtrL,csrColIndL);
     assert(CUSPARSE_STATUS_SUCCESS == status);
-    
+    cudaEventRecord(finish, 0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&tau, start, finish);
+
     // set stream to cuSolver //
     status2 = cusolverSpSetStream(handleS, stream);
     assert(CUSOLVER_STATUS_SUCCESS == status2);
@@ -99,7 +111,14 @@ void dnsspr_solve(float *L, float *b, int order){
 
 ///////////////////// Solves linear system in CSR format //////////////////////////
 // NOTE: see comments from fn above //
-void sparse_solve(float *valsL,int *rowPtrL, int *colPtrL, float *b, int order, int nnz){
+void sparse_solve(
+            float *valsL,
+            int *rowPtrL,
+            int *colPtrL,
+            float *b,
+            int order,
+            int nnz)
+{
     cusolverSpHandle_t handle = NULL;
     cudaStream_t stream = NULL;
     cusparseMatDescr_t desc = NULL;
@@ -242,3 +261,67 @@ void array_max(double *a, int n, int &max){
     assert(status == CUBLAS_STATUS_SUCCESS);
 }
 ////////
+
+
+
+////////////////////// Dummy kernel ///////////////////////////
+// To run to reduce the effect of the initial
+// kernel running slowly
+__global__ void dummy_kernel(int n){
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    int count = 0;
+
+    if(idx < n && idy < n){
+        for(int i=0;i<n;i++)
+            count++;
+    }
+}
+//////
+
+
+////////////////////// Dummy kernel ///////////////////////////
+// To run to reduce the effect of the initial
+// kernel running slowly
+extern void dummy(float *dat, int n){
+    float *a, *b, *c, *d, *e, *f;
+    cudaError_t stat = cudaSuccess;
+
+    stat = cudaMalloc( (void**)&a, n*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&b, n*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&c, n*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&d, n*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&d, n*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&e, n*sizeof(float));
+    assert(stat == cudaSuccess);
+    stat = cudaMalloc( (void**)&f, n*sizeof(float));
+    assert(stat == cudaSuccess);
+
+    stat = cudaMemcpy(a, dat, n*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(b, dat, n*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(c, dat, n*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(d, dat, n*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(e, dat, n*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+    stat = cudaMemcpy(f, dat, n*sizeof(float), cudaMemcpyHostToDevice);
+    assert(stat == cudaSuccess);
+
+    dim3 dimBlock(100, 100);
+    dim3 dimGrid((n/dimBlock.x) + (!(n%dimBlock.x)?0:1),
+                (n/dimBlock.y) + (!(n%dimBlock.y)?0:1));
+
+    dummy_kernel<<<dimGrid, dimBlock>>>(n);
+
+    cudaFree(a);    cudaFree(b);    cudaFree(c);
+    cudaFree(d);    cudaFree(e);    cudaFree(f);
+}
+///////
