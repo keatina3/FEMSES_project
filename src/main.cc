@@ -136,7 +136,8 @@ int main(int argc, char** argv){
     }
 
     delete[] u;
-    delete[] u_gpu; delete[] u_gpu_femses;
+    if(gpu_f)   delete[] u_gpu; 
+    if(fpu_fs)  delete[] u_gpu_femses;
 
     return 0;
 }
