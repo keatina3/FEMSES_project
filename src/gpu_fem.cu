@@ -279,12 +279,12 @@ __global__ void assemble_gpu_csr(
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         __syncthreads();
         long long end = clock64();
-        tau_d[(idx*blockDim.y) + idy] = (end - start);
+        if(timing)  tau_d[(idx*blockDim.y) + idy] = (end - start);
         
         start = clock64();
         assemble_mat_csr(valsL, rowPtrL, colIndL, b, vertices, cells, temp1, idx, idy, order);
         end = clock64();
-        tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
+        if(timing)  tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
     }
 }    
 ////////
@@ -502,8 +502,9 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     cudaFree(vertices_gpu);      cudaFree(cells_gpu);   cudaFree(dof_gpu);
     cudaFree(is_bound_gpu);      cudaFree(bdry_vals_gpu);
     if(timing)  cudaFree(tau_d);
-    if(dense)   cudaFree(L),     cudaFree(b);
+    if(dense)   cudaFree(L);
     else        cudaFree(valsL), cudaFree(colIndL),     cudaFree(rowPtrL); 
-    
+    cudaFree(b);
+
     /////////////////////////////////////////////////////////////////////////////////
 }
