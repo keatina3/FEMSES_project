@@ -37,7 +37,6 @@ To make the program, simply run
 cd src/
 make
 ```
-UNFINISHED
 
 ### Usage
 To get detailed usage information, run
