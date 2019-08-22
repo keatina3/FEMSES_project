@@ -1,7 +1,7 @@
 \clearpage
 \chapter{Design \& Implementation}
 
-Now that the foundation mathematics of numerical technique has been covered, in this chapter, the general approach to implementing the finite element method in serial is discussed. The design structure of the code is explained, such as data structures and classes used, and storage approaches such as the benefits of applying sparse storage formats and sparse solvers. The u se of linear algebra libraries, specifically Intel's MKL, are detailed as they were necessary to avoid reinventing the wheel when solving the final linear system. 
+Now that the foundation mathematics of numerical technique has been covered, in this chapter, the general approach to implementing the finite element method in serial is discussed. The design structure of the code is explained, such as data structures and classes used, and storage approaches such as the benefits of applying sparse storage formats and sparse solvers. The use of linear algebra libraries, specifically Intel's MKL, are detailed as they were necessary to avoid reinventing the wheel when solving the final linear system. 
  
 \section{General Approach}
 
@@ -89,14 +89,31 @@ IA = [ 0 0 1 1 1 2 2 3 3 3 3 4 5 ]
 IJ = [ 0 1 1 2 4 3 4 0 1 2 3 3 4 ].
 \end{lstlisting}
 This can of course be done in either row-major or column-major directions.
+
 \subsection{Graph Theory}
 
-Looking at the sparsity of a matrix, can be equated to graph traversal problems in graph theory.
+Looking at the sparsity of a matrix, can be equated to graph traversal problems in graph theory. If we consider a graph problem $G(V,E)$, defined as a set of vertices,
+\begin{equation}
+	V = \{v_0,v_1,\dots,v_n\},
+\end{equation}
+and a set of edges $E$, consisting of pairs of vertices $v_i,v_j$, such that,
+\begin{equation}
+	E \subseteq V\times V.
+\end{equation}
+From a sparse matrix perspective, this graph can be thought of as the connectivity between elements in the matrix, i.e. if $\{v_i,v_j\} \in E$, then it can be shown that for a sparse matrix $A$, $A_{i,j}$ is non-zero. Looking at Figure (REFERENCE), demonstrating a mesh for a FEM problem in the form of a graph. Clearly all the edges and connectivity are clear from the figure, but this also gives us the inherent sparsity patter in the resulting matrix. Figure (REFERENCE) demonstrates this resulting global stiffness matrix. Thinking back to how the FEM, particularly its elements were defined, this result makes sense. The basis functions were defined on a compact support of touching nodes, so clearly if $\{v_i,v_j\} \notin E$, then the resulting inner product,
+\begin{equation}
+	\left\langle \varphi_i, \varphi_j \right\rangle = 0.
+\end{equation}
 
 \subsection{Sparsity Scan}
 
+Naturally, the next question needing to be posed is, how does one take advantage of this inherent sparsity pattern available in the stiffness matrix. The easiest, although there have been papers published on more advanced methods (CITE), is to run a single pass over the mesh to begin, taking the computational hit, and using this to create a sparsity pattern. In this implementation, the pass created a vector of standard library sets, one for each node, and iterated through amending to the set if there was an edge between the two nodes. Using this, one now has the number of non-zeros and can populate quite easily, IA and IJ, in the CSR matrix. Algorithm (REFERENCE) details how this is explicitly performed.
+
 \section{Solver Libraries}
+
+A substantial part of the computation time in the FEM, relies on actually solving the final linear system. While this report is aimed at optimising the FEM in general, it does not aim at optimising linear solvers - something which has been covered by countless PhD students and doctors over many years. Instead, a decision was made to simply use a pre-existing library for both convenience and efficiency's sake. There are many variants that could have been used, GNU Standard Library, MAGMA, LAPACK etc. The one which was used in the end was Intel's MKL.
 
 \subsection{Intel's MKL}
 
+The Intel library was split into two separate sub-libraries: their LAPACK routines for dense systems, and their Direct Sparse Solver (DSS). Both were used in this paper for comparison reasons. In either case, given that the stiffness matrix $A$, is symmetric positive definite (SPD), both dense and sparse solvers work by initially factorising the matrix using Cholesky decomposition, $A = L^T L$, where $L$ is lower-triangular. This new system is now solved using a direct solver. The DSS also has an option of providing a reordering of the sparse matrix, prior to the Cholesky decomposition, such as Cuthill-McKee (CITE), if one so wishes to make the sparsity pattern more compact, and thus more efficient for solving. Figure (REFERENCE) demonstrates the potential benefits here (CITE MATLAB). This option was left on "auto" for the purposes of this report. 
 CITE INTEL'S DOCUMENTATION
