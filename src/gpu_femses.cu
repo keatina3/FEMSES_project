@@ -391,7 +391,9 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
     cudaFree(vertices_gpu);     cudaFree(cells_gpu);    cudaFree(dof_gpu);
     cudaFree(is_bound_gpu);     cudaFree(bdry_vals_gpu);
-    cudaFree(Le); cudaFree(be); cudaFree(un_gpu);       cudaFree(up_gpu);
+    cudaFree(Le);               cudaFree(be); 
+    cudaFree(un_gpu);           cudaFree(up_gpu);
+    cudaFree(ue);               cudaFree(w);
 
     //////////////////////////////////////////////////////////////////////////////////
 }

@@ -48,8 +48,7 @@ __device__ void assemble_elem(
     
     v = cells[(idx*3) + idy];            // global node number 
     
-    if(idx == 0)        printf("v = %d\n", v);
-
+    
     //////////// Assigning global coordinates //////////////////
     
     xi[3*idy] = 1.0;
@@ -58,11 +57,6 @@ __device__ void assemble_elem(
 
     __syncthreads();
     
-    if(idx == 0 && idy == 0){
-        printf("x0,y0 = %f, %f\n", xi[1], xi[2]);
-        printf("x1,y1 = %f, %f\n", xi[4], xi[5]);
-        printf("x2,y2 = %f, %f\n", xi[7], xi[8]);
-    }
     // using 1 thread to calculate area //
     if(idy==0)
         consts[6] = area(xi);
@@ -76,12 +70,6 @@ __device__ void assemble_elem(
     consts[idy + 3] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1];
     
     __syncthreads();
-    
-    if(idx == 0 && idy == 0){
-        printf("beta0,gamma0 = %f, %f\n", consts[0], consts[1]);
-        printf("beta1,gamma1 = %f, %f\n", consts[2], consts[3]);
-        printf("beta2,gamma2 = %f, %f\n", consts[4], consts[5]);
-    }
     
     ////////////////////////////////////////////////////////////
 
@@ -98,15 +86,7 @@ __device__ void assemble_elem(
 
     ///////////////////////////////////////////////////////////////
 
-    if(idy == 0 && idx == 0){
-        for(int i = 0; i<3; i++){
-            for(int j=0; j<3; j++){
-                printf("%f ", Le[(i*3) + j]);
-            }
-            printf("\n");
-        }
-    } 
-
+    
     ///////////////// Enforcing boundary conditions ///////////////
     
     if(is_bound[v]){
@@ -123,16 +103,6 @@ __device__ void assemble_elem(
         Le[(3*idy)+idy] = 1.0;
         atomicExch(&be[idy], bound);
     }                            
-    
-    __syncthreads();
-    if(idy == 0 && idx == 0){
-        for(int i = 0; i<3; i++){
-            for(int j=0; j<3; j++){
-                printf("%f ", Le[(i*3) + j]);
-            }
-            printf("\n");
-        }
-    } 
     
     /////////////////////////////////////////////////////////////////
 }
@@ -154,21 +124,22 @@ __device__ void assemble_mat(
                 int order)
 {
     float *Le, *be;
-    int* dof_r;
+    // int* dof_r;
     int offset = 28*threadIdx.x;
- 
+    int dof_r[3];
+
     Le = &temp1[offset];
     be = &temp1[offset + 9];
-    dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
+    // dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
 
     ///////////////// Assigning global node numbers //////////////////
-
-    if(idy==0){
-        dof_r[0] = dof[(idx*3)];
-        dof_r[1] = dof[(idx*3)+1];
-        dof_r[2] = dof[(idx*3)+2];
-    }
-    __syncthreads();
+    
+    dof_r[0] = dof[(idx*3)];
+    dof_r[1] = dof[(idx*3)+1];
+    dof_r[2] = dof[(idx*3)+2]; 
+    
+    // dof_r[idy] = dof[(idx*3) + idy];
+    // __syncthreads();
 
     ////////////////////////////////////////////////////////////////
   
@@ -211,24 +182,26 @@ __device__ void assemble_mat_csr(
                 int order)
 {
     float *Le, *be;
-    int* dof_r;
+    // int* dof_r;
     int row;
     int *tmp1, *tmp2;
     int off = 0;
     int off_mem = 28*threadIdx.x;
+    int dof_r[3];
 
     Le = &temp1[off_mem];
     be = &temp1[off_mem + 9];
-    dof_r = (int *)&temp1[off_mem + 12];
+    // dof_r = (int *)&temp1[off_mem + 12];
 
     ///////////////// Assigning global node numbers //////////////////
     
-    if(idy==0){
-        dof_r[0] = dof[(idx*3)];
-        dof_r[1] = dof[(idx*3)+1];
-        dof_r[2] = dof[(idx*3)+2];
-    }
-    __syncthreads();
+    
+    dof_r[0] = dof[(idx*3)];
+    dof_r[1] = dof[(idx*3)+1];
+    dof_r[2] = dof[(idx*3)+2]; 
+    
+    // dof_r[idy] = dof[(idx*3) + idy];
+    // __syncthreads();
     
     //////////////////////////////////////////////////////////////////
 
