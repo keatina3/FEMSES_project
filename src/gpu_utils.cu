@@ -315,7 +315,7 @@ extern void dummy(float *dat, int n){
     stat = cudaMemcpy(f, dat, n*sizeof(float), cudaMemcpyHostToDevice);
     assert(stat == cudaSuccess);
 
-    dim3 dimBlock(100, 100);
+    dim3 dimBlock(50, 10);
     dim3 dimGrid((n/dimBlock.x) + (!(n%dimBlock.x)?0:1),
                 (n/dimBlock.y) + (!(n%dimBlock.y)?0:1));
 

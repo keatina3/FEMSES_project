@@ -10,6 +10,8 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
+#include <cstdio>
+
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
     float tmp = 0.0;
@@ -37,14 +39,17 @@ __device__ void assemble_elem(
     float *Le, *be, *xi, *consts;
     int v;
     float bound;
+    int offset = 28*threadIdx.x;
 
-    Le = temp1;                 // element matrix
-    be = &temp1[9];             // element stress vector
-    xi = &temp1[12];            // matrix of global coordinates
-    consts = &temp1[21];        // stores alpha, beta, gamma seen in serial version
+    Le = &temp1[offset];                 // element matrix
+    be = &temp1[offset + 9];             // element stress vector
+    xi = &temp1[offset + 12];            // matrix of global coordinates
+    consts = &temp1[offset + 21];        // stores beta, gamma and area seen in serial version
     
-    v = cells[(idx*3) + idy];   // global node number 
+    v = cells[(idx*3) + idy];            // global node number 
     
+    if(idx == 0)        printf("v = %d\n", v);
+
     //////////// Assigning global coordinates //////////////////
     
     xi[3*idy] = 1.0;
@@ -53,20 +58,30 @@ __device__ void assemble_elem(
 
     __syncthreads();
     
+    if(idx == 0 && idy == 0){
+        printf("x0,y0 = %f, %f\n", xi[1], xi[2]);
+        printf("x1,y1 = %f, %f\n", xi[4], xi[5]);
+        printf("x2,y2 = %f, %f\n", xi[7], xi[8]);
+    }
     // using 1 thread to calculate area //
     if(idy==0)
-        consts[9] = area(xi);
+        consts[6] = area(xi);
     
     ///////////////////////////////////////////////////////////
 
 
-    //////////// calculating alpha, beta, gamma ///////////////
+    ///////////////// calculating beta, gamma //////////////////
     
-    // consts[(3*idy)] = xi[(idy+1)%3][1] * xi[(i+2)%3][2] - xi[(i+2)%3][1] * xi[(i+1)%3][2];
-    consts[(3*idy)+1] = xi[ 3*((idy+1)%3) +2] - xi[ 3*((idy+2)%3) + 2];
-    consts[(3*idy)+2] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1];
+    consts[idy] = xi[ 3*((idy+1)%3) + 2] - xi[ 3*((idy+2)%3) + 2];
+    consts[idy + 3] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1];
     
     __syncthreads();
+    
+    if(idx == 0 && idy == 0){
+        printf("beta0,gamma0 = %f, %f\n", consts[0], consts[1]);
+        printf("beta1,gamma1 = %f, %f\n", consts[2], consts[3]);
+        printf("beta2,gamma2 = %f, %f\n", consts[4], consts[5]);
+    }
     
     ////////////////////////////////////////////////////////////
 
@@ -75,14 +90,22 @@ __device__ void assemble_elem(
 
     be[idy] = 0.0;      // 0.0 intially until BCs enforced //
     for(int i=0; i<=idy; i++){
-        Le[(3*idy)+i] = 0.25*consts[9]*consts[9]*consts[9] * (consts[(3*idy)+1]*consts[(3*i)+1] 
-                                    + consts[(3*idy)+2]*consts[(3*i)+2]);
+        Le[(3*idy)+i] = 0.25*consts[6]*consts[6]*consts[6] * (consts[idy]*consts[i] 
+                                    + consts[idy + 3]*consts[i+3]);
         Le[(3*i)+idy] = Le[(3*idy)+i];
     }
     __syncthreads();
 
     ///////////////////////////////////////////////////////////////
 
+    if(idy == 0 && idx == 0){
+        for(int i = 0; i<3; i++){
+            for(int j=0; j<3; j++){
+                printf("%f ", Le[(i*3) + j]);
+            }
+            printf("\n");
+        }
+    } 
 
     ///////////////// Enforcing boundary conditions ///////////////
     
@@ -100,6 +123,16 @@ __device__ void assemble_elem(
         Le[(3*idy)+idy] = 1.0;
         atomicExch(&be[idy], bound);
     }                            
+    
+    __syncthreads();
+    if(idy == 0 && idx == 0){
+        for(int i = 0; i<3; i++){
+            for(int j=0; j<3; j++){
+                printf("%f ", Le[(i*3) + j]);
+            }
+            printf("\n");
+        }
+    } 
     
     /////////////////////////////////////////////////////////////////
 }
@@ -122,10 +155,11 @@ __device__ void assemble_mat(
 {
     float *Le, *be;
     int* dof_r;
+    int offset = 28*threadIdx.x;
  
-    Le = temp1;
-    be = &temp1[9];
-    dof_r = (int *)&temp1[12];      // stores in shared memory, global node numbers for 3 nodes
+    Le = &temp1[offset];
+    be = &temp1[offset + 9];
+    dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
 
     ///////////////// Assigning global node numbers //////////////////
 
@@ -181,10 +215,11 @@ __device__ void assemble_mat_csr(
     int row;
     int *tmp1, *tmp2;
     int off = 0;
+    int off_mem = 28*threadIdx.x;
 
-    Le = temp1;
-    be = &temp1[9];
-    dof_r = (int *)&temp1[12];
+    Le = &temp1[off_mem];
+    be = &temp1[off_mem + 9];
+    dof_r = (int *)&temp1[off_mem + 12];
 
     ///////////////// Assigning global node numbers //////////////////
     
@@ -229,6 +264,7 @@ __global__ void assemble_gpu(
                 int *is_bound, 
                 float *bdry_vals, 
                 int order,
+                int num_cells,
                 long long *tau_d,
                 int timing)
 {
@@ -236,8 +272,7 @@ __global__ void assemble_gpu(
     int idy = blockIdx.y*blockDim.y + threadIdx.y;      // idy = local node number
     extern __shared__ float temp1[];            // shared mem to store elem mats & constants
 
-    if(idx < gridDim.x && idy < blockDim.y){
-        
+    if(idx < num_cells && idy < blockDim.y){
         long long start = clock64();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         __syncthreads();
@@ -247,7 +282,7 @@ __global__ void assemble_gpu(
         start = clock64();
         assemble_mat(L, b, vertices, cells, temp1, idx, idy, order);
         end = clock64();
-        if(timing)  tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
+        if(timing)  tau_d[(num_cells*blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
     }
 }
 ///////
@@ -267,6 +302,7 @@ __global__ void assemble_gpu_csr(
                 int *is_bound, 
                 float *bdry_vals, 
                 int order,
+                int num_cells,
                 long long *tau_d,
                 int timing)
 {
@@ -274,7 +310,7 @@ __global__ void assemble_gpu_csr(
     int idy = blockIdx.y*blockDim.y + threadIdx.y;
     extern __shared__ float temp1[];
 
-    if(idx < gridDim.x && idy < blockDim.y){
+    if(idx < num_cells && idy < blockDim.y){
         long long start = clock64();
         assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
         __syncthreads();
@@ -284,7 +320,7 @@ __global__ void assemble_gpu_csr(
         start = clock64();
         assemble_mat_csr(valsL, rowPtrL, colIndL, b, vertices, cells, temp1, idx, idy, order);
         end = clock64();
-        if(timing)  tau_d[(gridDim.x * blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
+        if(timing)  tau_d[(num_cells*blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
     }
 }    
 ////////
@@ -296,7 +332,7 @@ __global__ void assemble_gpu_csr(
 extern void gpu_fem(float *u, Mesh &M, Tau &t){
     int nr[2];
     int order, num_cells, nnz;
-    int block_size_X, block_size_Y, shared;
+    int block_size_Y, shared;
     float *vertices_gpu, *vertices;
     int *cells_gpu, *cells;
     int *dof_gpu, *dof;
@@ -311,6 +347,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     cudaEvent_t start, finish;
     float tau = 0.0, sprs_tau = 0.0, dummy=0.0;
     long long *tau_d;
+    int threads, shrd_mem;
 
     std::cout << GREEN "\nGPU Solver...\n" RESET;
     
@@ -414,15 +451,36 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     ///////////////////////////////////////////////////////////////////////////////
 
 
-    /////////  DIMENSIONS OF SYSTEM => 1 block per cell, 1 thread per node ////////
+    /////////  DIMENSIONS OF SYSTEM => b cells per block, 1 thread per node ////////
     
-    block_size_X = 1, block_size_Y = 3;
+    block_size_Y = 3;
     dim3 dimBlock(block_size_X, block_size_Y);
     dim3 dimGrid((num_cells/dimBlock.x)+(!(num_cells%dimBlock.x)?0:1),
                 (1/dimBlock.y)+(!(1%dimBlock.y)?0:1));
     
-    shared = 31;
-    
+    shared = 28*block_size_X;
+   
+    cudaDeviceGetAttribute(&shrd_mem, cudaDevAttrMaxSharedMemoryPerBlock, k);
+    cudaDeviceGetAttribute(&threads, cudaDevAttrMaxThreadsPerBlock, k);
+
+    if(shared * sizeof(float) > shrd_mem){
+        std::cerr << "      Not enough shared memory on device to continue..." << std::endl;
+        std::cerr << "              Shared memory requested: " 
+                                            << shared * sizeof(float) << std::endl;
+        std::cerr << "              Shared memory available: " << shrd_mem << std::endl;
+        std::cerr << "      Exiting." << std::endl;
+        std::exit(1);
+    }
+
+    if(block_size_X * block_size_Y > threads){
+        std::cerr << "      Too many threads requested per block..." << std::endl;
+        std::cerr << "              Threads requested: " 
+                                            << block_size_X * block_size_Y << std::endl;
+        std::cerr << "              Max threads available: " << threads << std::endl;
+        std::cerr << "      Exiting." << std::endl;
+        std::exit(1);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
 
     
@@ -432,11 +490,11 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
     
     if(dense) {
         assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
-                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order, tau_d, timing);
+                       cells_gpu, is_bound_gpu, bdry_vals_gpu, order, num_cells, tau_d, timing);
     } else {
         assemble_gpu_csr<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
                         b, vertices_gpu, cells_gpu, is_bound_gpu, 
-                        bdry_vals_gpu, order, tau_d, timing);
+                        bdry_vals_gpu, order, num_cells, tau_d, timing);
     }
 
     //////// Getting timings from device functions ///////

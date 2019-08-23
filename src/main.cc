@@ -79,8 +79,8 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_cpu.tot = duration.count();
         
-        sse_cpu = F.sse_fem(u);
         F.output(u);
+        sse_cpu = F.sse_fem(u);
     }
     
     /////////////////////////////////////////////////
@@ -101,8 +101,8 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_gpu_f.tot = duration.count();
         
-        sse_gpuf = sse(u, u_gpu, order);
         output_results(M, u, u_gpu, order, 1, sse_gpuf);
+        sse_gpuf = sse(u, u_gpu, order);
     }
         
     /////////////////////////////////////////////////
@@ -120,8 +120,8 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_gpu_fs.tot = duration.count();
         
-        sse_gpufs = sse(u, u_gpu_femses, order);
         output_results(M, u, u_gpu_femses, order, 2, sse_gpufs);
+        sse_gpufs = sse(u, u_gpu_femses, order);
     }
     
     /////////////////////////////////////////////////
@@ -137,7 +137,7 @@ int main(int argc, char** argv){
 
     delete[] u;
     if(gpu_f)   delete[] u_gpu; 
-    if(fpu_fs)  delete[] u_gpu_femses;
+    if(gpu_fs)  delete[] u_gpu_femses;
 
     return 0;
 }

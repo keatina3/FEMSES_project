@@ -11,7 +11,7 @@
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = false, dense = false, dnsspr = false, debug =  false;
-int n = 2, m = 2, k = 1; 
+int n = 2, m = 2, k = 1, block_size_X = 2; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
 const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
@@ -19,7 +19,7 @@ const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 int parse_arguments(int argc, char **argv){
     int opt;
 
-    while((opt = getopt(argc, argv, "vhtcgfdskDCn:m:a:r:i:o:")) != -1) {
+    while((opt = getopt(argc, argv, "vhtcgfdskDCn:m:a:r:i:o:b:")) != -1) {
         switch(opt){
             case 'v': 
                 verbose =  true; break;
@@ -55,10 +55,12 @@ int parse_arguments(int argc, char **argv){
                 ui = atof(optarg); break;
             case 'o':
                 uo = atof(optarg); break;
+            case 'b':
+                block_size_X = atoi(optarg); break;
             default:
                 fprintf(stderr, "Invalid option given\n");
                 print_usage();
-                return -1;
+                exit(1);
         }
     }
     return 0;
@@ -88,8 +90,9 @@ void print_usage(){
     printf("    -m          : number of rectangles in y-axis (deafult: 2)\n");
     printf("    -a          : radius of inner circle in annulus/left corner of rectangle (default: 3)\n");
     printf("    -r          : difference between inner radius and outer radius (default: 7)\n");
-    printf("    -ui         : inside/left, dirichlet boundary condition (default: 2.0)\n");
-    printf("    -uo         : outside/right, dirichlet boundary condition (default: 6.0)\n");
+    printf("    -i         : inside/left, dirichlet boundary condition (default: 2.0)\n");
+    printf("    -o         : outside/right, dirichlet boundary condition (default: 6.0)\n");
+    printf("    -b         : sets block_size_X (default: 1)\n");
     printf("\n==============================================================================\n\n");
 }
 //////
