@@ -134,8 +134,10 @@ void FEM::solve(Tau &t){
    
     std::cout << "      Getting element matrices...\n";
     auto start = std::chrono::high_resolution_clock::now();
+    
     for(unsigned int e=0; e<Le.size(); e++)
         elem_mat(e);
+    
     auto end = std::chrono::high_resolution_clock::now(); 
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.elem_mats = duration.count();
@@ -147,10 +149,10 @@ void FEM::solve(Tau &t){
     
     std::cout << "      Assembling stiffness matrix...\n";
     start = std::chrono::high_resolution_clock::now();
-    if(dense) 
-        assemble();
-    else 
-        assemble_csr();
+    
+    if(dense)   assemble();
+    else        assemble_csr();
+    
     end = std::chrono::high_resolution_clock::now(); 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.assembly = duration.count();
@@ -164,11 +166,13 @@ void FEM::solve(Tau &t){
     if(!dense) std::cout << "      (nnz = " << nnz << ")\n";
     
     start = std::chrono::high_resolution_clock::now();
+    
     if(dense){
         info = LAPACKE_sposv(LAPACK_ROW_MAJOR, 'L', n, nrhs, L_vals, lda, b, ldb);
         assert(!info);
     } else
         MKL_solve();
+    
     end = std::chrono::high_resolution_clock::now(); 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.solve = duration.count();
@@ -309,7 +313,7 @@ float FEM::area(float xi[3][3]) const {
 // need an updated version of this //
 void FEM::output(float *u_an) const {
 
-    output_results(*M, u_an, b, order, 0, SSE);
+    output_results(*M, u_an, b, order, 0);
 }
 
 float FEM::sse_fem(float *u){

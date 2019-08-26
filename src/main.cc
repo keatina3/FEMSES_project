@@ -21,14 +21,15 @@
 
 extern void dummy(float *dat, int n);
 extern void gpu_fem(float *u, Mesh &M, Tau &t);
-extern void gpu_femses(float *u, Mesh &M, Tau &t);
+extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count);
 
 int main(int argc, char** argv){
     int nr[2];
     float x[2], y[2];
     float *u, *u_gpu, *u_gpu_femses;
-    float sse_cpu, sse_gpuf, sse_gpufs;
+    float sse_cpu, sse_gpu_f, sse_gpu_fs;
     int order;
+    int iters;
     Tau tau_cpu = tau_default, tau_gpu_f = tau_default, tau_gpu_fs = tau_default;
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -86,7 +87,7 @@ int main(int argc, char** argv){
     /////////////////////////////////////////////////
 
 
-    if(gpu_f || gpu_fs)     dummy(u, order);        // dummy kernel to prevent slowdown
+    if(gpu_f || gpu_fs)     dummy(u, 100);        // dummy kernel to prevent slowdown
 
     
     //////////////      GPU       ///////////////////
@@ -101,8 +102,8 @@ int main(int argc, char** argv){
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_gpu_f.tot = duration.count();
         
-        output_results(M, u, u_gpu, order, 1, sse_gpuf);
-        sse_gpuf = sse(u, u_gpu, order);
+        output_results(M, u, u_gpu, order, 1);
+        sse_gpu_f = sse(u, u_gpu, order);
     }
         
     /////////////////////////////////////////////////
@@ -114,25 +115,25 @@ int main(int argc, char** argv){
         start = std::chrono::high_resolution_clock::now();
         
         u_gpu_femses = new float[order](); 
-        gpu_femses(u_gpu_femses, M, tau_gpu_fs);
+        gpu_femses(u_gpu_femses, M, tau_gpu_fs, iters);
     
         end = std::chrono::high_resolution_clock::now(); 
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         tau_gpu_fs.tot = duration.count();
         
-        output_results(M, u, u_gpu_femses, order, 2, sse_gpufs);
-        sse_gpufs = sse(u, u_gpu_femses, order);
+        output_results(M, u, u_gpu_femses, order, 2);
+        sse_gpu_fs = sse(u, u_gpu_femses, order);
     }
     
     /////////////////////////////////////////////////
      
      
-    if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpuf, sse_gpufs);
+    if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpu_f, sse_gpu_fs);
 
     if(timing){
-        if(cpu)     output_times(tau_cpu, 0);
-        if(gpu_f)   output_times(tau_gpu_f, 1);
-        if(gpu_fs)  output_times(tau_gpu_fs, 2);
+        if(cpu)     output_times(tau_cpu, 0, sse_cpu, 0);
+        if(gpu_f)   output_times(tau_gpu_f, 1, sse_gpu_f, 0);
+        if(gpu_fs)  output_times(tau_gpu_fs, 2, sse_gpu_fs, iters);
     }
 
     delete[] u;

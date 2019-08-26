@@ -324,7 +324,8 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
 
     std::cout << GREEN "\nGPU Solver...\n" RESET;
     
-    cudaSetDevice(k);
+    stat = cudaSetDevice(k);
+    assert(stat == cudaSuccess);
     
     cudaEventCreate(&start);
     cudaEventCreate(&finish);

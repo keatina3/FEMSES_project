@@ -11,7 +11,7 @@
 
 #ifdef __cplusplus
 
-extern void gpu_femses(float *u, Mesh &M, Tau &t);
+extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count);
 
 #endif
 

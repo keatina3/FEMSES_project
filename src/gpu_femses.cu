@@ -183,7 +183,7 @@ __global__ void glob_sols(
 // Gets local solution approximations to these using a jacobi iteration
 // Combines these to a global solution using a weighting
 // Repeats until convergence of global solution
-extern void gpu_femses(float *u, Mesh &M, Tau &t){
+extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count){
     int nr[2];
     int order, num_cells;
     int block_size_Y, shared, shared2;
@@ -202,7 +202,8 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
 
     std::cout << GREEN "\nFEMSES Solver...\n" RESET;
     
-    cudaSetDevice(k);
+    stat = cudaSetDevice(k);
+    assert(stat == cudaSuccess);
     
     cudaEventCreate(&start);
     cudaEventCreate(&finish);
@@ -339,7 +340,7 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t){
     cudaEventRecord(start,0);
 
     float *tmp;
-    int count = 0;
+    count = 0;
     while(err > EPS && count < MAX_ITERS){
         // getting local solutions ue and storing on global mem //
         local_sols<<<dimGrid, dimBlock, shared2*sizeof(float)>>>

@@ -11,7 +11,7 @@
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = false, dense = false, dnsspr = false, debug =  false;
-int n = 2, m = 2, k = 1, block_size_X = 2; 
+int n = 2, m = 2, k = 1, block_size_X = 32; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
 const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
@@ -92,7 +92,7 @@ void print_usage(){
     printf("    -r          : difference between inner radius and outer radius (default: 7)\n");
     printf("    -i         : inside/left, dirichlet boundary condition (default: 2.0)\n");
     printf("    -o         : outside/right, dirichlet boundary condition (default: 6.0)\n");
-    printf("    -b         : sets block_size_X (default: 1)\n");
+    printf("    -b         : sets block_size_X (default: 32)\n");
     printf("\n==============================================================================\n\n");
 }
 //////
@@ -187,7 +187,7 @@ void analytical(float *u, Mesh &M, int a, int b, int order){
 
 
 //////////////////////// Outputs solution to CSV file ////////////////////
-void output_results(Mesh &M, float *u, float *u_hat, int order, int routine, float sse){
+void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
     FILE *fptr;
     float xy[2];
     std::string fname = "results/output_";
@@ -211,7 +211,7 @@ void output_results(Mesh &M, float *u, float *u_hat, int order, int routine, flo
     if(!fptr)
         printf("Couldn't open file %s\n",&fname[0]);
 
-    fprintf(fptr, "x, y, u(x,y), u_analytical, %f\n", sse);
+    fprintf(fptr, "x, y, u(x,y), u_analytical\n");
     for(int v=0; v<order; v++){
         M.get_xy(xy, v);
         fprintf(fptr,"%f, %f, %f, %f\n", xy[0], xy[1], u_hat[v], u[v]);
@@ -236,7 +236,7 @@ int is_empty(FILE *file){
 
 
 /////////////////////// Output timings to file ////////////////////////
-void output_times(Tau &t, int routine){
+void output_times(Tau &t, int routine, float sse, int iters){
     FILE *fptr;
     std::string fname = "timings/";
     
@@ -260,10 +260,10 @@ void output_times(Tau &t, int routine){
         printf("Couldn't open file %s\n",&fname[0]);
 
     if(is_empty(fptr))
-        fprintf(fptr, "n, m, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan\n");
+        fprintf(fptr, "n, m, block_size_X, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse\n");
 
-    fprintf(fptr, "%d, %d, %f, %f, %f, %f, %f, %f, %f, %f\n", 
-            n, m, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan);
+    fprintf(fptr, "%d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
+            n, m, block_size_X, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan, sse, iters);
 
     fclose(fptr);
 }

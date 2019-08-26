@@ -1,8 +1,8 @@
 CC = g++
 NVCC = nvcc
 
-CFLAGS = -std=c++11 -g -Wall -W #-O3
-NVCCFLAGS = -g -G --use_fast_math --relocatable-device-code=true #-DNDEBUG #-lefence
+CFLAGS = -std=c++11 -O3 #-W -Wall -g
+NVCCFLAGS = -O3 --use_fast_math --relocatable-device-code=true #-DNDEBUG #-lefence
 LDFLAGS = -lm -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lcusolver -lcusparse -lcublas
 
 OBJECTS = *.o
