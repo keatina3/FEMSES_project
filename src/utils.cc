@@ -10,7 +10,7 @@
 #include "utils.h"
 
 bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
-bool annulus = false, dense = false, dnsspr = false, debug =  false;
+bool annulus = false, dense = false, dnsspr = false, debug =  false, mem_config = true;
 int n = 2, m = 2, k = 1, block_size_X = 32; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
 const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -19,7 +19,7 @@ const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 int parse_arguments(int argc, char **argv){
     int opt;
 
-    while((opt = getopt(argc, argv, "vhtcgfdskDCn:m:a:r:i:o:b:")) != -1) {
+    while((opt = getopt(argc, argv, "vhtcgfdskDCMn:m:a:r:i:o:b:")) != -1) {
         switch(opt){
             case 'v': 
                 verbose =  true; break;
@@ -43,6 +43,8 @@ int parse_arguments(int argc, char **argv){
                 debug = true; break;
             case 'C':
                 annulus = true; break;
+            case 'M':
+                mem_config = false; break;
             case 'n':
                 n = atoi(optarg); break;
             case 'm':
@@ -86,6 +88,7 @@ void print_usage(){
     printf("    -k          : turns off Tesla K40, changes GPU to RTX2080 Super\n");
     printf("    -D          : turns on debugging mode\n");
     printf("    -C          : turns on mesh deformation from rectangle to annulus\n");
+    printf("    -M          : turns off GPU shared/register memory reconfiguration\n");
     printf("    -n          : number of rectangles in x-axis (default: 2)\n");
     printf("    -m          : number of rectangles in y-axis (deafult: 2)\n");
     printf("    -a          : radius of inner circle in annulus/left corner of rectangle (default: 3)\n");
@@ -113,10 +116,35 @@ void init_screen(){
     if(dnsspr)      printf("                Solver          : Dense-Sparse conv\n");
     else if(dense)  printf("                Solver          : Dense\n");
     else            printf("                Solver          : Sparse\n");
+    printf("                Memory reconfig : %d\n", mem_config);
+    printf("                block_size_X    : %d\n", block_size_X);
     printf("                # of unknowns   : %d\n", (n+1)*(m+1));   
     printf("================================================\n\n");
 }
 //////
+
+//////////////////// Prints program run info to stderr file ////////////////////
+void error_log(){
+    fprintf(stderr, "\n==============================================================================\n\n");
+    fprintf(stderr, BLUE "fem_solver - Finite Element Method GPU Implementation\n");
+    fprintf(stderr, "Error Log\n" RESET);
+    fprintf(stderr, "\n================================================\n");
+    fprintf(stderr, GREEN "Intial setup...\n" RESET);
+    fprintf(stderr, "                Dirichlet BCs   : %0.00f, %0.00f\n", ui, uo);
+    fprintf(stderr, "                Range           : %0.00f, %0.00f\n", a, a+dr);    
+    fprintf(stderr, "                CPU enabled     : %d\n", cpu);
+    fprintf(stderr, "                GPU enabled     : %d\n", gpu_f);
+    fprintf(stderr, "                FEMSES enabled  : %d\n", gpu_fs);   
+    if(dnsspr)      fprintf(stderr, "                Solver          : Dense-Sparse conv\n");
+    else if(dense)  fprintf(stderr, "                Solver          : Dense\n");
+    else            fprintf(stderr, "                Solver          : Sparse\n");
+    fprintf(stderr, "                Memory reconfig : %d\n", mem_config);
+    fprintf(stderr, "                block_size_X    : %d\n", block_size_X);
+    fprintf(stderr, "                # of unknowns   : %d\n", (n+1)*(m+1));   
+    fprintf(stderr, "================================================\n\n");
+
+}
+///////
 
 
 /////////////////////// Prints output from program run //////////////////////
@@ -236,7 +264,7 @@ int is_empty(FILE *file){
 
 
 /////////////////////// Output timings to file ////////////////////////
-void output_times(Tau &t, int routine, float sse, int iters){
+void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
     FILE *fptr;
     std::string fname = "timings/";
     
@@ -262,8 +290,8 @@ void output_times(Tau &t, int routine, float sse, int iters){
     if(is_empty(fptr))
         fprintf(fptr, "n, m, block_size_X, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse\n");
 
-    fprintf(fptr, "%d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
-            n, m, block_size_X, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan, sse, iters);
+    fprintf(fptr, "%d, %d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
+            n, m, block_size_X, reconfig, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan, sse, iters);
 
     fclose(fptr);
 }

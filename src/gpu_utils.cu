@@ -298,8 +298,6 @@ extern void dummy(float *dat, int n){
     assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&d, n*sizeof(float));
     assert(stat == cudaSuccess);
-    stat = cudaMalloc( (void**)&d, n*sizeof(float));
-    assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&e, n*sizeof(float));
     assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&f, n*sizeof(float));

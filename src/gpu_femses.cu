@@ -183,7 +183,7 @@ __global__ void glob_sols(
 // Gets local solution approximations to these using a jacobi iteration
 // Combines these to a global solution using a weighting
 // Repeats until convergence of global solution
-extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count){
+extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count, int &reconfig){
     int nr[2];
     int order, num_cells;
     int block_size_Y, shared, shared2;
@@ -295,7 +295,9 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count){
     cudaDeviceGetAttribute(&shrd_mem, cudaDevAttrMaxSharedMemoryPerBlock, k);
     cudaDeviceGetAttribute(&threads, cudaDevAttrMaxThreadsPerBlock, k);
 
+    // testing if shared memory is over the max amount on card //
     if(shared * sizeof(float) > shrd_mem){
+        error_log();
         std::cerr << "      Not enough shared memory on device to continue..." << std::endl;
         std::cerr << "              Shared memory requested: " 
                                             << shared * sizeof(float) << std::endl;
@@ -303,14 +305,33 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count){
         std::cerr << "      Exiting." << std::endl;
         std::exit(1);
     }
-
+    
+    // testing if requested block size if over max amount allowed on card //
     if(block_size_X * block_size_Y > threads){
+        std::exit(1);
         std::cerr << "      Too many threads requested per block..." << std::endl;
         std::cerr << "              Threads requested: " 
                                             << block_size_X * block_size_Y << std::endl;
         std::cerr << "              Max threads available: " << threads << std::endl;
         std::cerr << "      Exiting." << std::endl;
-        std::exit(1);
+        error_log();
+    }
+    
+    // reconfiguring memory if shared has spare, to allow more per thread registers //
+    reconfig = 0;
+    if(mem_config){ 
+        if(shared * sizeof(float) < shrd_mem / 3){
+            cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+            std::cout << "      Changed cache to prefer L1...\n";
+            reconfig = 1;
+        } else if(shared * sizeof(float) < shrd_mem / 2){
+            cudaDeviceSetCacheConfig(cudaFuncCachePreferEqual);
+            std::cout << "      Set cache to equal shared memory...\n";
+            reconfig = 2;
+        } else {
+            cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
+            reconfig = 0;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////////////
@@ -364,7 +385,8 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count){
         count++;
         if(count == MAX_ITERS){
             std::cerr << "FEMSES - maximum iterations reached.\n";
-            exit(1);
+            error_log();
+            std::exit(1);
         }
     }
 

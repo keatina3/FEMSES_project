@@ -8,6 +8,7 @@
 #include "mesh.h"
 #include "utils.h"
 
+// need exemtions here //
 Mesh::Mesh(const int* nr, const float* x, const float *y){
     float dx, dy;
     int count=0;

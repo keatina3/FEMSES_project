@@ -28,6 +28,7 @@ FEM::FEM(Mesh &M, Tau &t){
             L = new float*[order];
             L_vals = new float[order*order];
         } catch(std::bad_alloc const &err) {
+            error_log();
             std::cerr << "Bad allocation of stiffness matrix\n";
             std::cerr << err.what() << std::endl;
             std::exit(1);
@@ -40,6 +41,7 @@ FEM::FEM(Mesh &M, Tau &t){
         Le.resize(num_cells, std::vector<std::vector <float> >(3, std::vector<float>(3,0.0)));
         be.resize(num_cells, std::vector<float>(3,0.0));
     } catch(std::bad_alloc const &err) {
+        error_log();
         std::cerr << "Bad allocation of stress vector matrix\n";
         std::cerr << err.what() << std::endl;
         std::exit(1);

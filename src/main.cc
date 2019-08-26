@@ -20,8 +20,8 @@
 #include "fem.h"
 
 extern void dummy(float *dat, int n);
-extern void gpu_fem(float *u, Mesh &M, Tau &t);
-extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count);
+extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig);
+extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count, int &reconfig);
 
 int main(int argc, char** argv){
     int nr[2];
@@ -30,6 +30,7 @@ int main(int argc, char** argv){
     float sse_cpu, sse_gpu_f, sse_gpu_fs;
     int order;
     int iters;
+    int reconfig;
     Tau tau_cpu = tau_default, tau_gpu_f = tau_default, tau_gpu_fs = tau_default;
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -96,7 +97,7 @@ int main(int argc, char** argv){
         start = std::chrono::high_resolution_clock::now();
         
         u_gpu = new float[order]();
-        gpu_fem(u_gpu, M, tau_gpu_f);
+        gpu_fem(u_gpu, M, tau_gpu_f, reconfig);
         
         end = std::chrono::high_resolution_clock::now(); 
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -115,7 +116,7 @@ int main(int argc, char** argv){
         start = std::chrono::high_resolution_clock::now();
         
         u_gpu_femses = new float[order](); 
-        gpu_femses(u_gpu_femses, M, tau_gpu_fs, iters);
+        gpu_femses(u_gpu_femses, M, tau_gpu_fs, iters, reconfig);
     
         end = std::chrono::high_resolution_clock::now(); 
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -131,9 +132,9 @@ int main(int argc, char** argv){
     if(verbose) output(tau_cpu, tau_gpu_f, tau_gpu_fs, sse_cpu, sse_gpu_f, sse_gpu_fs);
 
     if(timing){
-        if(cpu)     output_times(tau_cpu, 0, sse_cpu, 0);
-        if(gpu_f)   output_times(tau_gpu_f, 1, sse_gpu_f, 0);
-        if(gpu_fs)  output_times(tau_gpu_fs, 2, sse_gpu_fs, iters);
+        if(cpu)     output_times(tau_cpu, 0, sse_cpu, 0, 0);
+        if(gpu_f)   output_times(tau_gpu_f, 1, sse_gpu_f, 0, reconfig);
+        if(gpu_fs)  output_times(tau_gpu_fs, 2, sse_gpu_fs, iters, reconfig);
     }
 
     delete[] u;

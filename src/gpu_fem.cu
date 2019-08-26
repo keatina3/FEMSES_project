@@ -10,8 +10,6 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
-#include <cstdio>
-
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
     float tmp = 0.0;
@@ -302,7 +300,7 @@ __global__ void assemble_gpu_csr(
 ///////////////// C++ Function to be invoked from host to apply FEM to PDE ///////////////////
 // Applies standard approach of assmebling stiffness matrix and
 // decomposing the linear system on the GPU to solve
-extern void gpu_fem(float *u, Mesh &M, Tau &t){
+extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
     int nr[2];
     int order, num_cells, nnz;
     int block_size_Y, shared;
@@ -436,8 +434,10 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
    
     cudaDeviceGetAttribute(&shrd_mem, cudaDevAttrMaxSharedMemoryPerBlock, k);
     cudaDeviceGetAttribute(&threads, cudaDevAttrMaxThreadsPerBlock, k);
-
+    
+    // testing if shared memory is over the max amount on card //
     if(shared * sizeof(float) > shrd_mem){
+        error_log();
         std::cerr << "      Not enough shared memory on device to continue..." << std::endl;
         std::cerr << "              Shared memory requested: " 
                                             << shared * sizeof(float) << std::endl;
@@ -445,14 +445,33 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t){
         std::cerr << "      Exiting." << std::endl;
         std::exit(1);
     }
-
+    
+    // testing if requested block size if over max amount allowed on card //
     if(block_size_X * block_size_Y > threads){
+        error_log();
         std::cerr << "      Too many threads requested per block..." << std::endl;
         std::cerr << "              Threads requested: " 
                                             << block_size_X * block_size_Y << std::endl;
         std::cerr << "              Max threads available: " << threads << std::endl;
         std::cerr << "      Exiting." << std::endl;
         std::exit(1);
+    }
+    
+    // reconfiguring memory if shared has spare, to allow more per thread registers //
+    reconfig = 0; 
+    if(mem_config){
+        if(shared * sizeof(float) < shrd_mem / 3){
+            cudaDeviceSetCacheConfig(cudaFuncCachePreferL1);
+            std::cout << "      Changed cache to prefer L1...\n";
+            reconfig = 1;
+        } else if(shared * sizeof(float) < shrd_mem / 2){
+            cudaDeviceSetCacheConfig(cudaFuncCachePreferEqual);
+            std::cout << "      Set cache to equal shared memory...\n";
+            reconfig = 2;
+        } else {
+            cudaDeviceSetCacheConfig(cudaFuncCachePreferShared);
+            reconfig = 0;
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////
