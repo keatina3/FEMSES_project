@@ -17,7 +17,7 @@
 
 // command line arguments - see usage function for explanations //
 extern bool verbose, timing, cpu, gpu_f, gpu_fs;
-extern bool annulus, dense, dnsspr, debug;
+extern bool annulus, dense, dnsspr, debug, mem_config;
 extern int n, m, k, block_size_X; 
 extern float a, dr, ui, uo;
 
@@ -38,11 +38,12 @@ extern const struct Tau tau_default;
 int parse_arguments(int argc, char **argv);
 void print_usage();
 void init_screen();
+void error_log();
 void output(Tau &t_cpu, Tau &t_gpu, Tau &t_gpufs, float sse_cpu, float sse_gpu, float sse_gpufs);
 float sse(float *a, float *b, int n);
 void analytical(float *u, Mesh &M, int a, int b, int order);
-void output_results(Mesh &M, float *u, float *u_hat, int order, int routine, float sse);
-void output_times(Tau &t, int routine);
+void output_results(Mesh &M, float *u, float *u_hat, int order, int routine);
+void output_times(Tau &t, int routine, float sse, int iters, int reconfig);
 int is_empty(FILE *fptr);
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m);
 void assign_ptrs(int*** arr_ptr, int** arr, int n, int m);

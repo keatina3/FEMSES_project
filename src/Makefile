@@ -1,8 +1,8 @@
 CC = g++
 NVCC = nvcc
 
-CFLAGS = -std=c++11 -g -Wall -W #-O3
-NVCCFLAGS = -g -G --use_fast_math --relocatable-device-code=true #-DNDEBUG #-lefence
+CFLAGS = -std=c++11 -O3 #-W -Wall -g
+NVCCFLAGS = -O3 --use_fast_math --relocatable-device-code=true #-DNDEBUG #-lefence
 LDFLAGS = -lm -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lcusolver -lcusparse -lcublas
 
 OBJECTS = *.o
@@ -23,17 +23,21 @@ cu_objs: $(CU_SOURCES)
 objs: $(SOURCES)
 	$(CC) $(CFLAGS) -c $^ $(INCPATH)
 
-.PHONY: test timings mem_test clean
+.PHONY: test timings mem_test clean clean_all
 
 test: all
 	./fem_solver
 
 timings: all
 	./test_scripts/timing_tests.sh
+	cat error.log
 
 error_tests: all
 	./test_scripts/error_tests.sh
 	cat error.log
 
 clean:
+	$(RM) $(OBJECTS) $(TARGET)
+
+clean_all:
 	$(RM) $(OBJECTS) $(TARGET) results/* timings/* a.out error.log

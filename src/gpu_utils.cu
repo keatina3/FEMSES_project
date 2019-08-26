@@ -287,13 +287,14 @@ extern void dummy(float *dat, int n){
     float *a, *b, *c, *d, *e, *f;
     cudaError_t stat = cudaSuccess;
 
+    stat = cudaSetDevice(k);
+    assert(stat == cudaSuccess);
+    
     stat = cudaMalloc( (void**)&a, n*sizeof(float));
     assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&b, n*sizeof(float));
     assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&c, n*sizeof(float));
-    assert(stat == cudaSuccess);
-    stat = cudaMalloc( (void**)&d, n*sizeof(float));
     assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&d, n*sizeof(float));
     assert(stat == cudaSuccess);
