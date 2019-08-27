@@ -142,9 +142,7 @@ and the Equation~\eqref{green} can be shown in terms of the inner product define
 \end{equation}
 This PDE has now been transformed into its weak formulation. Looking at the Section~\ref{residuals}, it's quite obvious now that $u$ can be approximated by subbing in an estimate, applying the method of weighted residuals and achieving a system of linear equations. Thus the solution space has been reduced to a finite dimensional space.
 
-\subsection{Functionals}\label{functionals}
-
-UNFINISHED SECTION
+\subsection{Functionals - UNFINISHED SECTION}\label{functionals}
 
 While regular calculus deals with changes in ordinary variables, calculus of variations by contrast deals with changes in functions - handling special functions  known as functionals, which take functions as inputs compared to just variables. These are beneficial for the FEM as, considering the problem posed in the previous section, much of what is trying to be accomplished is finding the function which minimises an integral i.e. minimising a functional. Take for example, the functional 
 \begin{equation}
@@ -307,11 +305,11 @@ Normally, $A$ would be a sparse SPD matrix, but since this is a small case the m
 \end{figure}
 \subsection{Enforcing Boundary Conditions}
 
-Boundary conditions have been conveniently ignored up to this point in the report for simplicity's sake when explaining how to assemble the linear system. However, they of course cannot in reality go without being implemented. Thankfully, certain boundary conditions are easier to handle than others. Looking at Equations~\eqref{linsys}, the first term on the right-hand side is a contour integral over the boundary where the Nuemann condition applies. Subbing in $g$ into the inner-product here has now in fact dealt with the Nuemann condition - this is known as a \textit{natural boundary condition}, where it is handled naturally as part of the integration by parts or Green's lemma.
+Boundary conditions have been conveniently ignored up to this point in the report for simplicity's sake when explaining how to assemble the linear system. However, they of course cannot in reality go without being implemented. Thankfully, certain boundary conditions are easier to handle than others. Looking at Equations~\eqref{linsys}, the first term on the right-hand side is a contour integral over the boundary where the Neumann condition applies. Subbing in $g$ into the inner-product here has now in fact dealt with the Neumann condition - this is known as a \textit{natural boundary condition}, where it is handled naturally as part of the integration by parts or Green's lemma.
 
 The Dirichlet conditions on the other hand, are a little more tricky - these must be manually enforced and are thus known as \textit{essential boundary conditions}. Robin conditions contain both essential and natural components so won't be looked at here as these are simply separated into the two components and handled as usual. There are a number of ways of handling the essential boundaries, one would be to restrict your degrees of freedom set $\mathcal{I}_s$, such that it no longer contains any of the nodes which are boundaries and are thus emitted from the stiffness matrix as they are not unknowns, since $A \in \mathbb{R}^{\text{dim} \mathcal{I}_s \times \text{dim}\mathcal{I}_s}$. In this instance, the function being approximated would look like,
 \begin{equation}
-	u(x) \approx \sum_{j\in\mathcal{I}_b}U_j\varphi_j(x) + \sum_{j\in\mathcal{I}_s}c_j\varphi_{\widetilde j}(x),
+	u(x) \approx \sum_{j\in\mathcal{I}_b}U_j\varphi_j(x) + \sum_{j\in\mathcal{I}_s}c_j \varphi_{\widetilde j}(x),
 \end{equation}
 where $\mathcal{I}_b$ is the set of all boundary points, $U_j$ is the boundary value at node $j$ and $\widetilde{j}$ is the updated node index for $\mathcal{I}_s$, less the boundary nodes. This can cause some hassle with bookkeeping as the nodes' indices are being messed around with which can cause headaches when mapping back to the global indices.
 
@@ -425,7 +423,7 @@ Without going into large amounts of detail, it can be deduced mathematically tha
 	&= \frac{\Delta^3}{4}(\beta_i\beta_j + \gamma_i\gamma_j).\label{conv}
 \end{align}
 
-\subsection{Analytical Solution}
+\subsubsection{Analytical Solution}
 
 This given solution has the analytical solution,
 \begin{equation}
