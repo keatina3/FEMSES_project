@@ -288,7 +288,7 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
         printf("Couldn't open file %s\n",&fname[0]);
 
     if(is_empty(fptr))
-        fprintf(fptr, "n, m, block_size_X, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse\n");
+        fprintf(fptr, "n, m, block_size_X, reconfig, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse, iterations\n");
 
     fprintf(fptr, "%d, %d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
             n, m, block_size_X, reconfig, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan, sse, iters);
