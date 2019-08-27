@@ -1,6 +1,5 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % This is the official template for theses and seminar papers from the Chair for Information Systems for Sustainable Society (IS3) at the University of Cologne
-
 %
 %PREAMBLE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -18,13 +17,18 @@
 \usepackage{amsthm}
 \usepackage{listings}
 \usepackage{algorithm2e}
+\usepackage{subcaption}
 
 \newtheorem*{remark}{Remark}
+
+\newlength\dunder
+\settowidth{\dunder}{\_}
+\newcommand{\twound}{\rule{2\dunder}{0.1pt}}
 
 % set margins for double-sided printing
 \usepackage[left=3cm, right=3cm, top=2.5cm, bottom=2.5cm, bindingoffset=0cm, head=15pt]{geometry} 
 \usepackage{setspace}
-%\onehalfspacing
+\onehalfspacing
 
 % set APA citation style
 %\usepackage{apacite}
