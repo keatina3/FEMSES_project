@@ -239,7 +239,7 @@ void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
     if(!fptr)
         printf("Couldn't open file %s\n",&fname[0]);
 
-    fprintf(fptr, "x, y, u(x,y), u_analytical\n");
+    fprintf(fptr, "x, y, u, u_analytical\n");
     for(int v=0; v<order; v++){
         M.get_xy(xy, v);
         fprintf(fptr,"%f, %f, %f, %f\n", xy[0], xy[1], u_hat[v], u[v]);
@@ -288,7 +288,7 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
         printf("Couldn't open file %s\n",&fname[0]);
 
     if(is_empty(fptr))
-        fprintf(fptr, "n, m, block_size_X, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse\n");
+        fprintf(fptr, "n, m, block_size_X, reconfig, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse, iterations\n");
 
     fprintf(fptr, "%d, %d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
             n, m, block_size_X, reconfig, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan, sse, iters);
