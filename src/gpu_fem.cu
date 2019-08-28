@@ -10,8 +10,6 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
-#include <cstdio>
-
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
     float tmp = 0.0;
@@ -36,7 +34,6 @@ __device__ void assemble_elem(
                 int idx, 
                 int idy)
 {
-    // float *Le, *be, *xi, *consts;
     int v;
     float bound;
     int offset = 28*threadIdx.x;
@@ -47,6 +44,7 @@ __device__ void assemble_elem(
     xi = &temp1[offset + 12];            // matrix of global coordinates
     consts = &temp1[offset + 21];        // stores beta, gamma and area seen in serial version
     */
+    
     v = cells[(idx*3) + idy];            // global node number 
     
     
@@ -128,8 +126,6 @@ __device__ void assemble_mat(
                 int idy, 
                 int order)
 {
-    // float *Le, *be;
-    // int* dof_r;
     int offset = 28*threadIdx.x;
     int dof_r[3];
 
@@ -137,26 +133,15 @@ __device__ void assemble_mat(
     // be = &temp1[offset + 9];
     // dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
 
-    /*
-    if(idx == 0 && idy ==0){
-        for(int i=0;i<3;i++){
-            for(int j=0;j<3;j++){
-                printf("%lf ", Le[(i*3)+j]);
-            }
-            printf("\n");
-        }
-    }
-    */
 
     ///////////////// Assigning global node numbers //////////////////
+    
     
     dof_r[0] = dof[(idx*3)];
     dof_r[1] = dof[(idx*3)+1];
     dof_r[2] = dof[(idx*3)+2]; 
     
-    // dof_r[idy] = dof[(idx*3) + idy];
-    // __syncthreads();
-
+    
     ////////////////////////////////////////////////////////////////
   
 
@@ -197,8 +182,6 @@ __device__ void assemble_mat_csr(
                 int idy, 
                 int order)
 {
-    // float *Le, *be;
-    // int* dof_r;
     int row;
     int *tmp1, *tmp2;
     int off = 0;
@@ -210,16 +193,6 @@ __device__ void assemble_mat_csr(
     // be = &temp1[off_mem + 9];
     // dof_r = (int *)&temp1[off_mem + 12];
 
-    /*
-    if(idx == 0 && idy ==0){
-        for(int i=0;i<3;i++){
-            for(int j=0;j<3;j++){
-                printf("%lf ", Le[(i*3)+j]);
-            }
-            printf("\n");
-        }
-    }
-    */
 
     ///////////////// Assigning global node numbers //////////////////
     
@@ -228,8 +201,6 @@ __device__ void assemble_mat_csr(
     dof_r[1] = dof[(idx*3)+1];
     dof_r[2] = dof[(idx*3)+2]; 
     
-    // dof_r[idy] = dof[(idx*3) + idy];
-    // __syncthreads();
     
     //////////////////////////////////////////////////////////////////
 
@@ -510,6 +481,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
 
     std::cout << "      Main stiffness matrix assembly kernel...\n";
     
+    cudaEventRecord(start,0); 
     if(dense) {
         assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
                        cells_gpu, is_bound_gpu, bdry_vals_gpu, order, num_cells, tau_d, timing);
@@ -518,25 +490,36 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
                         b, vertices_gpu, cells_gpu, is_bound_gpu, 
                         bdry_vals_gpu, order, num_cells, tau_d, timing);
     }
+    cudaEventRecord(finish,0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.assem_p_elem, start, finish);
 
     //////// Getting timings from device functions ///////
+
     
-    int ind = 0;
+    int ind;
     long long tmp;
     int clocks_per_sec;
+    cudaEventRecord(start,0);    
     if(timing){
         cudaDeviceGetAttribute(&clocks_per_sec, cudaDevAttrClockRate, k);
-        
+         
         array_max((double*)tau_d, num_cells*3, ind);
-        stat = cudaMemcpy(&tmp, &tau_d[ind], sizeof(float), cudaMemcpyDeviceToHost);
+        stat = cudaMemcpy(&tmp, &tau_d[ind], sizeof(long long), cudaMemcpyDeviceToHost);
         assert(stat == cudaSuccess);
         t.elem_mats = (float) tmp / (clocks_per_sec / 1000);
 
         array_max((double*)&tau_d[num_cells*3], num_cells*3, ind);
-        stat = cudaMemcpy(&tmp, &tau_d[(num_cells*3)+ind],sizeof(float), cudaMemcpyDeviceToHost);
+        stat = cudaMemcpy(&tmp, &tau_d[(num_cells*3)+ind],
+                                    sizeof(long long), cudaMemcpyDeviceToHost);
         assert(stat == cudaSuccess);
         t.assembly = (float) tmp / (clocks_per_sec / 1000);
+        
     }
+    cudaEventRecord(finish,0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&tau, start, finish);
+    t.tot -= tau;               // removing from total time as not part of calculations //
     
     //////////////////////////////////////////////////////////////////////////////
      

@@ -3,61 +3,96 @@
 rm -f timings/* results/*
 
 for i in 4 9 24 49 99 199 499 699; do
+
+    ############################################################################
+
     echo "Testing NxM: $i x $i..."
-    '    
+        
     if [ $i -lt 200 ]; then
         echo "Testing dense solvers..."
         echo "      block_size_X = 1"
-        ./fem_solver -n $i -m $i -M -d -v -t -f -b 1 1>> a.out 2>> error.log
-        ./fem_solver -n $i -m $i -d -v -t -c -f -b 1 1>> a.out 2>> error.log
         
+        for [ x in {1..5}]; do
+            ./fem_solver -n $i -m $i -M -d -v -t -f -b 1 1>> a.out 2>> error.log
+        done
+        for [ x in {1..5}]; do
+            ./fem_solver -n $i -m $i -d -v -t -c -f -b 1 1>> a.out 2>> error.log
+        done
+
         for j in {2..340..4}; do
             echo "      block_size_X = $j"
+            
+            for [ x in {1..5}]; do
             ./fem_solver -n $i -m $i -M -d -v -t -c -f -b $j 1>>a.out 2>>error.log
+            done
             if [ $j -lt 220 ]; then
                 #echo "  ...testing with Memory reconfiguration on"
-                ./fem_solver -n $i -m $i -d -v -t -c -f -b $j 1>>a.out 2>>error.log
+                for [ x in {1..5}]; do
+                    ./fem_solver -n $i -m $i -d -v -t -c -f -b $j 1>>a.out 2>>error.log
+                done
             fi
         done
 
     fi
-    
+
+    #############################################################################
+
     echo "Testing sparse solvers..."
     echo "      block_size_X = 1"
-    ./fem_solver -n $i -m $i -M -v -t -f -b 1 1>> a.out 2>> error.log
-    ./fem_solver -n $i -m $i -v -t -f -b 1 1>> a.out 2>> error.log
+    
+    for [ x in {1..5}]; do
+        ./fem_solver -n $i -m $i -M -v -t -f -b 1 1>> a.out 2>> error.log
+    done
+    for [ x in {1..5}]; do
+        ./fem_solver -n $i -m $i -v -t -f -b 1 1>> a.out 2>> error.log
+    done
+
     for j in {2..340..4}; do
         echo "      block_size_X = $j"
-        ./fem_solver -n $i -m $i -M -v -t -c -f -b $j 1>> a.out 2>> error.log
+        
+        for [ x in {1..5}]; do
+            ./fem_solver -n $i -m $i -M -v -t -c -f -b $j 1>> a.out 2>> error.log
+        done
         #echo "  ...testing with Memory reconfiguration on"
         if [ $j -lt 220 ]; then
-            ./fem_solver -n $i -m $i -v -t -c -f -b $j 1>> a.out 2>> error.log
+            for [ x in {1..5}]; do
+                ./fem_solver -n $i -m $i -v -t -c -f -b $j 1>> a.out 2>> error.log
+            done
         fi
     done
     
-<<<<<<< HEAD
+    ##############################################################################
+
     if [ $i -lt 200 ]; then 
         echo "Testing conversion solver..."
         echo "      block_size_X = 1"
-        ./fem_solver -n $i -m $i -M -f -s -c -v -t -b 1 1>> a.out 2>> error.log
-        ./fem_solver -n $i -m $i -f -s -c -v -t -b 1 1>> a.out 2>> error.log
-=======
-    if [ $i -lt 200 ]; then
-        echo "Testing conversion solver..."
-        echo "      block_size_X = 1"
-        ./fem_solver -n $i -m $i -M -f -s -c -v -t -f -b 1 1>> a.out 2>> error.log
->>>>>>> 5da93c2f205709e464a68930a4afa0de5ac2349e
+        
+        for [ x in {1..5}]; do
+            ./fem_solver -n $i -m $i -M -f -s -c -v -t -b 1 1>> a.out 2>> error.log
+        done
+        for [ x in {1..5}]; do
+            ./fem_solver -n $i -m $i -f -s -c -v -t -b 1 1>> a.out 2>> error.log
+        done
+        
         for j in {2..340..4}; do
             echo "      block_size_X = $j"
-            ./fem_solver -n $i -m $i -M -v -t -s -c -f -b $j 1>> a.out 2>> error.log
+            
+            for [ x in {1..5}]; do
+                ./fem_solver -n $i -m $i -M -v -t -s -c -f -b $j 1>> a.out 2>> error.log
+            done
+            
             if [ $j -lt 220 ]; then
                 #echo "  ...testing with Memory reconfiguration on"
-                ./fem_solver -n $i -m $i -v -t -s -c -f -b $j 1>> a.out 2>> error.log
-<<<<<<< HEAD
+                for [ x in {1..5}]; do
+                    ./fem_solver -n $i -m $i -v -t -s -c -f -b $j 1>> a.out 2>> error.log
+                done
             fi
         done
     fi
-    '
+
+    ##############################################################################
+
+    ' 
     echo "Testing FEMSES solver..."
     echo "      block_size_X = 1"
     if [ $i -lt 200 ]; then 
@@ -72,10 +107,6 @@ for i in 4 9 24 49 99 199 499 699; do
             fi
         done
     fi
+    '
 
-=======
-            fi 
-        done
-    fi
->>>>>>> 5da93c2f205709e464a68930a4afa0de5ac2349e
 done

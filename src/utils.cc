@@ -13,7 +13,7 @@ bool verbose = false, timing = false, cpu = true, gpu_f = true, gpu_fs = true;
 bool annulus = false, dense = false, dnsspr = false, debug =  false, mem_config = true;
 int n = 2, m = 2, k = 1, block_size_X = 32; 
 float a = 3.0, dr = 7.0, ui = 2.0, uo = 6.0;
-const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+const struct Tau tau_default = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
 ////////////////// Parse command line arguments //////////////////////////
 int parse_arguments(int argc, char **argv){
@@ -151,25 +151,27 @@ void error_log(){
 void output(tau &t_cpu, tau &t_gpu, tau &t_gpufs, float sse_cpu, float sse_gpu, float sse_gpufs){
     printf("\n================================================\n");
     printf(GREEN "Performance results...\n" RESET);
-    printf("               CPU         GPU         FEMSES\n");
-    printf("SSE" RED "            %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("                  CPU         GPU         FEMSES\n");
+    printf("SSE" RED "               %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         sse_cpu, sse_gpu, sse_gpufs);
     if(timing){
-    printf("Total(ms)   " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Total(ms)      " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.tot, t_gpu.tot, t_gpufs.tot);
-    printf("Alloc(ms)   " RED"   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Alloc(ms)     " RED"    %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.alloc, t_gpu.alloc, t_gpufs.alloc);
-    printf("Trans(ms)   " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Trans(ms)      " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.transfer, t_gpu.transfer, t_gpufs.transfer);
-    printf("Elem Mats(ms)" RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Elem Mats(ms)   " RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.elem_mats, t_gpu.elem_mats, t_gpufs.elem_mats);
-    printf("Assembly(ms)" RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Assembly(ms)    " RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.assembly, t_gpu.assembly, t_gpufs.assembly);
-    printf("Solver(ms)  " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Assem_p_elem(ms)" RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
+                        t_cpu.assem_p_elem, t_gpu.assem_p_elem, t_gpufs.assem_p_elem);
+    printf("Solver(ms)      " RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.solve, t_gpu.solve, t_gpufs.solve);
-    printf("Convert(ms) " RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Convert(ms)     " RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.convert, t_gpu.convert, t_gpufs.convert);
-    printf("Sparsity(ms)" RED "   %f" BLUE "    %f" MAG "    %f\n" RESET, 
+    printf("Sparsity(ms)    " RED "  %f" BLUE "    %f" MAG "    %f\n" RESET, 
                         t_cpu.sparsity_scan, t_gpu.sparsity_scan, t_gpufs.sparsity_scan);
     }
     printf("================================================\n");
@@ -269,17 +271,20 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
     std::string fname = "timings/";
     
     if(routine==0)      fname.append("cpu_");
-    else if(routine==1) fname.append("gpu_");
-    else                fname.append("femses_");
+    else                fname.append("gpu_");
 
     if(routine != 0){
         if(k==0)    fname.append("GTX2080_");
         else        fname.append("Tesla_");
     }
     
-    if(dnsspr && routine != 0)  fname.append("dnsspr");
-    else if(dense)              fname.append("dense");
-    else                        fname.append("sparse");
+    if(routine == 1){
+        if(dnsspr)      fname.append("dnsspr");
+        else if(dense)  fname.append("dense");
+        else            fname.append("sparse");
+    } else if(routine == 2){
+                        fname.append("femses");
+    }
 
     fname.append("_times.csv");
 
@@ -288,10 +293,12 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
         printf("Couldn't open file %s\n",&fname[0]);
 
     if(is_empty(fptr))
-        fprintf(fptr, "n, m, block_size_X, reconfig, total, allocation, transfer, elem_mats, assembly, solve, convert, sparsity scan, sse, iterations\n");
+        fprintf(fptr, "n, m, block_size_X, reconfig, total, allocation, transfer, elem_mats, assembly, elems_p_assemb, solve, convert, sparsity scan, sse, iterations\n");
 
-    fprintf(fptr, "%d, %d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
-            n, m, block_size_X, reconfig, t.tot, t.alloc, t.transfer, t.elem_mats, t.assembly, t.solve, t.convert, t.sparsity_scan, sse, iters);
+    fprintf(fptr, "%d, %d, %d, %d, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d\n", 
+            n, m, block_size_X, reconfig, t.tot, t.alloc, t.transfer, 
+            t.elem_mats, t.assembly, t.assem_p_elem, t.solve, t.convert, 
+            t.sparsity_scan, sse, iters);
 
     fclose(fptr);
 }

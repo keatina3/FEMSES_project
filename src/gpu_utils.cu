@@ -245,6 +245,7 @@ void error_dot_prod(float *a, float *b, int n, float &x){
 /////////////// Function gets max value of array /////////////////
 // Calculated using cuBLAS
 void array_max(double *a, int n, int &max){
+    
     cublasHandle_t handle;
     cublasStatus_t status = CUBLAS_STATUS_SUCCESS;
     
@@ -261,7 +262,6 @@ void array_max(double *a, int n, int &max){
     assert(status == CUBLAS_STATUS_SUCCESS);
 }
 ////////
-
 
 
 ////////////////////// Dummy kernel ///////////////////////////

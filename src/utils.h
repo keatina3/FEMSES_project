@@ -29,6 +29,7 @@ typedef struct Tau {
     float transfer;         // csr vs dense, forward & back //
     float elem_mats;        // serial vs embarassingly parallel (pot try other blck sizes) //
     float assembly;         // csr vs dense, serial vs parallel //
+    float assem_p_elem;       // time for elem_mats + assembly
     float solve;            // csr vs dense vs dnsspr //
     float convert;
 } tau, *tau_ptr;

@@ -101,7 +101,7 @@ int main(int argc, char** argv){
         
         end = std::chrono::high_resolution_clock::now(); 
         duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        tau_gpu_f.tot = duration.count();
+        tau_gpu_f.tot += duration.count();
         
         output_results(M, u, u_gpu, order, 1);
         sse_gpu_f = sse(u, u_gpu, order);
