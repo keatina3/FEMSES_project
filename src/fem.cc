@@ -158,7 +158,15 @@ void FEM::solve(Tau &t){
     end = std::chrono::high_resolution_clock::now(); 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.assembly = duration.count();
-  
+    
+    int nr[2];
+    
+    M->get_recs(nr);
+    
+    order = (nr[0]+1)*(nr[1]+1);
+
+    // print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
+
     /////////////////////////////////////////////////////
     
 
@@ -178,7 +186,10 @@ void FEM::solve(Tau &t){
     end = std::chrono::high_resolution_clock::now(); 
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.solve = duration.count();
-
+    
+    for(int i=0; i<order; i++){
+        std::cout << b[i] << std::endl;
+    }
     /////////////////////////////////////////////////////
 }
 //////
@@ -196,7 +207,7 @@ void FEM::MKL_solve(){
     const _INTEGER_t *columns = &colIndL[0];
     const _REAL_t *values = &valsL[0];
     const _REAL_t *rhs = &b[0];
-    
+
     MKL_INT status = MKL_DSS_SUCCESS;
     _REAL_t *solVals = new float[order]();
     _MKL_DSS_HANDLE_t handle;

@@ -10,6 +10,8 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
+#include <cstdio>
+
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
     float tmp = 0.0;
@@ -130,6 +132,15 @@ __device__ void assemble_mat(
     be = &temp1[offset + 9];
     // dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
 
+    if(idx == 0 && idy ==0){
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                printf("%lf ", Le[(i*3)+j]);
+            }
+            printf("\n");
+        }
+    }
+
     ///////////////// Assigning global node numbers //////////////////
     
     dof_r[0] = dof[(idx*3)];
@@ -191,6 +202,16 @@ __device__ void assemble_mat_csr(
     be = &temp1[off_mem + 9];
     // dof_r = (int *)&temp1[off_mem + 12];
 
+
+    if(idx == 0 && idy ==0){
+        for(int i=0;i<3;i++){
+            for(int j=0;j<3;j++){
+                printf("%lf ", Le[(i*3)+j]);
+            }
+            printf("\n");
+        }
+    }
+    
     ///////////////// Assigning global node numbers //////////////////
     
     
@@ -257,7 +278,6 @@ __global__ void assemble_gpu(
     }
 }
 ///////
-
 
 
 ////////////// Kernel to calculate elements and assemble global stiffness matrix /////////////
