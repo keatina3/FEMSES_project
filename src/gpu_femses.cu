@@ -13,30 +13,30 @@
 // One weight is evaluated for each node
 // Added back to global memory
 __device__ void calc_weights(float *w, int *cells, float *temp1, int idx, int idy){
-    float *Le;
+    // float *Le;
     int v;
     int offset = 28*threadIdx.x;
 
-    Le = &temp1[offset];
+    // Le = &temp1[offset];
     v = cells[(idx*3) + idy];
 
-    atomicAdd(&w[v], Le[(idy*3) + idy]);
+    atomicAdd(&w[v], temp1[offset + (idy*3) + idy]);
 }
 ////////
 
 
 /////////// Copies element matrices/element vector from global-shared memory //////////
 __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int idy){
-    float *Le_shrd, *be_shrd;
+    // float *Le_shrd, *be_shrd;
     int offset = 28*threadIdx.x;
 
-    Le_shrd = &temp1[offset];
-    be_shrd = &temp1[offset + 9];
+    // Le_shrd = &temp1[offset];
+    // be_shrd = &temp1[offset + 9];
 
-    be[(idx*3) + idy] = be_shrd[idy];
+    be[(idx*3) + idy] = temp1[(offset + 9) + idy];
 
     for(int i=0; i<3; i++){
-        Le[(idx*9) + (idy*3) + i] = Le_shrd[(idy*3) + i];
+        Le[(idx*9) + (idy*3) + i] = temp1[offset + (idy*3) + i];
     }
 }
 ////////
@@ -44,15 +44,15 @@ __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int 
 
 /////////// Copies element matrices/element vector from shared-global memory //////////
 __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, int idy){
-    float *Le_shrd, *be_shrd;
+    // float *Le_shrd, *be_shrd;
     int offset = 15*threadIdx.x;
 
-    Le_shrd = &temp1[offset];
-    be_shrd = &temp1[offset + 9];
+    // Le_shrd = &temp1[offset];
+    // be_shrd = &temp1[offset + 9];
 
-    be_shrd[idy] = be[(idx*3) + idy];
+    temp1[(offset + 9) + idy] = be[(idx*3) + idy];
     for(int i=0; i<3; i++){
-        Le_shrd[(idy*3) + i] = Le[(idx*9) + (idy*3) + i];
+        temp1[offset + (idy*3) + i] = Le[(idx*9) + (idy*3) + i];
     }
 }
 ////////
@@ -67,28 +67,31 @@ __device__ void jacobi_iter(
                 int idx,
                 int idy)
 {
-    float *Le_shrd, *be_shrd;
-    float ue_new, *ue_old;
+    // float *Le_shrd, *be_shrd, *ue_old;
+    float ue_new;
     int v;
     int offset = 15*threadIdx.x;
 
+    /*
     Le_shrd = &temp1[offset];
     be_shrd = &temp1[offset + 9];
     ue_old  = &temp1[offset + 12];
+    */
 
     v = cells[(idx*3) + idy];
 
-    ue_new = be_shrd[idy];
-    ue_old[idy] = up_glob[v];
+    ue_new = temp1[(offset + 9) + idy];
+    temp1[(offset + 12) + idy] = up_glob[v];
 
     __syncthreads();
     
-    ue_new -= Le_shrd[(idy*3) + ((idy+1)%3) ] * ue_old[ (idy+1) % 3];
-    ue_new -= Le_shrd[(idy*3) + ((idy+2)%3) ] * ue_old[ (idy+2) % 3];
+    ue_new -= temp1[offset + (idy*3) + ((idy+1)%3) ] * temp1[(offset + 12) + (idy+1) % 3];
+    ue_new -= temp1[offset + (idy*3) + ((idy+2)%3) ] * temp1[(offset + 12) +  (idy+2) % 3];
 
-    ue_new /= Le_shrd[(idy*3) + idy];
+    ue_new /= temp1[offset + (idy*3) + idy];
 
-    atomicExch(&ue[(idx*3) + idy], ue_new); // transferring element solution of u to global mem
+    // atomicExch(&ue[(idx*3) + idy], ue_new); // transferring element solution of u to global mem
+    ue[(idx*3) + idy] = ue_new;
 }
 //////
 
