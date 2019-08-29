@@ -60,7 +60,7 @@ Clearly then, the main difference between programming on a CPU compared to on a 
 
 \subsection{CUDA Libraries}\label{culibs}
 
-While many of the GPU programming variants like openCL and openGL have their pros and cons, the main reason for choosing CUDA for this paper is, for one, Nvidia cards were used for testing so the performance would be optimal, but more-so due to the extensive availability of libraries for CUDA - something which openCL does not have. Intel's MKL was discussed in Section~~\ref{mkl}, and likewise, CUDA has its own collections libraries of mathematical functions. In Nvidia's case, these span from LAPACK, fast-Fourier transforms to image decomposition. In the case of this paper, cuBLAS, cuSOLVER and cuSPARSE were used. This is discussed in the breakdown of the GPU code's design structure in Section~\ref{culibs}. Similarly to the serial code, these were used for getting the Cholesky decomposition of a linear system and applying a direct solver. The cuBLAS package was used for finding the 2-norm of the error for each iteration seen in FEMSES.
+While many of the GPU programming variants like openCL and openGL have their pros and cons, the main reason for choosing CUDA for this paper is, for one, Nvidia cards were used for testing so the performance would be optimal, but more-so due to the extensive availability of libraries for CUDA - something which openCL does not have. Intel's MKL was discussed in Section~\ref{mkl}, and likewise, CUDA has its own collections libraries of mathematical functions. In Nvidia's case, these span from LAPACK, fast-Fourier transforms to image decomposition. In the case of this paper, cuBLAS, cuSOLVER and cuSPARSE were used. This is discussed in the breakdown of the GPU code's design structure in Section~\ref{culibs}. Similarly to the serial code, these were used for getting the Cholesky decomposition of a linear system and applying a direct solver. The cuBLAS package was used for finding the 2-norm of the error for each iteration seen in FEMSES.
 
 \section{Current FEM Approaches}\label{approaches}
 
@@ -204,9 +204,36 @@ This is an important factor to take into account when deciding what problem size
 
 \subsubsection{Kernels}
 
-There are two main kernels for this approach: the first kernel, \texttt{assemble\_gpu} or in its sparse form, \texttt{assemble\_gpu\_csr}, will take the input mesh as transferred prior, create the element matrices and assemble the global linear system, storing it back into global memory, this is demonstrated in Listing (REFERENCE); the second kernel, utilises CUDA libraries to solve the linear system. The assembly kernel was written specifically for this implementation, thus the setup of the grid and block dimensions must be set by the user. In order to take as much advantage of shared memory as possible, it was noted that the only real communication at this stage in the FEM process, is between nodes in the same cell. The setup of the kernel is then set that there are \texttt{block\_size\_X}, cells per block, in the $x$ direction, and 3 nodes per cell, in the $y$ direction. This gave the convenient benefit of \texttt{idx} being equal to the cell number, and \texttt{idy} being the local node numbering. This mapping is illustrated in Figure (REFERENCE). The kernel itself, runs two primary device functions, the first one generates the element matrices on shared memory, and the second then assembles these from shared memory into the global stiffness matrix, writing back to global memory. For two reasons, this is where the kernel had to terminate: you cannot globally synchronise the entire CUDA device within a kernel, only individual blocks, moving on to solve the linear system from here would almost certainly cause race conditions. The second reason is simply to avoid having to rewrite linear solver libraries that have already been optimised.
+There are two main kernels for this approach: the first kernel, \texttt{assemble\_gpu} or in its sparse form, \texttt{assemble\_gpu\_csr}, will take the input mesh as transferred prior, create the element matrices and assemble the global linear system, storing it back into global memory, this is demonstrated in Listing~\ref{lst:fem_main}; the second kernel, utilises CUDA libraries to solve the linear system. The assembly kernel was written specifically for this implementation, thus the setup of the grid and block dimensions must be set by the user. In order to take as much advantage of shared memory as possible, it was noted that the only real communication at this stage in the FEM process, is between nodes in the same cell. The setup of the kernel is then set that there are \texttt{block\_size\_X}, cells per block, in the $x$ direction, and 3 nodes per cell, in the $y$ direction. This gave the convenient benefit of \texttt{idx} being equal to the cell number, and \texttt{idy} being the local node numbering. This mapping is illustrated in Figure (REFERENCE). The kernel itself, runs two primary device functions, the first one generates the element matrices on shared memory, and the second then assembles these from shared memory into the global stiffness matrix, writing back to global memory. For two reasons, this is where the kernel had to terminate: you cannot globally synchronise the entire CUDA device within a kernel, only individual blocks, moving on to solve the linear system from here would almost certainly cause race conditions. The second reason is simply to avoid having to rewrite linear solver libraries that have already been optimised.
 
 The linear solver kernel, comes in three different variations: one for CSR, one for dense matrices, and one which converts a dense matrix into CSR and solves. Unlike the assembly kernel, however, there is no need to decide how to organise the blocks and threads as this is taken care of by the library itself inside a variable called the handle, which is invoked at the beginning and passed into all library functions. In terms of what actual library functions are used, for the sparse solver, cuSPARSE is used to define the matrix structure, such as number of non-zeros, zero-based indexing, symmetric positive definite et cetera. This is used in tandem with cuSOLVER's single-precision, sparse SPD, Cholesky decomposition direct solver, \texttt{cusolverSpScsrlsvchol}. Unlike in the serial version, and Intel's DSS, the cuSOLVER kernel needs to store the entire matrix, as opposed to only the upper or lower half. This is an unnecessary bottleneck but one which cannot be avoided. The dense-CSR solver kernel, applies the same functionality as the sparse kernel, except for executing two other library kernels prior to the solver, \texttt{cusparseSnnz}, to deduce the sparsity pattern of the matrix, and \texttt{cusparseSdense2csr}, to convert from dense to CSR. The dense solver on the other hand, naturally does not use cuSPARSE. It does, however, split its solver kernel into two separate operations, the first being the actual Cholesky factorisation using \texttt{cusolverDnSpotrf} and the second applies the solver, \texttt{cusolverDnpotrs}. Figure~\ref{fig:cusolvers} shows flowcharts of the necessary steps required in order to execute the three solver variants.
+
+\begin{lstlisting}[style=cppStyle,caption={Main kernel in general FEM approach to generate element matrices and assemble global linear system.},label={lst:fem_main}]
+__global__ void assemble_gpu(
+                float *L, 
+                float *b, 
+                float *vertices, 
+                int *cells, 
+                int *is_bound, 
+                float *bdry_vals, 
+                int order,
+                int num_cells)
+{
+	   // idx = cell number
+    int idx = blockIdx.x * blockDim.x + threadIdx.x ;
+    // idy = local node number
+    int idy = blockIdx.y * blockDim.y + threadIdx.y ;
+    // shared mem to store elem mats & constants
+    extern __shared__ float temp1[];
+
+    if(idx < num_cells && idy < blockDim.y ){
+
+       assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+       __syncthreads();
+       assemble_mat(L, b, vertices, cells, temp1, idx, idy, order);
+    }
+}
+\end{lstlisting}
 \begin{figure}
 	\centering
 	\includegraphics[width=0.9\linewidth]{Figures/cuda_solvers}
@@ -218,9 +245,9 @@ The linear solver kernel, comes in three different variations: one for CSR, one 
 
 There are two main device functions written for the assembly kernel. Prior to running these, when invoking the kernel the required amount of shared memory must be allocated. The grid structure is defined as \texttt{block\_size\_X} FEM cells per block, within each block there is one FEM cell designated per row of threads in the $x$-axis, and 3 nodes per row i.e. one node per thread in the $y$-axis. The shared memory needs to be large enough to store the element matrix \texttt{Le}, the element vector \texttt{be} as well as some other constants which need reuse such as the coordinates of each node in the cell \texttt{xi}, the global node numberings \texttt{dof\_r} and the constants seen in Equation~\eqref{conv}, for each cell in the block. Thus the amount of shared memory required is $\texttt{28}\times\texttt{block\_size\_X}$. This memory structure is displayed in Figure (REFERENCE) for an example block size of 4 in the $x$-axis. This would need to be larger of course, for non-P1 type problems but for this implementation it is sufficient.
 
-The first device function, \texttt{assemble\_elem}, starts off by setting pointer values for the element matrices, element vectors and constants in shared memory. It reads in the global node numbering associated with the node for that particular thread into the thread register. It then reads in the coordinates of the three nodes in that cell into shared memory so that data is now coalesced and then synchronises the threads in the block. The area of the cell is calculated by the thread associated with local node 0, and then the $\beta$ and $\gamma$ values are calculated in parallel. After this point, the device function runs Algorithm (REFERENCE), where each thread calculates a single row in the element matrix and writes them to the shared memory array. Notice that there is need for atomic functions when enforcing the boundary conditions, this is to prevent race conditions as the threads need to write to the same memory addresses. 
+The first device function, \texttt{assemble\_elem}, starts off by setting pointer values for the element matrices, element vectors and constants in shared memory. It reads in the global node numbering associated with the node for that particular thread into the thread register. It then reads in the coordinates of the three nodes in that cell into shared memory so that data is now coalesced and then synchronises the threads in the block. The area of the cell is calculated by the thread associated with local node 0, and then the $\beta$ and $\gamma$ values are calculated in parallel. After this point, the device function runs Algorithm~\ref{algo:elems}, where each thread calculates a single row in the element matrix and writes them to the shared memory array. Notice that there is need for atomic functions when enforcing the boundary conditions, this is to prevent race conditions as the threads need to write to the same memory addresses. 
 
-A large speed-up point here is that the element matrices never need to be written to global memory, but rather the second kernel which assembles the global stiffness matrix simply assigns the pointers to the same location as the previous device function. For the assembly function, the global node numbers for the node associated with each thread are read in from global memory once and written over the constants in the previous function. Algorithm (REFERENCE) or Algorithm (REFERENCE), is then applied in parallel, depending on whether the matrix is dense or CSR, and written back to global memory. Again, unlike in the serial case, for the CSR matrix the entire matrix must be assembled and not simply its upper or lower-echelon form due to limitations of cuSOLVER.
+A large speed-up point here is that the element matrices never need to be written to global memory, but rather the second kernel which assembles the global stiffness matrix simply assigns the pointers to the same location as the previous device function. For the assembly function, the global node numbers for the node associated with each thread are read in from global memory once and written over the constants in the previous function. Algorithm~\ref{algo:assemble} or Algorithm~\ref{algo:assemble_csr}, is then applied in parallel, depending on whether the matrix is dense or CSR, and written back to global memory. Again, unlike in the serial case, for the CSR matrix the entire matrix must be assembled and not simply its upper or lower-echelon form due to limitations of cuSOLVER.
 
 \subsection{FEMSES}\label{femses}
 
@@ -256,14 +283,90 @@ The FEMSES approach is divided up into four component kernels as seen in Figure~
 \end{enumerate}
 In the cases of the first three kernels, the grid structure is identical to what was seen in the general FEM approach, allowing maximum use of shared memory and attempts to prevent thread divergence.
 
-The first kernel, listed in Listing (REFERENCE), is called on to generate the element matrices. It uses the same device function as the main kernel in the alternate approach to generate the element matrices on shared memory. After this, it calls on a device function to calculate the weightings and save them onto global memory. Lastly it writes the element matrices and element vectors to the array in global memory and terminates the kernel.
+The first kernel, listed in Listing~\ref{lst:femses_main}, is called on to generate the element matrices. It uses the same device function as the main kernel in the alternate approach to generate the element matrices on shared memory. After this, it calls on a device function to calculate the weightings and save them onto global memory. Lastly it writes the element matrices and element vectors to the array in global memory and terminates the kernel.
+\begin{lstlisting}[style=cppStyle,caption={Initial kernel in FEMSES to generate element matrices and store in global memory.},label={lst:femses_main}]
+__global__ void assemble_elems_gpu(
+                float *Le, 
+                float *be, 
+                float *w,
+                float *u_glob,
+                float *vertices, 
+                int *cells, 
+                int *is_bound, 
+                float *bdry_vals,
+                int order,
+                int num_cells)
+{
+	   // idx = cell number
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    // idy = local node number
+    int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    extern __shared__ float temp1[];
 
-The second kernel, evaluates the local solution estimates. Illustrated in Listing (REFERENCE), this has two main device functions: the first reads in the element matrices and element vectors from global to shared memory. The second device function is the key computational step of this approach, calculating the Jacobi iteration estimate, as seen in Equation~\eqref{jacobi}, to generate local solutions and writes these back to global memory.
+    if(idx < num_cells && idy < blockDim.y){
+        // __device__ fn taken from other header to avoid code-reuse //
+        assemble_elem(vertices, cells, is_bound, bdry_vals, temp1, idx, idy);
+        __syncthreads();
+        calc_weights(w, cells, temp1, idx, idy);
+        elems_glob_cpy(Le, be, temp1, idx, idy);
+    }
+    // assigning initial guess for Jacobi to 0.0 
+    if( (idx*3) + idy < order){
+        u_glob[(idx*3) + idy] = 1.0;
+    }
+}
+\end{lstlisting}
 
-The final purpose-written kernel in this method assembles the global solution array using the weightings. Seen in Listing (REFERENCE), there was in fact no need for extra device functions here simply due to the fact that it was a read/write operation and one line of calculation - an atomic addition did sufficiently here. Thankfully, due to the irregular memory access pattern the atomic add should not actually pose much bottleneck. In Fernandez (CITE), the residuals were also calculated in this kernel, which is believed to be an oversight or error since this will potentially cause a race  condition as there is no guarantee the entire global solution has been assembled until the kernel terminates.
+The second kernel, evaluates the local solution estimates. Illustrated in Listing~\ref{lst:local}, this has two main device functions: the first reads in the element matrices and element vectors from global to shared memory. The second device function is the key computational step of this approach, calculating the Jacobi iteration estimate, as seen in Equation~\eqref{jacobi}, to generate local solutions and writes these back to global memory.
+\begin{lstlisting}[style=cppStyle, caption = {Kernel to evaluate local solutions in FEMSES using Jacobi iteration.}, label={lst:local}]
+__global__ void local_sols(
+                float *Le,
+                float *be,
+                float *ue,
+                float *up_glob,
+                int *cells,
+                int num_cells)
+{
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    extern __shared__ float temp1[]; 
+
+    if(idx < num_cells && idy < blockDim.y){
+        elems_shared_cpy(Le, be, temp1, idx, idy);
+        __syncthreads();
+        jacobi_iter(ue, up_glob, cells, temp1, idx, idy);
+    }
+}
+\end{lstlisting}
+
+The final purpose-written kernel in this method assembles the global solution array using the weightings. Seen in Listing~\ref{lst:global}, there was in fact no need for extra device functions here simply due to the fact that it was a read/write operation and one line of calculation - an atomic addition did sufficiently here. Thankfully, due to the irregular memory access pattern the atomic add should not actually pose much bottleneck. In Fernandez (CITE), the residuals were also calculated in this kernel, which is believed to be an oversight or error since this will potentially cause a race  condition as there is no guarantee the entire global solution has been assembled until the kernel terminates.
 
 The final calculation kernel here is utilising cuBLAS. The kernel uses two BLAS Level-1 operations, the first being the vector product, $y \leftarrow \alpha x + y$, or \texttt{cublasSaxpy}, to evaluate the residual vector and write it over $y$. The second operation evaluates the 2-norm of the residual, $e \leftarrow \sqrt{\langle r, r\rangle}$, or \texttt{cublasSnrm2}. The resulting error term is passed back to the device.
 
+\begin{lstlisting}[style=cppStyle, caption={Kernel to assemble global solution vector in FEMSES from local solution estimates using weighting.}, label={lst:global}]
+__global__ void glob_sols(
+                float *Le, 
+                float *w, 
+                float *u_glob, 
+                float *ue, 
+                int *cells,
+                int num_cells)
+{
+    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    int v;
+    float Lii, weight;
+
+    if(idx < num_cells && idy < blockDim.y){
+        v = cells[(idx*3) + idy];               // getting global vertex number
+        Lii = Le[(idx*9) + (idy*3) + idy];      
+        
+        weight = Lii/w[v];
+        
+        atomicAdd(&u_glob[v], weight * ue[(idx*3) + idy]);
+    }
+}
+\end{lstlisting}
 \subsubsection{Device Functions}
 
 The first device function utilised in the FEMSES approach is actually code reuse from the standard approach. It takes the mesh as input, uses the same shared memory structure as Figure (REFERENCE), and generates the element matrices and vectors in parallel, writing them to shared memory. See Section~\ref{basicfem} for more details on this device function.

@@ -45,12 +45,48 @@ The mathematics of the mesh has been illustrated, the next logical step would be
 In terms of what routines are contained in the Mesh class, during instantiation, the constructor creates a generic, rectangular mesh and populates the three arrays. There is a routine, whereby one can pass a mapping function as a parameter and deform the mesh. The aim of the deformation function is simply the fact that most FEM meshes aren't standard rectangles, apart from this particular test case - since the focus here is on a GPU optimisation. Other routines in the class then are merely to return various properties of the object: coordinates, pointers to the arrays (for CUDA purposes), number of nodes et cetera. There is also a routine to do a pass over the mesh and return its sparsity pattern which is detailed in Section~\ref{sparsity}.
 \begin{figure}
 	\centering
-	\includegraphics[width = 0.6\linewidth]{Figures/4cell_example}
+	\includegraphics[width = 0.5\linewidth]{Figures/4cell_example}
 	\caption{CAPTION - MAKE TEXT BIGGER}
 	\label{fig:4cell}
 \end{figure}
 \subsection{FEM}
 
+\begin{algorithm}
+	\caption{Evaluation of element matrices \& element vectors.}
+	\KwIn{$V, e$}
+	\For{$r = 0 \dots 2$}{
+		$\mathbf{x}_r = \left[\begin{matrix} 1 & V_{r,0}^{(e)} & V_{r,1}^{(e)} \end{matrix}\right]$
+	}
+	
+	$\Delta = \frac{1}{2}\vert \mathbf{x} \vert$\\
+	\For{$r=0 \dots 2$}{
+		$\mathbf{\beta}_r = x_{(r+1)\text{mod}3, 2} - x_{(r+2)\text{mod}3, 2}$\\
+		$\mathbf{\gamma}_r = x_{(r+2)\text{mod}3, 1} - x_{(r+1)\text{mod}3, 1}$\\
+		$\mathbf{b}^{(e)} = \mathbf{0}$\\
+		\For{$s =0 \dots r$}{
+			$L^{(e)}_{i,j} = \frac{1}{4} \Delta^3 \left( \beta_r\beta_r-\gamma_r\gamma_s\right)$\\
+			$L^{(e)}_{j,i} = L^{(e)}_{i,j}$\\
+		}
+	}
+	
+	\For{$r=0 \dots 2$}{
+		$v = q(e,r)$\\
+		\If{$v \in \mathcal{I}_b$}{
+			$B = u_v$\\
+			\For{$s=0 \dots 2$}{
+				\If{$r \neq s$}{
+					$b^{(e)}_s \leftarrow b^{(e)}_s - L^{(e)}_{r,s}~B$\\
+					$L^{(e)}_{r,s} = 0$\\
+					$L^{(e)}_{s,r} = 0$	\\				
+				}
+			}
+			$L^{(e)}_{r,r} = 1$\\
+			$b_r^{(e)} = B$
+		}
+	}
+	\Return{$\mathbf{L}^{(e)}, \mathbf{b}^{(e)}$}
+	\label{algo:elems}
+\end{algorithm}
 Once the mesh has been generated, the next aim for the software was to create as generic a FEM class as possible, one which could take any mesh in the structure of the Mesh class, and solve the given PDE - in this report's case the Laplace equation. The FEM class will, of course, need to allocate data to store the global stiffness matrix and global stress vectors. The stress vector is simply stored in \texttt{b} and has a dimension of \texttt{order}, the stiffness matrix on the other hand can be stored in either dense or CSR format. Since CSR is stored in three separate, single dimensional arrays, this allowed the benefit of using standard library vectors, also eliminating the need for \texttt{new} and \texttt{delete}. The dense format on the other hand is 2D and has the same issue with contiguity as mentioned in the remark above. The CSR matrix is stored in \texttt{valsL}, \texttt{rowPtrL} and \texttt{colIndL} and the dense matrix is stored in \texttt{L}. The class then also stores certain properties needed, such as the dimensions of the problem \texttt{order}, the number of cells in the mesh and the number of non-zeros in the sparse matrix.
 
 From a routine perspective, this is where all the real nuts and bolts of the FEM come into play.  There are three primary routines here which need to be completed in order to obtain a solution:
@@ -59,7 +95,48 @@ From a routine perspective, this is where all the real nuts and bolts of the FEM
 	\item global stiffness matrix and stress vector assembly.
 	\item linear system solver.
 \end{enumerate}
-The element matrix calculation is detailed in Algorithm (REFERENCE), utilising the convenient formulas stated in Section~\ref{problem}. The assembly routine on the other hand, has two different variants, one to handle the dense matrix assembly and one to handle assembling in CSR. Algorithms (REFRENCEx2) show both variants of this assembly. The last main routine, solving the linear system was handled by Intel's MKL library, taking advantage of pre-existing, optimised kernels.
+The element matrix calculation is detailed in Algorithm~\ref{algo:elems}, utilising the convenient formulas stated in Section~\ref{problem}. The assembly routine on the other hand, has two different variants, one to handle the dense matrix assembly and one to handle assembling in CSR. Algorithms~\ref{algo:assemble},~\ref{algo:assemble_csr} show both variants of this assembly. The last main routine, solving the linear system was handled by Intel's MKL library, taking advantage of pre-existing, optimised kernels.
+
+\begin{algorithm}
+	\KwIn{$\{\mathbf{L}^{(e)}\}_e, \{\mathbf{b}^{(e)}\}_e$}
+	\caption{Assembly of global stiffness matrix \& stress vector in dense format.}
+	\label{algo:assemble}
+	\For{$e =0\dots (num\_cells-1) $}{
+		\For{$r =0\dots 2$}{
+			$v_r = q(e,r)$\\
+			\For{$s = 0 \dots 2$}{
+				$v_s = q(e,s)$\\
+				$L_{v_r, v_s} \leftarrow L_{v_r, v_s} + L^{(e)}_{r,s}$
+			}
+			$b_{v_r} \leftarrow b_r^{(e)}$
+		}
+	}
+	\Return{$\mathbf{L}, \mathbf{b}$}
+\end{algorithm}
+\begin{algorithm}
+	\KwIn{$\{\mathbf{L}^{(e)}\}_e, \{\mathbf{b}^{(e)}\}_e$}
+	\caption{Assembly of global stiffness matrix \& stress vector in CSR format.}
+	\label{algo:assemble_csr}
+	\For{$e =0\dots (num\_cells-1) $}{
+		\For{$r =0\dots 2$}{
+			$v_r = q(e,r)$\\
+			\For{$s = 0 \dots 2$}{
+				$v_s = q(e,s)$\\
+				$i = 0$\\
+				$\text{ind} = AI_{v_r}$\\
+				$\text{col} = IJ_{\text{ind}}$\\
+				\While{$\text{col} \neq v_s$}{
+					$i \leftarrow i+1$\\
+					$\text{col} = IJ_{\text{ind}+i}$
+				}
+				$\text{ind} \leftarrow \text{ind} + i$\\
+				$L_{\text{ind}} \leftarrow L_{\text{ind}} + L^{(e)}_{r,s}$
+			}
+			$b_{v_r} \leftarrow b_r^{(e)}$
+		}
+	}
+	\Return{$\mathbf{L}, \mathbf{b}$}
+\end{algorithm}
 
 \section{Sparse Storage}\label{sparse}
 
@@ -137,7 +214,33 @@ From a sparse matrix perspective, this graph can be thought of as the connectivi
 
 \subsection{Sparsity Scan}\label{sparsity}
 
-Naturally, the next question needing to be posed is, how does one take advantage of this inherent sparsity pattern available in the stiffness matrix. The easiest, although there have been papers published on more advanced methods (CITE), is to run a single pass over the mesh to begin, taking the computational hit, and using this to create a sparsity pattern. In this implementation, the pass created a vector of STL sets, one set for each node, and iterated through each, amending to the set if there was an edge between the two nodes. Using this, one now has the number of non-zeros and can populate quite easily, IA and IJ, in the CSR matrix. Algorithm (REFERENCE) details how this is explicitly performed.
+Naturally, the next question needing to be posed is, how does one take advantage of this inherent sparsity pattern available in the stiffness matrix. The easiest, although there have been papers published on more advanced methods (CITE), is to run a single pass over the mesh to begin, taking the computational hit, and using this to create a sparsity pattern. In this implementation, the pass created a vector of STL sets, one set for each node, and iterated through each, amending to the set if there was an edge between the two nodes. Using this, one now has the number of non-zeros and can populate quite easily, IA and IJ, in the CSR matrix. Algorithm~\ref{algo:sparse} details how this is explicitly performed.
+\begin{algorithm}
+	\caption{Sparsity pass on mesh to populate row pointer and column indices vectors.}
+	\label{algo:sparse}
+	\KwIn{$V,\ num\_cells$}
+	$S = \bigcup_{v \in V} S^{(v)}$\\
+	\For{$e \dots num\_cells$}{
+		\For{$r= 0 \dots 2$}{
+			$v_r = q(e,r)$\\
+			\For{$s = 0\dots 2$}{
+				$v_s = q(e,s)$\\
+				$S^{(v_r)} \leftarrow S^{(v_r)} \cup \{v_s\}$ 
+			}
+		}
+	}
+	$c \leftarrow 0$\\
+	$n \leftarrow 0$\\
+	\For{$v \in V$}{
+		\For{$v_r \in S^{(v)}$}{
+			$AJ_c = v_r$\\
+			$c \leftarrow c + 1$
+		}
+		$n \leftarrow n + \#(S^{(v)}$\\
+		$AI_n = n$
+	}
+	\Return{$\mathbf{AI}, \mathbf{AJ}, n$}
+\end{algorithm}
 
 \section{Solver Libraries}
 

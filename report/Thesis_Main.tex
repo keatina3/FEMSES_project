@@ -12,12 +12,18 @@
 \usepackage{caption}
 \usepackage{appendix}
 \usepackage{amsfonts}
+\usepackage{array}
 \usepackage{mathtools}
 \usepackage{amsmath}
 \usepackage{amsthm}
 \usepackage{listings}
-\usepackage{algorithm2e}
+\usepackage{xcolor}
+\usepackage[linesnumbered,lined,ruled,titlenotnumbered]{algorithm2e}
 \usepackage{subcaption}
+
+\makeatletter
+%\renewcommand{\@algocf@capt@plain}{bottom}% formerly {bottom}
+\makeatother
 
 \newtheorem*{remark}{Remark}
 
@@ -35,6 +41,43 @@
 \usepackage[numbib,notlof,notlot,nottoc]{tocbibind}
 \pagenumbering{gobble}
 
+\newcolumntype{C}[1]{>{\centering\arraybackslash$}p{#1}<{$}}
+\newcolumntype{L}[1]{>{\arraybackslash}m{#1}<{}}
+
+\SetKwInput{Algo}{Algorithm}
+\SetKw{Return}{return}
+\SetAlFnt{\normalsize}
+\SetAlgoSkip{bigskip} 
+
+\newcommand\mycommfont[1]{\scriptsize\ttfamily\textcolor{teal}{#1}}
+\SetCommentSty{mycommfont}
+
+\lstdefinestyle{cppStyle}{
+    language=C++,
+    emptylines=1,
+    breaklines=true,
+    %numbers=left,
+    tabsize=1,
+    numbersep=4pt,
+    basicstyle=\footnotesize\ttfamily,
+    keywordstyle=\color{green!40!black},
+    commentstyle=\itshape\color{purple!40!black},
+    %moredelim=**[is][\color{gray}]{@}{@},
+    captionpos=b,
+    frame=tb,
+    %backgroundcolor=\color{lightgray},
+    morekeywords={__cudaMalloc__,__cudaFree__,__global__, __shared__, 
+   		___device__, __host__,},
+    numberstyle=\scriptsize\color{black},
+    emph={threadIdx, blockIdx, blockDim,__syncthreads},
+    emphstyle={\color{blue}},
+    escapeinside={<@}{@>}
+}
+
+\lstdefinestyle{bashStyle}{
+	language=bash 
+    basicstyle=\small\ttfamily,
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %THESIS Parameters 

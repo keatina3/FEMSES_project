@@ -3,6 +3,52 @@
 
 \section{Test-bed Architecture}
 
+The problem stated in Section~\ref{problem} was used to computationally test the topics discussed in this paper. In terms of test bed architecture, the timings were all conducted on a 3.4~Ghz Intel Core~i5-3570K. with 6~Mb cache and 4 cores along with 16~GB of DDR3 memory. For the GPU times, two cards were used: a Kepler architecture, Tesla~K40 clocking 745~Mhz-875~Mhz, carrying 15 SMs, each with 192 CUDA cores, it carries 12~GB of GDDR5 global memory clocking 1.5~GHz and a 288~GB/s bandwidth. The other card tested was the more modern, Turing architecture, RTX~2080 Super, clocking at 1.65~Ghz-1.815~Ghz, carrying 48 SMs, each with 64 CUDA cores, 8~GB of GDDR6 memory with a 496GB/s bandwidth. Both cards have 48~Kb of shared memory per block and 16~Kb of per thread memory available. Note also, due to the limitations of the most recent version of Nvidia's Visual Profiler tool, installed on the system mentioned, and also the removal of some of the counters from the Turing architecture, for profiling, a different system with an older version of NVVP and an older (CARD). Table~\ref{table:testbed} illustrates all the specifications for the setup.
+\begin{table}
+    \begin{center}
+    \resizebox{\columnwidth}{!}{
+    \begin{tabular}{C{8em}|C{4em}C{5em}C{4em}C{6em}C{7em}C{5em}C{5em}C{5em}@{}m{0pt}@{} }
+        %\Xhline{3\arrayrulewidth}
+        \hline
+        GPU & Arch & Clock~Speed & SMs & CUDA~Cores & DRAM & Clock~Speed & Bandwidth & Shared &\\[1.35em]
+        \hline
+        Tesla~K40 & Kepler & 745~Mhz & 15 & 2880 & 12~GB~GDDR5 & 1.5~Ghz & 288~GB/s & 46~Kb &\\[1.15em]
+        RTX~2080~Super & Turing & 1.65~Ghz & 48 & 3072 & 8~GB~GDDR6 & ?~Ghz & 496~GB/s & 46~Kb &\\[1.15em]
+        OTHER~CARD & Kepler & 445~Mhz & 15 & 2880 & 12~GB GDDR5 & 1.5~Ghz & 288~GB/s & 46~Kb &\\[1.15em]
+        %\Xhline{3\arrayrulewidth}
+        \hline
+    \end{tabular}}
+    \caption{Testbed architecture.}
+	\label{table:testbed}
+	\end{center}
+\end{table}
+    
+From a software perspective, all serial code was written in C++11 and compile using \texttt{gcc5.4.0} with \texttt{-O3} flag enabled. The \texttt{-std=c++11} flag was of course enabled to ensure that the correct version of C++ and the STL was being utilised. In order to take advantage of the linear solvers, the Intel's MKL 18.0.4 library also needed to be called compiled with the serial code. To enable this, the binary executable and library files needed to be appended to the \texttt{PATH} and \texttt{LD\_LIBRARY\_PATH} environment variables, this was done by either calling the correct modules, if available or manually appending by,
+\begin{lstlisting}[language=bash, basicstyle=\small\ttfamily ]
+export PATH=$PATH:/home/support/apps/intel/18.0.4/bin/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:
+	/home/support/apps/intel/18.0.4/mkl/lib/intel64/intel64/
+\end{lstlisting}
+. The list of flags then needed for the Make were as follows,
+\begin{itemize}
+	\item \texttt{-lm}
+	\item \texttt{-lmkl\_intel\_lp64}
+	\item \texttt{-lmkl\_sequential}
+	\item \texttt{-lmkl\_core}.
+\end{itemize}
+
+For the GPU code, all of it was written in CUDA with the most recent 10.1 SDK. The code was compiled with \texttt{nvcc} and \texttt{-O3} flag enabled again. In the implementation, certain device functions are shared across different headers so the \texttt{--relocatable-device-code=true} flag had to be enabled. the last consideration for the setup is the CUDA SDK~10.1, and its libraries used for linear solutions and BLAS operations. To enable these, again the \texttt{PATH} and \texttt{LD\_LIBRARY\_PATH} environment variables had to be appended, in this instance by,
+\begin{lstlisting}[language=bash, basicstyle=\small\ttfamily ]
+export PATH=$PATH:/usr/local/cuda-10.1/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-10.1/lib64
+\end{lstlisting}
+. The list of flags then needed:
+\begin{itemize}
+	\item \texttt{-lcusolver}
+	\item \texttt{-lcusparse}
+	\item \texttt{-lcublas}.
+\end{itemize}
+
 \section{Serial Code Profiling}
 
 \section{GPU Performance}
