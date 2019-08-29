@@ -29,7 +29,7 @@ The program `fem_solver` was built on `cuda01` with the following dependencies:
 To uphold these, make sure enviroment variables `PATH` and `LD_LIBRARY_PATH` are corrected, ammending them by:
 ```
 export PATH=$PATH:/usr/local/cuda-10.1/bin:/home/support/apps/intel/18.0.4/bin/
-export LD_LIBRARY_PATH="/usr/local/cuda-10.1/lib64:/home/support/apps/intel/18.0.4/mkl/lib/intel64/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-10.1/lib64:/home/support/apps/intel/18.0.4/mkl/lib/intel64/
 ```
 #### Make
 To make the program, simply run
