@@ -39,7 +39,14 @@ GPUs, on the other hand, are made up of thousands of CUDA cores, sitting on what
 	\label{fig:turing}
 \end{figure}
 
-While slow clock-speed and simple instruction sets are the main drawbacks of using a GPU, there are other considerations to be made. The first, and almost certainly the most important when it comes to writing fast CUDA code is memory management. Unlike in Von Neumann, and other more modern CPU architectures, all of the memory management is left up to the programmer on a GPU and comes in various hierarchical levels. The largest bank of memory is \textit{global memory}, this is akin to the RAM of the GPU in terms of capacity order and is the slowest memory to access as it is physically furthest from the cores. The benefit of global memory is it is both the largest and also accessible to all cores on the card. There are other faster memory banks such as constant, texture, and surface which have various advantages and disadvantages such as being closer to the chip but non-programmable once set et cetera. However, there are two main types of memory which are most advantageous to take advantage of, \textit{shared memory} and \textit{thread registers}. Register memory is stored per thread and sits physically on top of the core. It is as fast as one can possibly get, but is limited in size. Similarly, shared memory also sits on top of the core, the main difference is that shared memory is distributed across all threads in a given block and is usually around 48KB in modern architectures. Figure (REFERENCE) illustrates the memory hierarchy on a GPU. Unlike in CPUs, the programmer must decide where the various data needed to run the program will be stored, so clearly managing this correctly will be hugely important.
+While slow clock-speed and simple instruction sets are the main drawbacks of using a GPU, there are other considerations to be made. The first, and almost certainly the most important when it comes to writing fast CUDA code is memory management. Unlike in Von Neumann, and other more modern CPU architectures, all of the memory management is left up to the programmer on a GPU and comes in various hierarchical levels. The largest bank of memory is \textit{global memory}, this is akin to the RAM of the GPU in terms of capacity order and is the slowest memory to access as it is physically furthest from the cores. The benefit of global memory is it is both the largest and also accessible to all cores on the card. There are other faster memory banks such as constant, texture, and surface which have various advantages and disadvantages such as being closer to the chip but non-programmable once set et cetera. However, there are two main types of memory which are most advantageous to take advantage of, \textit{shared memory} and \textit{thread registers}. Register memory is stored per thread and sits physically on top of the core. It is as fast as one can possibly get, but is limited in size. Similarly, shared memory also sits on top of the core, the main difference is that shared memory is distributed across all threads in a given block and is usually around 48KB in modern architectures. Figure~\ref{fig:mem} illustrates the memory hierarchy on a GPU. Unlike in CPUs, the programmer must decide where the various data needed to run the program will be stored, so clearly managing this correctly will be hugely important.
+
+\begin{figure}
+	\centering
+	\includegraphics[width=0.8\linewidth]{Figures/mem_arch}
+	\caption{CAPTION}
+	\label{fig:mem}
+\end{figure}
 
 The final, main thing to consider, is what are known as warps. On the GPU, threads are organised into groups of 32. These groups of 32 threads all receive the same instructions at the same time. If some of the threads do not need to perform a given instruction, they will wait until the rest of the warp has completed the instruction until receiving another. Clearly, this can cause some bottlenecking. Figure (REFERENCE) demonstrates how this can apply to a specific case. The best thing one can do when taking warps into consideration is to attempt to set block sizes as multiples of 32 - since usually blocks are all performing the same or similar instructions.
 
@@ -81,6 +88,12 @@ for the linear system $Ax=b$, where $M = \text{diag}(A),~N=A-M$ is a matrix spli
 \end{equation}
 It may seem strange here, to have an estimate to the global solution on the RHS and a the local solutions' estimate on the left. However, failing this, what will result is  if one takes, for example, the Laplace equation where the RHS of the linear system $b$, is mostly sparse, barring cells which have boundary conditions, a collection of trivial matrices. The solution will be given for all internal cells as the initial and so in order to take account for the entire mesh, the global solution must be used for the RHS.
 
+\begin{figure}
+	\centering
+	\includegraphics[width = 0.35\linewidth]{Figures/2cell2.png}
+	\caption{Small two cell example of a mesh with global and local node numberings illustrated. NOT FINISHED}
+	\label{fig:2cell2}
+\end{figure}
 The second step in the 2-step iterative relaxation is to take these local solutions, and assemble them into a global solution. This is done by creating a weighting array, summing up the contribution of each node on the denominator. Mathematically, the weighting and assembly is given by,
 \begin{equation}\label{weight}
 	u_i^{(new)} = \sum_e^{q(e,r) = i}\frac{A^{(e)}_{r,r}}{w_i} (u_r)_e^{(old)},
@@ -89,7 +102,7 @@ where,
 \begin{equation}
 	w_i = \sum_e^{q(e,r) = i}A^{(e)}_{r,r}
 \end{equation}
-Figure (REFERENCE), illustrates a small two-cell implementation. In this example, the Jacobi relaxation for cell 0 is given by,
+Figure~\ref{fig:2cell2} illustrates a small two-cell implementation. In this example, the Jacobi relaxation for cell 0 is given by,
 \begin{equation}
 	\left[\begin{matrix}
 		(u_0)_e^{(new)} \\
@@ -158,9 +171,15 @@ There is a lot of data structures needed, so managing data reuse and reduction o
 \end{figure}
 In Figure~\ref{fig:gpu_flow}, a flow chart of the approach taken to code a basic FEM implementation on a GPU is illustrated. The coloured steps the ones which are executed involving CUDA code, the white steps are ones which are executed entirely on the host. The generation of the mesh and all its pertaining information needed, is all completed in serial, which is then passed down to the device, and for the most part, barring a sparsity scan, the rest of the entire FEM process is completed on the device. The element matrices creation and stiffness matrix assembly is all completed in a single kernel. The linear system solution is then solved using cuSOLVER - and cuSPARSE depending on the matrix structure flagged at run-time. Once this is complete, the final solution is passed back to the host and the CUDA code is complete.
 
-\subsubsection{Storage \& Memory Management}
+\subsubsection{Storage \& Memory Management - Mention solver taking up space}
 
-In terms of storage, for a problem which scales like FEM does, managing your resources correctly and not doing excessive memory allocations is important - along with, of course, freeing any allocations which are completed. The first thing needed to be allocated on the GPU is the five arrays to store the mesh. Exactly like was mentioned in Section~\ref{mesh}, memory needs to be allocated to store \texttt{vetices\_gpu}, \texttt{cells\_gpu}, \texttt{dof\_gpu}, \texttt{is\_bound\_gpu} and \texttt{bdry\_vals\_gpu}. In terms of memory being coalesced, all five arrays are indeed contiguous, and in both \texttt{cells\_gpu} and \texttt{dof\_gpu}, the memory access pattern is sequential so this won't pose any coalescence problems. However, the other three arrays, the memory access pattern jumps up and down the array, completely dependent on the shape of the mesh, and the connectivity of the nodes. Thus to handle this, as detailed in the device functions, the necessary values are read into shared memory in single writes to hedge this bottleneck. Figure (REFERENCE) illustrates this, showing the lack of coalescence and the solution by writing to shared memory once.
+\begin{figure}
+	\centering
+	\includegraphics[width = 0.8\linewidth]{Figures/non_coalesced}
+	\caption{CAPTION}
+	\label{fig:coalesc}
+\end{figure}
+In terms of storage, for a problem which scales like FEM does, managing your resources correctly and not doing excessive memory allocations is important - along with, of course, freeing any allocations which are completed. The first thing needed to be allocated on the GPU is the five arrays to store the mesh. Exactly like was mentioned in Section~\ref{mesh}, memory needs to be allocated to store \texttt{vetices\_gpu}, \texttt{cells\_gpu}, \texttt{dof\_gpu}, \texttt{is\_bound\_gpu} and \texttt{bdry\_vals\_gpu}. In terms of memory being coalesced, all five arrays are indeed contiguous, and in both \texttt{cells\_gpu} and \texttt{dof\_gpu}, the memory access pattern is sequential so this won't pose any coalescence problems. However, the other three arrays, the memory access pattern jumps up and down the array, completely dependent on the shape of the mesh, and the connectivity of the nodes. Thus to handle this, as detailed in the device functions, the necessary values are read into shared memory in single writes to hedge this bottleneck. Figure~\ref{fig:coalesc} illustrates this, showing the lack of coalescence and the solution by writing to shared memory once.
 
 Naturally, the next thing which needs to be allocated is the actual stiffness matrix itself. For this, unlike in serial, only the global stiffness matrix and stress vector need be allocated on global memory, since the local element matrices will be stored on shared memory. Depending on the choice to assemble a sparse or dense matrix will decide what must be allocated. For a dense case, a single dimensional array \texttt{L}, will be allocated, for the sparse case, three arrays must be allocated, \texttt{valsL}, \texttt{colIndL} and \texttt{rowPtrL}, as seen in Section~\ref{sparse}. The CSR matrix, unfortunately does not have coalesced memory access, but it makes up for this by the huge reduction in the actual size of the matrix, and so, the timing should scale far better than dense. Both dense and sparse allocated the same space for the stress vector, as it is stored in dense format. This will be overwritten with the resulting solution, saving the space for needing an extra array.
 
@@ -228,7 +247,7 @@ For transfers, all of the data that is allocated besides the mesh is calculated 
 
 \subsubsection{Kernels}
 
-The FEMSES approach is divided up into four component kernels as seen in Figure (REFERENCE):
+The FEMSES approach is divided up into four component kernels as seen in Figure~\ref{fig:femsesflow}:
 \begin{enumerate}
 	\item generate element matrices.
 	\item calculate local element solutions.
