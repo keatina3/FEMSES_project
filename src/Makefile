@@ -23,7 +23,7 @@ cu_objs: $(CU_SOURCES)
 objs: $(SOURCES)
 	$(CC) $(CFLAGS) -c $^ $(INCPATH)
 
-.PHONY: test timings mem_test clean clean_all
+.PHONY: test timings mem_tests clean clean_all
 
 test: all
 	./fem_solver
@@ -32,12 +32,12 @@ timings: all
 	./test_scripts/timing_tests.sh
 	cat error.log
 
-error_tests: all
-	./test_scripts/error_tests.sh
-	cat error.log
+mem_tests: all
+	./test_scripts/mem_tests.sh
+	cat mem_error.log
 
 clean:
 	$(RM) $(OBJECTS) $(TARGET)
 
 clean_all:
-	$(RM) $(OBJECTS) $(TARGET) results/* timings/* a.out error.log
+	$(RM) $(OBJECTS) $(TARGET) results/* timings/* *.out *.log

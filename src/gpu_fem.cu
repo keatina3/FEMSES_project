@@ -34,38 +34,41 @@ __device__ void assemble_elem(
                 int idx, 
                 int idy)
 {
-    float *Le, *be, *xi, *consts;
     int v;
     float bound;
     int offset = 28*threadIdx.x;
 
+    /*
     Le = &temp1[offset];                 // element matrix
     be = &temp1[offset + 9];             // element stress vector
     xi = &temp1[offset + 12];            // matrix of global coordinates
     consts = &temp1[offset + 21];        // stores beta, gamma and area seen in serial version
+    */
     
     v = cells[(idx*3) + idy];            // global node number 
     
     
     //////////// Assigning global coordinates //////////////////
     
-    xi[3*idy] = 1.0;
-    xi[(3*idy) + 1] = vertices[2*v]; 
-    xi[(3*idy) + 2] = vertices[(2*v)+1];
+    temp1[(offset + 12) + (3*idy)] = 1.0;
+    temp1[(offset + 12) + (3*idy) + 1] = vertices[2*v]; 
+    temp1[(offset + 12) + (3*idy) + 2] = vertices[(2*v)+1];
 
     __syncthreads();
     
     // using 1 thread to calculate area //
     if(idy==0)
-        consts[6] = area(xi);
+        temp1[(offset + 21) + 6] = area(&temp1[offset + 12]);
     
     ///////////////////////////////////////////////////////////
 
 
     ///////////////// calculating beta, gamma //////////////////
     
-    consts[idy] = xi[ 3*((idy+1)%3) + 2] - xi[ 3*((idy+2)%3) + 2];
-    consts[idy + 3] = xi[ 3*((idy+2)%3) +1] - xi[ 3*((idy+1)%3) + 1];
+    temp1[(offset + 21) + idy] = temp1[(offset + 12) + (3*((idy+1)%3)) + 2] 
+                                        - temp1[(offset + 12) + (3*((idy+2)%3)) + 2];
+    temp1[(offset + 21) + idy + 3] = temp1[(offset + 12) + (3*((idy+2)%3)) +1] 
+                                        - temp1[(offset + 12) + (3*((idy+1)%3)) + 1];
     
     __syncthreads();
     
@@ -74,11 +77,13 @@ __device__ void assemble_elem(
 
     ///////////////////// Calculating LHS & RHS //////////////////
 
-    be[idy] = 0.0;      // 0.0 intially until BCs enforced //
+    temp1[(offset + 9) + idy] = 0.0;      // 0.0 intially until BCs enforced //
     for(int i=0; i<=idy; i++){
-        Le[(3*idy)+i] = 0.25*consts[6]*consts[6]*consts[6] * (consts[idy]*consts[i] 
-                                    + consts[idy + 3]*consts[i+3]);
-        Le[(3*i)+idy] = Le[(3*idy)+i];
+        temp1[offset + (3*idy) + i] = 0.25*temp1[(offset + 21) + 6]
+                                    *temp1[(offset + 21) + 6]*temp1[(offset + 21) + 6] 
+                                    * (temp1[(offset + 21) + idy]*temp1[(offset + 21) + i] 
+                                    + temp1[(offset + 21) + idy + 3] *temp1[(offset + 21) + i + 3]);
+        temp1[offset + (3*i) + idy] = temp1[offset + (3*idy) + i];
     }
     __syncthreads();
 
@@ -92,14 +97,14 @@ __device__ void assemble_elem(
         // change this appropriately for more DOF if necessary //
         for(int j=0; j<3; j++){
             if(idy != j){
-                atomicAdd(&be[j], (-1)*Le[(3*j) + idy]*bound);
-                atomicExch(&Le[(3*j) + idy],  0.0);
-                atomicExch(&Le[(3*idy) + j], 0.0);
+                atomicAdd(&temp1[(offset + 9) + j], (-1)*temp1[offset + (3*j) + idy]*bound);
+                atomicExch(&temp1[offset + (3*j) + idy],  0.0);
+                atomicExch(&temp1[offset + (3*idy) + j],  0.0);
             }
         }
         __syncthreads();
-        Le[(3*idy)+idy] = 1.0;
-        atomicExch(&be[idy], bound);
+        temp1[offset + (3*idy) + idy] = 1.0;
+        atomicExch(&temp1[(offset + 9) + idy], bound);
     }                            
     
     /////////////////////////////////////////////////////////////////
@@ -121,39 +126,37 @@ __device__ void assemble_mat(
                 int idy, 
                 int order)
 {
-    float *Le, *be;
-    // int* dof_r;
     int offset = 28*threadIdx.x;
     int dof_r[3];
 
-    Le = &temp1[offset];
-    be = &temp1[offset + 9];
+    // Le = &temp1[offset];
+    // be = &temp1[offset + 9];
     // dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
 
+
     ///////////////// Assigning global node numbers //////////////////
+    
     
     dof_r[0] = dof[(idx*3)];
     dof_r[1] = dof[(idx*3)+1];
     dof_r[2] = dof[(idx*3)+2]; 
     
-    // dof_r[idy] = dof[(idx*3) + idy];
-    // __syncthreads();
-
+    
     ////////////////////////////////////////////////////////////////
   
 
     ///////// Mapping values back to global stiffness matrix /////// 
     
-    atomicAdd(&b[dof_r[idy]], be[idy]);
+    atomicAdd(&b[dof_r[idy]], temp1[(offset + 9) + idy]);
     
     for(int i=0; i<=idy; i++){
         atomicAdd(&L[(order*dof_r[idy]) + dof_r[i]], 
-                            Le[(3*idy) + i]);
+                            temp1[offset + (3*idy) + i]);
         if(i==idy)      // avoid double adding diagonal element
             continue;
         else {
             atomicAdd(&L[(order*dof_r[i]) + dof_r[idy]], 
-                            Le[(3*idy) + i]);
+                            temp1[offset + (3*idy) + i]);
         }
     }
 
@@ -179,17 +182,17 @@ __device__ void assemble_mat_csr(
                 int idy, 
                 int order)
 {
-    float *Le, *be;
-    // int* dof_r;
     int row;
     int *tmp1, *tmp2;
     int off = 0;
     int off_mem = 28*threadIdx.x;
     int dof_r[3];
+    
 
-    Le = &temp1[off_mem];
-    be = &temp1[off_mem + 9];
+    // Le = &temp1[off_mem];
+    // be = &temp1[off_mem + 9];
     // dof_r = (int *)&temp1[off_mem + 12];
+
 
     ///////////////// Assigning global node numbers //////////////////
     
@@ -198,15 +201,13 @@ __device__ void assemble_mat_csr(
     dof_r[1] = dof[(idx*3)+1];
     dof_r[2] = dof[(idx*3)+2]; 
     
-    // dof_r[idy] = dof[(idx*3) + idy];
-    // __syncthreads();
     
     //////////////////////////////////////////////////////////////////
 
 
     ///////// Mapping values back to global stiffness matrix ////////
     
-    atomicAdd(&b[dof_r[idy]], be[idy]);
+    atomicAdd(&b[dof_r[idy]], temp1[(off_mem + 9) + idy]);
     
     row = rowPtrL[dof_r[idy]];
     tmp1 = &colIndL[row];
@@ -216,7 +217,7 @@ __device__ void assemble_mat_csr(
             off++;
             tmp2++;
         }
-        atomicAdd(&valsL[row + off], Le[(3*idy) + i]);
+        atomicAdd(&valsL[row + off], temp1[off_mem + (3*idy) + i]);
         off = 0;
     }
 
@@ -257,7 +258,6 @@ __global__ void assemble_gpu(
     }
 }
 ///////
-
 
 
 ////////////// Kernel to calculate elements and assemble global stiffness matrix /////////////
@@ -481,6 +481,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
 
     std::cout << "      Main stiffness matrix assembly kernel...\n";
     
+    cudaEventRecord(start,0); 
     if(dense) {
         assemble_gpu<<<dimGrid, dimBlock, shared*sizeof(float)>>>(L, b, vertices_gpu, 
                        cells_gpu, is_bound_gpu, bdry_vals_gpu, order, num_cells, tau_d, timing);
@@ -489,25 +490,36 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
                         b, vertices_gpu, cells_gpu, is_bound_gpu, 
                         bdry_vals_gpu, order, num_cells, tau_d, timing);
     }
+    cudaEventRecord(finish,0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&t.assem_p_elem, start, finish);
 
     //////// Getting timings from device functions ///////
+
     
-    int ind = 0;
+    int ind;
     long long tmp;
     int clocks_per_sec;
+    cudaEventRecord(start,0);    
     if(timing){
         cudaDeviceGetAttribute(&clocks_per_sec, cudaDevAttrClockRate, k);
-        
+         
         array_max((double*)tau_d, num_cells*3, ind);
-        stat = cudaMemcpy(&tmp, &tau_d[ind], sizeof(float), cudaMemcpyDeviceToHost);
+        stat = cudaMemcpy(&tmp, &tau_d[ind], sizeof(long long), cudaMemcpyDeviceToHost);
         assert(stat == cudaSuccess);
         t.elem_mats = (float) tmp / (clocks_per_sec / 1000);
 
         array_max((double*)&tau_d[num_cells*3], num_cells*3, ind);
-        stat = cudaMemcpy(&tmp, &tau_d[(num_cells*3)+ind],sizeof(float), cudaMemcpyDeviceToHost);
+        stat = cudaMemcpy(&tmp, &tau_d[(num_cells*3)+ind],
+                                    sizeof(long long), cudaMemcpyDeviceToHost);
         assert(stat == cudaSuccess);
         t.assembly = (float) tmp / (clocks_per_sec / 1000);
+        
     }
+    cudaEventRecord(finish,0);
+    cudaEventSynchronize(finish);
+    cudaEventElapsedTime(&tau, start, finish);
+    t.tot -= tau;               // removing from total time as not part of calculations //
     
     //////////////////////////////////////////////////////////////////////////////
      
