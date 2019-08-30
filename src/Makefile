@@ -15,6 +15,7 @@ LIBS = -L/usr/local/cuda-10.1/lib64 -L/home/support/apps/intel/18.0.4/mkl/lib/in
 INCPATH = -I/usr/include/ -I/usr/local/cuda-10.1/include/ -I/home/support/apps/intel/18.0.4/mkl/include/
 
 all: objs cu_objs
+	mkdir -p results timings
 	$(NVCC) $(OBJECTS) $(NVCCFLAGS) -o $(TARGET) $(LDFLAGS) $(INCPATH) $(LIBS)
 
 cu_objs: $(CU_SOURCES)
