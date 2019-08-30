@@ -223,17 +223,20 @@ void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
     std::string fname = "results/output_";
     
     if(routine==0)      fname.append("cpu_");
-    else if(routine==1) fname.append("gpu_");
-    else                fname.append("femses_");
+    else                fname.append("gpu_");
 
     if(routine != 0){
         if(k==0)    fname.append("GTX2080_");
         else        fname.append("Tesla_");
     }
     
-    if(dnsspr && routine != 0)  fname.append("dnsspr");
-    else if(dense)              fname.append("dense");
-    else                        fname.append("sparse");
+    if(routine != 2){
+        if(dnsspr)      fname.append("dnsspr");
+        else if(dense)  fname.append("dense");
+        else            fname.append("sparse");
+    } else if(routine == 2){
+                        fname.append("femses");
+    }
     
     fname.append("_results.csv");
     
@@ -278,7 +281,7 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
         else        fname.append("Tesla_");
     }
     
-    if(routine == 1){
+    if(routine != 2){
         if(dnsspr)      fname.append("dnsspr");
         else if(dense)  fname.append("dense");
         else            fname.append("sparse");

@@ -159,13 +159,7 @@ void FEM::solve(Tau &t){
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.assembly = duration.count();
     
-    int nr[2];
-    
-    M->get_recs(nr);
-    
-    order = (nr[0]+1)*(nr[1]+1);
-
-    // print_csr(order, &valsL[0], &rowPtrL[0], &colIndL[0]);
+    t.assem_p_elem; 
 
     /////////////////////////////////////////////////////
     
@@ -187,9 +181,6 @@ void FEM::solve(Tau &t){
     duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     t.solve = duration.count();
     
-    for(int i=0; i<order; i++){
-        std::cout << b[i] << std::endl;
-    }
     /////////////////////////////////////////////////////
 }
 //////
