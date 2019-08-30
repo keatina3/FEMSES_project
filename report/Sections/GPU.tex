@@ -373,6 +373,42 @@ The first device function utilised in the FEMSES approach is actually code reuse
 
 The next device function evaluates the weightings. This functions takes the cell indices and element matrices as input and calculates the denominator weighting seen in Equation~\eqref{weight}. In Fernandez (CITE), each node in each cell was assigned its own individual weighting value in an array. This would involve a global synchronisation (something they did not do) to ensure the denominator values were fully added up and to avoid a race condition. Instead, the weighting array was allocated as one value per node as opposed to three per cell. In this paper's approach, the denominator was the weight stored and this was simply used to divide the node's corresponding diagonal value in its element matrix later on. Of course this means an extra read from global memory but it avoids the need for a global synchronisation.
 
-The key device function in the entire approach is the Jacobi iteration function. Listing (REFERENCE) details this. Taking the previous global solution estimate as an input, it reads this in as $u^{(\texttt{old})}$, as well as reading in the element matrices and element vectors. Each thread will calculate its own individual $u^{(\texttt{new})}$, this will be written back to global memory then, to be assembled into a new global solution estimate using the succeeding kernel.
+The key device function in the entire approach is the Jacobi iteration function. Listing~\ref{lst:jacobi} details this. Taking the previous global solution estimate as an input, it reads this in as $u^{(\texttt{old})}$, as well as reading in the element matrices and element vectors. Each thread will calculate its own individual $u^{(\texttt{new})}$, this will be written back to global memory then, to be assembled into a new global solution estimate using the succeeding kernel.
 
 There are also another couple of device functions not mentioned here or in the previous section but these are merely read/write functions or area calculations et cetera.
+
+\begin{lstlisting}[style=cppStyle, caption={Device code for the Jacobi iteration.}, label={lst:jacobi}]
+__device__ void jacobi_iter(
+                float *ue,
+                float *up_glob,
+                int *cells,
+                float *temp1,
+                int idx,
+                int idy)
+{
+    // float *Le_shrd, *be_shrd, *ue_old;
+    float ue_new;
+    int v;
+    int offset = 15*threadIdx.x;
+
+    /*
+    Le_shrd = &temp1[offset];
+    be_shrd = &temp1[offset + 9];
+    ue_old  = &temp1[offset + 12];
+    */
+
+    v = cells[(idx*3) + idy];
+
+    ue_new = temp1[(offset + 9) + idy];
+    temp1[(offset + 12) + idy] = up_glob[v];
+
+    __syncthreads();
+    
+    ue_new -= temp1[offset + (idy*3) + ((idy+1)%3) ] * temp1[(offset + 12) + (idy+1) % 3];
+    ue_new -= temp1[offset + (idy*3) + ((idy+2)%3) ] * temp1[(offset + 12) +  (idy+2) % 3];
+
+    ue_new /= temp1[offset + (idy*3) + idy];
+
+    ue[(idx*3) + idy] = ue_new;
+}
+\end{lstlisting}

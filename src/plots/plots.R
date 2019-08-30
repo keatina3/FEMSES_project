@@ -69,3 +69,12 @@ ggplot(speedups, aes(block_size_X, log10(elem_mats), colour = as.factor(n+1))) +
 
 ggplot(speedups, aes(block_size_X, log10(assembly), colour = as.factor(reconfig))) + geom_point() + geom_smooth()
 
+##############
+
+gpu_Tesla_sparse = read.csv("~/Desktop/timings2/gpu_Tesla_sparse_times.csv")
+
+ggplot(subset(gpu_Tesla_sparse,reconfig==0), aes(block_size_X, total, colour = as.factor(reconfig))) + geom_point() + geom_smooth()
+ggplot(gpu_Tesla_sparse, aes(block_size_X, assembly, colour = as.factor(reconfig))) + geom_point() + geom_smooth()
+ggplot(gpu_Tesla_sparse, aes(block_size_X, elem_mats, colour = as.factor(reconfig))) + geom_point() + geom_smooth()
+ggplot(gpu_Tesla_sparse, aes(block_size_X, elems_p_assemb, colour = as.factor(reconfig))) + geom_point() + geom_smooth()
+ggplot(gpu_Tesla_sparse, aes(block_size_X, sparsity.scan)) + geom_point() + geom_smooth()
