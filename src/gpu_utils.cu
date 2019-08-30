@@ -273,7 +273,7 @@ __global__ void dummy_kernel(int n){
     int count = 0;
 
     if(idx < n && idy < n){
-        for(int i=0;i<n;i++)
+        for(int i=0; i<n; i++)
             count++;
     }
 }
@@ -284,7 +284,7 @@ __global__ void dummy_kernel(int n){
 // To run to reduce the effect of the initial
 // kernel running slowly
 extern void dummy(float *dat, int n){
-    float *a, *b, *c, *d, *e, *f;
+    float *a, *b, *c, *d;
     cudaError_t stat = cudaSuccess;
 
     stat = cudaSetDevice(k);
@@ -298,10 +298,6 @@ extern void dummy(float *dat, int n){
     assert(stat == cudaSuccess);
     stat = cudaMalloc( (void**)&d, n*sizeof(float));
     assert(stat == cudaSuccess);
-    stat = cudaMalloc( (void**)&e, n*sizeof(float));
-    assert(stat == cudaSuccess);
-    stat = cudaMalloc( (void**)&f, n*sizeof(float));
-    assert(stat == cudaSuccess);
 
     stat = cudaMemcpy(a, dat, n*sizeof(float), cudaMemcpyHostToDevice);
     assert(stat == cudaSuccess);
@@ -311,10 +307,6 @@ extern void dummy(float *dat, int n){
     assert(stat == cudaSuccess);
     stat = cudaMemcpy(d, dat, n*sizeof(float), cudaMemcpyHostToDevice);
     assert(stat == cudaSuccess);
-    stat = cudaMemcpy(e, dat, n*sizeof(float), cudaMemcpyHostToDevice);
-    assert(stat == cudaSuccess);
-    stat = cudaMemcpy(f, dat, n*sizeof(float), cudaMemcpyHostToDevice);
-    assert(stat == cudaSuccess);
 
     dim3 dimBlock(50, 10);
     dim3 dimGrid((n/dimBlock.x) + (!(n%dimBlock.x)?0:1),
@@ -322,7 +314,7 @@ extern void dummy(float *dat, int n){
 
     dummy_kernel<<<dimGrid, dimBlock>>>(n);
 
-    cudaFree(a);    cudaFree(b);    cudaFree(c);
-    cudaFree(d);    cudaFree(e);    cudaFree(f);
+    cudaFree(a);    cudaFree(b);
+    cudaFree(c);    cudaFree(d);
 }
 ///////

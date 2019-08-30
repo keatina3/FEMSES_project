@@ -499,21 +499,21 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
     
     int ind;
     long long tmp;
-    int clocks_per_sec;
+    int clocks_per_ms;
     cudaEventRecord(start,0);    
     if(timing){
-        cudaDeviceGetAttribute(&clocks_per_sec, cudaDevAttrClockRate, k);
+        cudaDeviceGetAttribute(&clocks_per_ms, cudaDevAttrClockRate, k);
          
         array_max((double*)tau_d, num_cells*3, ind);
         stat = cudaMemcpy(&tmp, &tau_d[ind], sizeof(long long), cudaMemcpyDeviceToHost);
         assert(stat == cudaSuccess);
-        t.elem_mats = (float) tmp / (clocks_per_sec / 1000);
+        t.elem_mats = (float) tmp / clocks_per_ms;
 
         array_max((double*)&tau_d[num_cells*3], num_cells*3, ind);
         stat = cudaMemcpy(&tmp, &tau_d[(num_cells*3)+ind],
                                     sizeof(long long), cudaMemcpyDeviceToHost);
         assert(stat == cudaSuccess);
-        t.assembly = (float) tmp / (clocks_per_sec / 1000);
+        t.assembly = (float) tmp / clocks_per_ms;
         
     }
     cudaEventRecord(finish,0);
