@@ -1,12 +1,24 @@
 library(ggplot2)
 
-cpu_dense = read.csv("../timings/cpu_dense_times.csv")
-cpu_sparse = read.csv("../timings/cpu_sparse_times.csv")
-gpu_Tesla_dense = read.csv("../timings/gpu_Tesla_dense_times.csv")
-gpu_Tesla_sparse = read.csv("../timings/gpu_Tesla_sparse_times.csv")
-gpu_Tesla_dense = read.csv("../timings/gpu_Tesla_dnsspr_times.csv")
-gpu_Tesla_femses = read.csv("../timings/gpu_Tesla_femses_times.csv")
+cpu_dense = read.csv("~/Documents/College/Project/src/timings/cpu_dense_times.csv")
+cpu_sparse = read.csv("~/Documents/College/Project/src/timings/cpu_sparse_times.csv")
+gpu_Tesla_dense = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_dense_times.csv")
+gpu_Tesla_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_sparse_times.csv")
+gpu_Tesla_dnsspr = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_dnsspr_times.csv")
+#gpu_Tesla_femses = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_femses_times.csv")
 
+
+get_averages <- function(df){
+  avgs = data.frame(aggregate(df,by=list(df$n, df$reconfig!=0, df$block_size_X),data=df,FUN=mean))[4:18]
+  
+  return(avgs)
+}
+
+cpu_sparse_avgs = get_averages(cpu_sparse)
+cpu_dense_avgs = get_averages(cpu_dense)
+gpu_Tesla_sparse_avgs = get_averages(gpu_Tesla_sparse)
+gpu_Tesla_dense_avgs = get_averages(gpu_Tesla_dense)
+gpu_Tesla_dnsspr_avgs = get_averages(gpu_Tesla_dnsspr)
 #cpu_sparse[5][cpu_sparse[1] == 4] / gpu_Tesla_sparse[5][gpu_Tesla_sparse[1] == 4]
 
 get_cpu_speedups <- function(gpu, cpu){
@@ -33,6 +45,43 @@ get_gpu_speedups <- function(gpu1, gpu2){
   return(speedups)
 }
 
+
+######### Getting total/solve speedups vs problem size #############
+
+## sparse
+speedups = get_cpu_speedups(gpu_Tesla_sparse_avgs, cpu_sparse_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(total))) + geom_smooth() + geom_point() 
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(solve))) + geom_smooth() + geom_point()
+speedups = get_cpu_speedups(gpu_Tesla_sparse_avgs, cpu_dense_avgs)
+ggplot(subset(speedups,reconfig != 0 & n<200), aes(n+1, log10(total))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(solve))) + geom_smooth() + geom_point()
+
+
+## dense
+speedups = get_cpu_speedups(gpu_Tesla_dense_avgs, cpu_sparse_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(total))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(solve))) + geom_smooth() + geom_point()
+speedups = get_cpu_speedups(gpu_Tesla_dense_avgs, cpu_dense_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(total))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(solve))) + geom_smooth() + geom_point()
+
+## dnsspr
+speedups = get_cpu_speedups(gpu_Tesla_dnsspr_avgs, cpu_sparse_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(total))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(solve))) + geom_smooth() + geom_point()
+speedups = get_cpu_speedups(gpu_Tesla_dnsspr_avgs, cpu_dense_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(total))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0), aes(n+1, log10(solve))) + geom_smooth() + geom_point()
+
+
+######### Getting total/solve speedups vs block_size #############
+
+speedups = get_cpu_speedups(gpu_Tesla_sparse_avgs, cpu_sparse_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(block_size_X, log10(total), 
+                                         colour = as.factor(n+1))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0), aes(block_size_X, log10(solve),
+                                         colour = as.factor(n+1))) + geom_smooth() + geom_point()
+
 ###############
 #get_gpu_speedups <- function(new)
 
@@ -50,18 +99,24 @@ get_gpu_speedups <- function(gpu1, gpu2){
 # }
 ###############
 
-speedups = get_cpu_speedups(gpu_Tesla_sparse, cpu_sparse)
-ggplot(speedups, aes(block_size_X, log10(total), colour = as.factor(n+1))) + geom_point() + geom_smooth()
+speedups = get_cpu_speedups(gpu_Tesla_sparse_avgs, cpu_sparse_avgs)
+ggplot(subset(speedups,reconfig!=0), aes(block_size_X, log10(total), 
+                                         colour = as.factor(n+1))) + geom_smooth() + geom_point()
+ggplot(subset(speedups,reconfig!=0,n>=99), aes(block_size_X, log10(assembly), 
+                                               colour = as.factor(n+1))) + geom_point() + geom_smooth()
+ggplot(subset(speedups,n==699), aes(block_size_X, log10(assembly), colour = as.factor(n+1))) + geom_point() + geom_smooth()
+ggplot(speedups, aes(block_size_X, log10(elem_mats), colour = as.factor(n+1))) + geom_point() + geom_smooth()
+
+speedups = get_cpu_speedups(gpu_Tesla_dense, cpu_dense_avgs)
+speedups = subset(speedups,reconfig!=0)
+ggplot(speedups, aes(block_size_X, total, colour = as.factor(n+1))) + geom_point() + geom_smooth()
 ggplot(speedups, aes(block_size_X, log10(assembly), colour = as.factor(n+1))) + geom_point() + geom_smooth()
 ggplot(speedups, aes(block_size_X, log10(elem_mats), colour = as.factor(n+1))) + geom_point() + geom_smooth()
 
-speedups = get_cpu_speedups(gpu_Tesla_dense, cpu_dense)
-ggplot(speedups, aes(block_size_X, log10(total), colour = as.factor(n+1))) + geom_point() + geom_smooth()
-ggplot(speedups, aes(block_size_X, log10(assembly), colour = as.factor(n+1))) + geom_point() + geom_smooth()
-ggplot(speedups, aes(block_size_X, log10(elem_mats), colour = as.factor(n+1))) + geom_point() + geom_smooth()
-
-speedups = get_gpu_speedups(gpu_Tesla_sparse, gpu_Tesla_dense)
-ggplot(speedups, aes(block_size_X, log10(total), colour = as.factor(n+1))) + geom_point() + geom_smooth()
+speedups = get_gpu_speedups(gpu_Tesla_sparse_avgs, gpu_Tesla_dense_avgs)
+speedups = subset(speedups,c(reconfig!=0, n != 199))
+speedups = subset(speedups,c(reconfig!=0))
+ggplot(speedups, aes(block_size_X, total, colour = as.factor(n+1))) + geom_smooth()
 ### use these two plots to demonstrate eratticity of read/write of timings array
 ggplot(speedups, aes(block_size_X, log10(assembly), colour = as.factor(n+1))) + geom_point() + geom_smooth()
 ggplot(speedups, aes(block_size_X, log10(elem_mats), colour = as.factor(n+1))) + geom_point() + geom_smooth()

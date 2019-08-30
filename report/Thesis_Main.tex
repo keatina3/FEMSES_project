@@ -67,7 +67,7 @@
     frame=tb,
     %backgroundcolor=\color{lightgray},
     morekeywords={__cudaMalloc__,__cudaFree__,__global__, __shared__, 
-   		___device__, __host__,},
+   		__device__, __host__,},
     numberstyle=\scriptsize\color{black},
     emph={threadIdx, blockIdx, blockDim,__syncthreads},
     emphstyle={\color{blue}},
@@ -75,8 +75,13 @@
 }
 
 \lstdefinestyle{bashStyle}{
-	language=bash 
+	language=bash,
+	breaklines=true,
     basicstyle=\small\ttfamily,
+    keywordstyle=\color{purple!40!black},
+    emph={$PATH, $LD_LIBRARY_PATH,},
+    emphstyle={\color{blue!60!black}},
+    deletekeywords ={local},
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
