@@ -29,7 +29,7 @@ FEM::FEM(Mesh &M, Tau &t){
             L_vals = new float[order*order];
         } catch(std::bad_alloc const &err) {
             error_log();
-            std::cerr << "Bad allocation of stiffness matrix\n";
+            std::cerr << "Bad allocation of stiffness matrix" << std::endl;
             std::cerr << err.what() << std::endl;
             std::exit(1);
         }
@@ -198,9 +198,17 @@ void FEM::MKL_solve(){
     const _INTEGER_t *columns = &colIndL[0];
     const _REAL_t *values = &valsL[0];
     const _REAL_t *rhs = &b[0];
+    _REAL_t *solVals;
 
     MKL_INT status = MKL_DSS_SUCCESS;
-    _REAL_t *solVals = new float[order]();
+    try {
+        solVals = new float[order]();
+    } catch(std::bad_alloc const &err){
+        error_log();
+        std::cerr << "Bad allocation of solution array for MKL DSS" << std::endl;
+        std::cerr << err.what() << std::endl;
+        std::exit(1);
+    }
     _MKL_DSS_HANDLE_t handle;
     MKL_INT opt = MKL_DSS_DEFAULTS;
     MKL_INT sym = MKL_DSS_SYMMETRIC;
@@ -265,7 +273,7 @@ void FEM::elem_mat(const int e){
         beta[i] = xi[(i+1)%3][2] - xi[(i+2)%3][2];
         gamma[i] = xi[(i+2)%3][1] - xi[(i+1)%3][1];
         
-        be[e][i] = 0.0;     // Poisson -> stress vector = 0 unless boundary //
+        be[e][i] = 0.0;     // Laplace -> stress vector = 0 unless boundary //
 
         for(unsigned int j=0; j<=i; j++){
             Le[e][i][j] = 0.25 * del*del*del * (beta[i]*beta[j] + gamma[i]*gamma[j]);

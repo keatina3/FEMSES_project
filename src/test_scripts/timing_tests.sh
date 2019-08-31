@@ -2,11 +2,10 @@
 
 #rm -f timings/* results/*
 
-#for i in 4 9 24 49 99 199 499 699; do
-for i in 24 49 99 199 499 699; do
+for i in 4 9 24 49 99 199 499 699; do
 
     ############################################################################
-
+    '
     echo "Testing NxM: $i x $i..."
         
     if [ $i -lt 200 ]; then
@@ -92,22 +91,41 @@ for i in 24 49 99 199 499 699; do
     fi
 
     ##############################################################################
-
-    ' 
-    echo "Testing FEMSES solver..."
-    echo "      block_size_X = 1"
+    
+     
     if [ $i -lt 200 ]; then 
-        ./fem_solver -n $i -m $i -M -g -c -v -t -b 1 1>> a.out 2>> error.log
-        ./fem_solver -n $i -m $i -g -c -v -t -f -b 1 1>> a.out 2>> error.log
+        echo "Testing FEMSES solver..."
+        echo "      block_size_X = 1"
+        
+        for x in {1..4}; do
+            ./fem_solver -n $i -m $i -M -c -g -c -v -t -b 1 1>> a.out 2>> error.log
+        done
+        for x in {1..4}; do
+            ./fem_solver -n $i -m $i -g -c -v -t -f -b 1 1>> a.out 2>> error.log
+        done
+        
         for j in {2..300..6}; do
             echo "      block_size_X = $j"
-            ./fem_solver -n $i -m $i -M -g -c -v -t -b $j 1>> a.out 2>> error.log
+            for x in {1..4}; do
+                ./fem_solver -n $i -m $i -M -g -c -v -t -b $j 1>> a.out 2>> error.log
+            done
+            
             if [ $j -lt 220 ]; then
                 #echo "  ...testing with Memory reconfiguration on"
-                ./fem_solver -n $i -m $i -g -c -v -t -b $j 1>> a.out 2>> error.log
+                for x in {1..4}; do
+                    ./fem_solver -n $i -m $i -g -c -v -t -b $j 1>> a.out 2>> error.log
+                done
             fi
         done
     fi
     '
+    
+    if [ $i -lt 25 ]; then
+        echo "Testing RTX2080..."
+        echo "Testing sparse solver..."    
+        ./fem_solver -n $i -m $i -c -v -t -k 1>> a.out 2>> error.log
+        echo "Testing dense solver..."    
+        ./fem_solver -n $i -m $i -c -v -t -k -d 1>> a.out 2>> error.log
+    fi
 
 done

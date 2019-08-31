@@ -1,7 +1,7 @@
 // =========================================================================== //
-// Class for handling the mesh invoked in the FEM
-// Contains arrays storing the global x,y coordinates of each node, 
-// global node index and dirichlet boundary conditions
+// Class for handling the mesh invoked in the FEM.                             //
+// Contains arrays storing the global x,y coordinates of each node,            //
+// global node index and dirichlet boundary conditions.                        //
 // =========================================================================== //
 
 #ifndef _MESH_H_

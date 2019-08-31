@@ -1,10 +1,12 @@
 // =========================================================================== //
-// Functions to apply FEM Single Element Solition to solve a PDE on GPU
-// Assembles element matrices and element vectors using standard approach
-// Using a jacobi relaxation scheme, gets local solutions for each linear system
-// Local solutions are then combines using a weighting to construct a global solution
-// This is repeated until global solution converges
-// Soluton then transferred back to host
+// Functions to apply FEM Single Element Solition to solve a PDE on GPU.       //
+// Assembles element matrices and element vectors using standard approach.     //
+// Using a jacobi relaxation scheme, gets local solutions for                  //
+// each linear system.                                                         //
+// Local solutions are then combines using a weighting to                      //
+// construct a global solution.                                                //
+// This is repeated until global solution converges.                           //
+// Soluton then transferred back to host.                                      //
 // =========================================================================== //
 
 #ifndef _FEMSES_H_

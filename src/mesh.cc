@@ -1,3 +1,4 @@
+#include <iostream>
 #include <chrono>
 #include <cstdio>
 #include <set>
@@ -8,7 +9,6 @@
 #include "mesh.h"
 #include "utils.h"
 
-// need exemtions here //
 Mesh::Mesh(const int* nr, const float* x, const float *y){
     float dx, dy;
     int count=0;
@@ -25,12 +25,19 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
     
     /////////////// Allocating memory for mesh //////////////
     
-    assign_ptrs(&vertices, &vert_vals, order, 2);
-    assign_ptrs(&cells, &cells_vals, num_cells, 3);
-    assign_ptrs(&dof, &dof_vals, num_cells, 3);
-    boundary = (int*)calloc(order,sizeof(int));
-    bdry_vals = (float*)calloc(order,sizeof(int));
-    
+    try {    
+        assign_ptrs(&vertices, &vert_vals, order, 2);
+        assign_ptrs(&cells, &cells_vals, num_cells, 3);
+        assign_ptrs(&dof, &dof_vals, num_cells, 3);
+        boundary = (int*)calloc(order,sizeof(int));
+        bdry_vals = (float*)calloc(order,sizeof(int));
+    } catch(std::bad_alloc const &err) {
+        error_log();
+        std::cerr << "Bad allocation of mesh" << std::endl;
+        std::cerr << err.what() << std::endl;
+        std::exit(1);
+    }
+
     /////////////////////////////////////////////////////////////
     
 
@@ -38,7 +45,6 @@ Mesh::Mesh(const int* nr, const float* x, const float *y){
     
     for(int i=0; i<=nr[1]; i++){
         for(int j=0; j<=nr[0]; j++){
-            // fix this bit //
             vertices[count][1] = y[0] + i*dy;
             vertices[count][0] = x[0] + j*dx;
 
@@ -333,14 +339,6 @@ void annulus_seg_map(float *vertex, float *x, float *y, float theta, int s){
     
     vertex[0] = x_hat*cos(theta*y_hat);
     vertex[1] = x_hat*sin(theta*y_hat);
-    
-    /*
-    x_hat = x_hat2*cos(theta) - vertex[1]*sin(theta);
-    y_hat = x_hat2*sin(theta) + vertex[1]*cos(theta);
-
-    vertex[0] = x_hat;
-    vertex[1] = y_hat;
-    */
 }
 ///////
 

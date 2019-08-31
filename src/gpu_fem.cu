@@ -94,7 +94,6 @@ __device__ void assemble_elem(
     
     if(is_bound[v]){
         bound = bdry_vals[v];
-        // change this appropriately for more DOF if necessary //
         for(int j=0; j<3; j++){
             if(idy != j){
                 atomicAdd(&temp1[(offset + 9) + j], (-1)*temp1[offset + (3*j) + idy]*bound);
@@ -131,7 +130,7 @@ __device__ void assemble_mat(
 
     // Le = &temp1[offset];
     // be = &temp1[offset + 9];
-    // dof_r = (int*)&temp1[offset+12];  // stores in shared memory, global node numbers for 3 nodes
+    // dof_r = (int*)&temp1[offset+12];  // global node numbers for 3 nodes
 
 
     ///////////////// Assigning global node numbers //////////////////
@@ -179,8 +178,7 @@ __device__ void assemble_mat_csr(
                 int *dof, 
                 float *temp1, 
                 int idx, 
-                int idy, 
-                int order)
+                int idy)
 {
     int row;
     int *tmp1, *tmp2;
@@ -272,7 +270,6 @@ __global__ void assemble_gpu_csr(
                 int *cells, 
                 int *is_bound, 
                 float *bdry_vals, 
-                int order,
                 int num_cells,
                 long long *tau_d,
                 int timing)
@@ -289,7 +286,7 @@ __global__ void assemble_gpu_csr(
         if(timing)  tau_d[(idx*blockDim.y) + idy] = (end - start);
         
         start = clock64();
-        assemble_mat_csr(valsL, rowPtrL, colIndL, b, vertices, cells, temp1, idx, idy, order);
+        assemble_mat_csr(valsL, rowPtrL, colIndL, b, vertices, cells, temp1, idx, idy);
         end = clock64();
         if(timing)  tau_d[(num_cells*blockDim.y) + (idx*blockDim.y) + idy] = (end - start);
     }
@@ -488,7 +485,7 @@ extern void gpu_fem(float *u, Mesh &M, Tau &t, int &reconfig){
     } else {
         assemble_gpu_csr<<<dimGrid, dimBlock, shared*sizeof(float)>>>(valsL, rowPtrL, colIndL, 
                         b, vertices_gpu, cells_gpu, is_bound_gpu, 
-                        bdry_vals_gpu, order, num_cells, tau_d, timing);
+                        bdry_vals_gpu, num_cells, tau_d, timing);
     }
     cudaEventRecord(finish,0);
     cudaEventSynchronize(finish);

@@ -311,9 +311,13 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
 /////////////// Allocates and assigns 2d pointers ////////////////////
 void assign_ptrs(float*** arr_ptr, float** arr, int n, int m){
     float **arr_tmp, *tmp_vals;
-
-    *arr_ptr = (float**)malloc(n*sizeof(float*));
-    *arr = (float*)calloc(n*m,sizeof(float));
+    
+    try {
+        *arr_ptr = (float**)malloc(n*sizeof(float*));
+        *arr = (float*)calloc(n*m,sizeof(float));
+    } catch(std::bad_alloc const &err) {
+        throw;
+    }
     
     arr_tmp = *arr_ptr;
     tmp_vals = *arr;
@@ -324,9 +328,13 @@ void assign_ptrs(float*** arr_ptr, float** arr, int n, int m){
 
 void assign_ptrs(int*** arr_ptr, int** arr, int n, int m){
     int **arr_tmp, *tmp_vals;
-    
-    *arr_ptr = (int**)malloc(n*sizeof(int*));
-    *arr = (int*)calloc(n*m,sizeof(int));
+   
+    try { 
+        *arr_ptr = (int**)malloc(n*sizeof(int*));
+        *arr = (int*)calloc(n*m,sizeof(int));
+    } catch(std::bad_alloc const &err){
+        throw;
+    }
 
     arr_tmp = *arr_ptr;
     tmp_vals = *arr;

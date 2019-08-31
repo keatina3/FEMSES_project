@@ -1,9 +1,10 @@
 // =========================================================================== //
-// Class for completing the standard Finite Element Method on a given
-// mesh M. PDE in question is the Poisson equation defined over the mesh.
-// Contains vectors to store stiffness matrix in both CSR and dense storage
-// formats.
-// Uses intel MKL library to solve linear system
+// Class for completing the standard Finite Element Method on a given          //
+// mesh M.                                                                     //
+// PDE in question is the Poisson equation defined over the mesh.              //
+// Contains vectors to store stiffness matrix in both CSR and dense storage    //
+// formats.                                                                    //
+// Uses intel MKL library to solve linear system.                               //
 // =========================================================================== //
 
 #ifndef _FEM_H_

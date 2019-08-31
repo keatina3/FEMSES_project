@@ -148,7 +148,6 @@ void sparse_solve(
     
     status2 = cusolverSpScsrlsvchol(handle, order, nnz, desc, valsL, rowPtrL,
                                             colPtrL, b, err, reorder, b, &singularity);
-    //assert(CUSOLVER_STATUS_EXECUTION_FAILED  == status2);
     assert(CUSOLVER_STATUS_SUCCESS == status2);
     
     cusolverSpDestroy(handle);
@@ -226,8 +225,8 @@ void error_dot_prod(float *a, float *b, int n, float &x){
     status = cublasCreate(&handle);
     assert(status == CUBLAS_STATUS_SUCCESS);
  
-    // y = ax + y
-    // function sets b = b - a
+    // y = ax + y //
+    // function sets b = b - a //
     status = cublasSaxpy(handle, n, &alpha, a, 1, b, 1); 
     assert(status == CUBLAS_STATUS_SUCCESS);
 

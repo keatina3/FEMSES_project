@@ -64,7 +64,6 @@ int main(int argc, char** argv){
     
     Mesh M(nr,x,y);
     if(annulus)     M.deform(annulus_seg_map, 1.0);
-    //M.deform(annulus_seg_map, -M_PI/6);
 
     u = new float[order];
     analytical(u, M, x[0], x[1], order);
@@ -87,8 +86,8 @@ int main(int argc, char** argv){
     
     /////////////////////////////////////////////////
 
-    // dummy kernel to prevent slowdown
-    if(gpu_f || gpu_fs)     dummy(u, 100 > order ? 100 : order);
+    // dummy kernel to prevent slowdown timing further kernels //
+    // if(timing && (gpu_f || gpu_fs))     dummy(u, 100 > order ? 100 : order);
 
     
     //////////////      GPU       ///////////////////

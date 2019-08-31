@@ -1,3 +1,4 @@
+#include <limits>
 #include <iostream>
 #include <cmath>
 #include <cassert>
@@ -9,11 +10,11 @@
 #include "gpu_fem.h"
 #include "gpu_femses.h"
 
+
 //////////// Calculates weighting for assembling single element solution ///////////
 // One weight is evaluated for each node
 // Added back to global memory
 __device__ void calc_weights(float *w, int *cells, float *temp1, int idx, int idy){
-    // float *Le;
     int v;
     int offset = 28*threadIdx.x;
 
@@ -27,7 +28,6 @@ __device__ void calc_weights(float *w, int *cells, float *temp1, int idx, int id
 
 /////////// Copies element matrices/element vector from global-shared memory //////////
 __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int idy){
-    // float *Le_shrd, *be_shrd;
     int offset = 28*threadIdx.x;
 
     // Le_shrd = &temp1[offset];
@@ -44,7 +44,6 @@ __device__ void elems_glob_cpy(float *Le, float *be, float *temp1, int idx, int 
 
 /////////// Copies element matrices/element vector from shared-global memory //////////
 __device__ void elems_shared_cpy(float *Le, float *be, float *temp1, int idx, int idy){
-    // float *Le_shrd, *be_shrd;
     int offset = 15*threadIdx.x;
 
     // Le_shrd = &temp1[offset];
@@ -67,7 +66,6 @@ __device__ void jacobi_iter(
                 int idx,
                 int idy)
 {
-    // float *Le_shrd, *be_shrd, *ue_old;
     float ue_new;
     int v;
     int offset = 15*threadIdx.x;
@@ -75,7 +73,7 @@ __device__ void jacobi_iter(
     /*
     Le_shrd = &temp1[offset];
     be_shrd = &temp1[offset + 9];
-    ue_old  = &temp1[offset + 12];
+    u_old  = &temp1[offset + 12];
     */
 
     v = cells[(idx*3) + idy];
@@ -90,7 +88,6 @@ __device__ void jacobi_iter(
 
     ue_new /= temp1[offset + (idy*3) + idy];
 
-    // atomicExch(&ue[(idx*3) + idy], ue_new); // transferring element solution of u to global mem
     ue[(idx*3) + idy] = ue_new;
 }
 //////
@@ -122,6 +119,8 @@ __global__ void assemble_elems_gpu(
         calc_weights(w, cells, temp1, idx, idy);
         elems_glob_cpy(Le, be, temp1, idx, idy);
     }
+
+    // setting initial guess of solution to 1.0 //
     if( (idx*3) + idy < order){
         u_glob[(idx*3) + idy] = 1.0;
     }
@@ -197,8 +196,8 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count, int &reconfig){
     float *bdry_vals_gpu, *bdry_vals;
     float *Le, *be, *ue, *w;
     float *up_gpu, *un_gpu;
-    float err = 1E16;
-    cudaEvent_t start, finish, start2, finish2;
+    float err = std::numeric_limits<float>::max();
+    cudaEvent_t start, finish;
     cudaError_t stat = cudaSuccess;
     float tau = 0.0;
     int shrd_mem, threads;
@@ -379,7 +378,6 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count, int &reconfig){
 
         // calculating error using 2-norm //
         error_dot_prod(un_gpu, up_gpu, order, err);
-        // std::cout << err << std::endl;
 
         tmp = un_gpu;
         un_gpu = up_gpu;

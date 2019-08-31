@@ -1,5 +1,5 @@
 // =========================================================================== //
-// General utility functions for use with the FEM program
+// General utility functions for use with the FEM program.                     //
 // =========================================================================== //
 
 #ifndef _UTILS_H_
