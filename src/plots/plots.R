@@ -485,7 +485,7 @@ prop_sparse <- ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1
                                 labs(title="Proportion of Computation Time Taken By Each Step\nin Sparse Serial Process", 
                                 x ="Problem Size", y = NULL, fill = "Kernel") +
                                 scale_y_continuous(labels = scales::percent_format()) + 
-                                scale_fill_manual(values=wes_palette(n=5, name="GrandBudapest2"))
+                                scale_fill_brewer(palette="Set2")
 
 data.m <- melt(subset(cpu_dense_avgs, n > 10), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
                                 "iterations", "elems_p_assemb", "convert", "transfer", "sparsity.scan"))
