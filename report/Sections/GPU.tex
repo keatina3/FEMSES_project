@@ -7,7 +7,7 @@ In scientific computing, GPU programming can be hugely beneficial to large-scale
 
 In GPU programming, there are multiple options currently available. Currently on UNIX systems, the main two would be CUDA and openCL, others exist such as openGL and DirectX. They each have their own benefits, openCL is open source and can be used on any device with graphical processing abilities, from a phone to a cluster, while CUDA is only available solely for Nvidia devices. While all having their differences, they do all share the same general approach, this section details the model needed to program a GPGPU over a CPU.
 
-\subsection{GPU Programming Model}
+\subsection{GPU Programming Model}\label{gpu_model}
 
 \begin{figure}
 	\centering
@@ -62,7 +62,7 @@ Clearly then, the main difference between programming on a CPU compared to on a 
 
 While many of the GPU programming variants like openCL and openGL have their pros and cons, the main reason for choosing CUDA for this paper is, for one, Nvidia cards were used for testing so the performance would be optimal, but more-so due to the extensive availability of libraries for CUDA - something which openCL does not have. Intel's MKL was discussed in Section~\ref{mkl}, and likewise, CUDA has its own collections libraries of mathematical functions. In Nvidia's case, these span from LAPACK, fast-Fourier transforms to image decomposition. In the case of this paper, cuBLAS, cuSOLVER and cuSPARSE were used. This is discussed in the breakdown of the GPU code's design structure in Section~\ref{culibs}. Similarly to the serial code, these were used for getting the Cholesky decomposition of a linear system and applying a direct solver. The cuBLAS package was used for finding the 2-norm of the error for each iteration seen in FEMSES.
 
-\section{Current FEM Approaches}\label{approaches}
+\section{Current FEM Approaches - UNFINISHED}\label{approaches}
 
 \subsection{Linear System Decomposition}
 
