@@ -32,7 +32,7 @@ The approach here would be that a Mesh object be created, passed to a FEM object
 
 \section{Data Structures}
 
-Objects are a massive sell for using C++ over C when programming a numerical method, for reasons stated already. For this paper, two classes were written, one to handle the mesh creation and one to handle performing FEM. In terms of other data structures, there was also a struct \texttt{Tau} to manage timings of all the operations without needing to pass around multiple variables in as function parameters.
+Objects are a massive sell for using C++ over C when programming a numerical method, for the already stated reasons. For this paper, two classes were written, one to handle the mesh creation and one to handle performing FEM. In terms of other data structures, there was also a struct \texttt{Tau} to manage timings of all the operations without needing to pass around multiple variables in as function parameters.
 
 \subsection{Mesh}\label{mesh}
 
@@ -153,7 +153,7 @@ The element matrix calculation is detailed in Algorithm~\ref{algo:elems}, utilis
 	\label{fig:pattern}
 \end{figure}
 
-The idea of sparse matrices and CSR storage has been thrown about in this paper a handful of times. The idea here is that a matrix is considered sparse, if if consists of mostly 0 valued entries - in some papers it is defined as having over 50\% 0 entries but this is a rather loose definition. This is important in the FEM as, if the basis functions are considered, one must remember that these are defined on a compact support $\Omega^{(e)}$, and will be 0 everywhere outside of this domain. Due to this, the global stiffness matrix will be a SPD, sparse matrix. Consider again Figure~\ref{fig:4cell}, at no point is there any connection between nodes X and Y, thus the resulting inner product $\left\langle\varphi_X,\varphi_Y\right\rangle=0$. Why is this important? It can be hugely beneficial to computation time if one can take advantage of the sparsity pattern of a matrix, clearly as there is going to be potentially orders less null operations to iterate through.
+The idea of sparse matrices and CSR storage has been thrown about in this paper a handful of times. The idea here is that a matrix is considered sparse, if it consists of mostly 0 valued entries - in some papers it is defined as having over 50\% 0 entries but this is a rather loose definition. This is important in the FEM as, if the basis functions are considered, one must remember that these are defined on a compact support $\Omega^{(e)}$, and will be 0 everywhere outside of this domain. Due to this, the global stiffness matrix will be a SPD, sparse matrix. Consider again Figure~\ref{fig:4cell}, at no point is there any connection between nodes X and Y, thus the resulting inner product $\left\langle\varphi_X,\varphi_Y\right\rangle=0$. Why is this important? It can be hugely beneficial to computation time if one can take advantage of the sparsity pattern of a matrix, clearly as there is going to be potentially orders less null operations to iterate through.
 
 These matrices can be stored in a number of different ways, three will be looked at here, although only CSR was used in the implementation:
 \begin{itemize}
@@ -236,7 +236,7 @@ Naturally, the next question needing to be posed is, how does one take advantage
 			$AJ_c = v_r$\\
 			$c \leftarrow c + 1$
 		}
-		$n \leftarrow n + \#(S^{(v)}$\\
+		$n \leftarrow n + \#(S^{(v)})$\\
 		$AI_n = n$
 	}
 	\Return{$\mathbf{AI}, \mathbf{AJ}, n$}

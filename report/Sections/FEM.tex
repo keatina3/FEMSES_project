@@ -342,7 +342,7 @@ These can now be assembled into the global stiffness matrix and stress vector ju
 
 \subsection{Physical or Local Coordinates}\label{coords}
 
-The last outstanding piece of mathematics that needs to be touched upon in the FEM is the coordinate mapping of the nodes. In Equation~\ref{linsys}, clearly the integrals or inner-products are all calculated with respect to the physical coordinates of $mathbf{x}$, across the domain upon which they are defined - compact or whole domain. However, as was mentioned, much of the advantage of the FEM is that you can shape a complex domain into many smaller domains with easier to calculate integrals. In this case, it might be much more within one's interest to locally define the coordinates in each cell and then map back. For example, take a 2D, P1 case again, it might be much more convenient for the node's local coordinates to be (0,0), (0,1) and (1,0) in any cell. For example, to apply this mathematically, denote the local coordinate system by $\mathbf{X}$ and the new, easier local basis functions $\widetilde\varphi_r(\mathbf{X})$, and now consider the integral,
+The last outstanding piece of mathematics that needs to be touched upon in the FEM is the coordinate mapping of the nodes. In Equation~\ref{linsys}, clearly the integrals or inner-products are all calculated with respect to the physical coordinates of $\mathbf{x}$, across the domain upon which they are defined - compact or whole domain. However, as was mentioned, much of the advantage of the FEM is that you can shape a complex domain into many smaller domains with easier to calculate integrals. In this case, it might be much more within one's interest to locally define the coordinates in each cell and then map back. For example, take a 2D, P1 case again, it might be much more convenient for the node's local coordinates to be (0,0), (0,1) and (1,0) in any cell. For example, to apply this mathematically, denote the local coordinate system by $\mathbf{X}$ and the new, easier local basis functions $\widetilde\varphi_r(\mathbf{X})$, and now consider the integral,
 \begin{equation}
 	\int_{\Omega^{(e)}} \alpha(\mathbf{x})\nabla \varphi_i(\mathbf{x}) \cdot \nabla \varphi_j(\mathbf{x})~d\mathbf{x}.
 \end{equation}
@@ -425,7 +425,7 @@ Without going into large amounts of detail, it can be deduced mathematically tha
 
 \subsubsection{Analytical Solution}
 
-This given solution has the analytical solution,
+This given problem has the analytical solution,
 \begin{equation}
 	u(x,y) = U_1 + \left(\frac{U_1 - U_0}{b - a}\right) (x - a).
 \end{equation}

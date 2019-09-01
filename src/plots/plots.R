@@ -2,6 +2,7 @@ library(ggplot2)
 library(gridExtra)
 library(scales)
 library(reshape2)
+library(wesanderson)
 
 cpu_dense = read.csv("~/Documents/College/Project/src/timings/cpu_dense_times.csv")
 cpu_sparse = read.csv("~/Documents/College/Project/src/timings/cpu_sparse_times.csv")
@@ -71,18 +72,35 @@ speedups = get_speedups(gpu_Tesla_dnsspr_avgs, cpu_dense_avgs)
 total_dnsspr_cpu_dense_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) +
                             geom_smooth(colour = col_dnsspr, formula = y~log(x)) + geom_point(colour=col_dnsspr)
 
+data.m <- melt(subset(gpu_Tesla_spare_avgs), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
+                                                          "iterations", "elems_p_assemb", "convert"))
+ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1)*(n+1)))) +
+        geom_bar(position="fill", stat="identity") +
+        labs(title="Proportion of Computation Time Taken By Each Step\nin Sparse Serial Process", 
+        x ="Problem Size", y = NULL, fill = "Kernel") +
+        scale_y_continuous(labels = scales::percent_format())
+
+data.m <- melt(subset(gpu_Tesla_dense_avgs), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
+                                                          "iterations", "elems_p_assemb", "convert"))
+ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1)*(n+1)))) +
+        geom_bar(position="fill", stat="identity") +
+        labs(title="Proportion of Computation Time Taken By Each Step\nin Sparse Serial Process", 
+        x ="Problem Size", y = NULL, fill = "Kernel") +
+        scale_y_continuous(labels = scales::percent_format())
+
+
 ## femses 
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
 total_femses_cpu_sparse_speedup_vs_n = ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) +
-                            geom_smooth(colour = col_femses,formula = y~log(x)) + geom_point(colour=col_femses)
+                            geom_smooth(colour = col_sprs,formula = y~log(x)) + geom_point(colour=col_sprs)
     
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_dense_avgs)
 total_femses_cpu_dense_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) + 
-                            geom_smooth(colour = col_femses,formula = y~log(x)) + geom_point(colour=col_femses)
+                            geom_smooth(colour = col_dns,formula = y~log(x)) + geom_point(colour=col_dns)
 
 speedups = get_speedups(gpu_Tesla_femses_avgs, gpu_Tesla_sparse_avgs)
 total_femses_gpu_sparse_speedup_vs_n = ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) +
-                            geom_smooth(colour = col_femses, formula = y ~ log(x)) + geom_point(colour=col_femses)
+                            geom_smooth(colour = col_dnsspr, formula = y ~ log(x)) + geom_point(colour=col_dnsspr)
 speedups = get_speedups(gpu_Tesla_femses_avgs, gpu_Tesla_dense_avgs)
 total_femses_gpu_dense_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) +
                             geom_smooth(colour = col_femses, formula = y ~ log(x)) + geom_point(colour=col_femses)
@@ -128,7 +146,8 @@ total_femses_cpu_sparse_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0), aes
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
 labels = unique(subset(speedups,n<200)[1])
 labels = list((labels+1) **2 )
-total_femses_cpu_sparse_speedup_vs_b_facet <- ggplot(subset(speedups, reconfig!=0  & block_size_X > 10), aes(block_size_X, total)) +
+total_femses_cpu_sparse_speedup_vs_b_facet <- ggplot(subset(speedups, block_size_X > 10), 
+                                        aes(block_size_X, total, colour = as.factor(reconfig))) +
                                         geom_smooth(colour=col_sprs) + geom_point(colour=col_sprs) +
                                         facet_wrap(~n, scales="free")
 
@@ -159,11 +178,11 @@ total_femses_cpu_dense_speedup_vs_b + scale_y_log10(breaks = base_breaks()) +
                                     scale_color_discrete(name="DOF")
 
 total_femses_cpu_sparse_speedup_vs_b_facet + scale_y_log10(breaks = base_breaks()) + 
-                                labs(title="Speedup of GPU Dense Stiffness Matrix Assembly Over CPU vs Block Size for\nIndividual Problem Sizes", 
+                              labs(title="Speedup of FEMSES Total Time Over Serial Sparse Solution\nvs Block Size for Individual Problem Sizes", 
                                 x ="Block Size", y = "Speedup") +
                                 scale_color_discrete(name="Mem Config")
 total_femses_cpu_dense_speedup_vs_b_facet + scale_y_log10(breaks = base_breaks()) + 
-                                labs(title="Speedup of GPU Dense Stiffness Matrix Assembly Over CPU vs Block Size for\nIndividual Problem Sizes", 
+                                labs(title="Speedup of FEMSES Total Time Over Serial Dense Solution\nvs Block Size for Individual Problem Sizes", 
                                 x ="Block Size", y = "Speedup") +
                                 scale_color_discrete(name="Mem Config")
 
@@ -186,13 +205,13 @@ solve_gpus_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0 & n < 200), aes((n
 
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
 solve_femses_sparse_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), solve)) +
-                              geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
+                              geom_smooth(colour=col_sprs, formula = y~log(x)) + geom_point(colour=col_sprs)
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_dense_avgs)
 solve_femses_dense_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), solve)) + 
-                              geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
+                              geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
 speedups = get_speedups(gpu_Tesla_femses_avgs, gpu_Tesla_sparse_avgs)
 solve_femses_sparse_gpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), solve)) + 
-                              geom_smooth(colour=col_femses,formula = y~log(x)) + geom_point(colour=col_femses)
+                              geom_smooth(colour=col_dnsspr,formula = y~log(x)) + geom_point(colour=col_dnsspr)
 speedups = get_speedups(gpu_Tesla_femses_avgs, gpu_Tesla_dense_avgs)
 solve_femses_dense_gpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), solve)) + 
                               geom_smooth(colour=col_femses, formula = y ~ log(x)) + geom_point(colour=col_femses)
@@ -240,7 +259,7 @@ alloc_femses_dense_speedup_vs_n = ggplot(subset(speedups,reconfig!=0 & n < 200),
 
 alloc_dense_vs_n +  labs(title="Average Allocation Times for Dense Solver vs Problem Size", x ="Degrees of Freedom", y = "Allocation (ms)")
 alloc_sparse_vs_n + labs(title="Average Allocation Times for Sparse Solver vs Problem Size", x ="Degrees of Freedom", y = "Allocation (ms)")
-alloc_femses_vs_n + labs(title="Average Allocation Times for FEMSES Solver vs Problem Size", x ="Degrees of Freedom", y = "Allocation(ms)")
+alloc_femses_vs_n + labs(title="Average Allocation Times for FEMSES Solver vs Problem Size", x ="Degrees of Freedom", y = "Allocation (ms)")
 alloc_sparse_dense_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
                       labs(title="GPU Sparse Speedup Over GPU Dense Allocation Time vs Problem Size", 
                         x ="Degrees of Freedom", y = "Speedup")
@@ -378,7 +397,8 @@ elems_p_assem_ker_sparse_speedups_reconfig <- ggplot(subset(speedups,block_size_
 ## dense
 speedups = get_speedups(gpu_Tesla_dense_avgs, cpu_dense_avgs)
 elems_p_assem_ker_cpu_dense_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n > 10), aes(block_size_X, elems_p_assemb,
-                                                                  colour = as.factor((n+1)*(n+1)))) + geom_point() + geom_smooth(formula = y~log(x))
+                                                                  colour = as.factor((n+1)*(n+1)))) + geom_point() +
+                                                                  geom_smooth(formula = y~log(x))
 elems_p_assem_ker_cpu_dense_speedup_vs_n <- ggplot(subset(speedups, reconfig != 0 & n > 10), aes((n+1)*(n+1), elems_p_assemb)) + 
                                               geom_point(colour = col_femses) + geom_smooth(colour = col_femses)
 
@@ -389,7 +409,8 @@ elems_p_assem_ker_dense_speedups_reconfig <- ggplot(subset(speedups,block_size_X
 ## sparse vs dense
 speedups = get_speedups(gpu_Tesla_sparse_avgs, gpu_Tesla_dense_avgs)
 elems_p_assem_ker_gpu_sparse_dense_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n <= 199), aes(block_size_X, elems_p_assemb,
-                                                                  colour = as.factor((n+1)*(n+1)))) + geom_point() + geom_smooth(formula = y~log(x))
+                                                                  colour = as.factor((n+1)*(n+1)))) + geom_point() +
+                                                                  geom_smooth(formula = y~log(x))
 
 
 ## figures
@@ -405,9 +426,10 @@ elems_p_assem_ker_sparse_speedups_reconfig + scale_y_log10(breaks = base_breaks(
                                 scale_color_discrete(name="Mem Config", labels =c("1:3","1:1","3:1")) 
 
 elems_p_assem_ker_cpu_dense_speedup_vs_b + scale_y_log10(breaks = base_breaks()) + 
-                                labs(title="Speedup of GPU Dense Main Kernel Over CPU vs Block Size", x ="Block Size", y = "Speedup") +
+                                labs(title="Speedup of GPU Dense Main Kernel Over CPU vs Block Size", 
+                                x ="Block Size", y = "Speedup") +
                                 scale_color_discrete(name="DOF")
-elems_p_assem_ker_cpu_dense_speedup_vs_n +  labs(title="Speedup of GPU Dense Main Kernel Over CPU vs Problem Size", 
+elems_p_assem_ker_cpu_dense_speedup_vs_n +  labs(title="Speedup of GPU Dense Main Kernel Over CPU vs Problem Size",
                                                 x ="Degrees of Freedom", y = "Speedup")
 elems_p_assem_ker_dense_speedups_reconfig + scale_y_log10(breaks = base_breaks()) + 
                                 labs(title="Speedup of GPU Dense Main Kernel Over CPU vs Block Size for\n Individual Problem Sizes", 
@@ -439,8 +461,12 @@ total_sparse_cpu = ggplot(cpu_sparse_avgs, aes((n+1)*(n+1), total)) +
                     geom_smooth(colour=col_sprs) + geom_point(colour=col_sprs)
 total_dense_cpu = ggplot(cpu_dense_avgs, aes((n+1)*(n+1), total)) + 
                     geom_smooth(colour=col_dns) + geom_point(colour=col_dns)
+speedups = get_speedups(cpu_sparse_avgs, cpu_dense_avgs)
+total_sparse_dense_cpu_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), total)) + 
+                              geom_smooth(colour=col_femses, formula = y ~ log(x)) + geom_point(colour=col_femses)
+
 elem_mats_cpu = ggplot(rbind(cpu_sparse_avgs, cpu_dense_avgs), aes((n+1)*(n+1), elem_mats)) + 
-                    geom_smooth(colour=col_dnsspr) + geom_point(colour=col_dnsspr)
+                    geom_smooth(colour=col_dns) + geom_point(colour=col_dns)
 assembly_sparse_cpu = ggplot(cpu_sparse_avgs, aes((n+1)*(n+1), assembly)) + 
                     geom_smooth(colour=col_femses) + geom_point(colour=col_femses)
 assembly_dense_cpu = ggplot(cpu_dense_avgs, aes((n+1)*(n+1), assembly)) + 
@@ -450,47 +476,50 @@ solve_sparse_cpu = ggplot(cpu_sparse_avgs, aes((n+1)*(n+1), solve)) +
 solve_dense_cpu = ggplot(cpu_dense_avgs, aes((n+1)*(n+1), solve)) + 
                     geom_smooth(colour=col_dns) + geom_point(colour=col_dns)
 sparsity_pass_cpu = ggplot(cpu_sparse_avgs, aes((n+1)*(n+1), sparsity.scan)) + 
-                    geom_smooth(colour=col_femses) + geom_point(colour=col_femses)
+                    geom_smooth(colour=col_sprs) + geom_point(colour=col_sprs)
+
+data.m <- melt(subset(cpu_sparse_avgs, n > 25), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
+                                "iterations", "elems_p_assemb", "convert", "transfer"))
+prop_sparse <- ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1)*(n+1)))) +
+                                geom_bar(position="fill", stat="identity") +
+                                labs(title="Proportion of Computation Time Taken By Each Step\nin Sparse Serial Process", 
+                                x ="Problem Size", y = NULL, fill = "Kernel") +
+                                scale_y_continuous(labels = scales::percent_format()) + 
+                                scale_fill_manual(values=wes_palette(n=5, name="GrandBudapest2"))
+
+data.m <- melt(subset(cpu_dense_avgs, n > 10), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
+                                "iterations", "elems_p_assemb", "convert", "transfer", "sparsity.scan"))
+prop_dense <- ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1)*(n+1)))) +
+                                geom_bar(position="fill", stat="identity") +
+                                labs(title="Proportion of Computation Time Taken By Each Step\nin Dense Serial Process", 
+                                x ="Problem Size", y = NULL, fill = "Kernel") + 
+                                scale_y_continuous(labels = scales::percent_format()) + 
+                                scale_fill_manual(values=wes_palette(n=4, name="GrandBudapest2"))
 
 
-total_sparse_cpu +  labs(title="Total Computation Time for Sparse CPU Solution vs Problem Size", 
+total_sparse_cpu +  labs(title="Total Computation Time for Sparse CPU Solution vs Problem Size",
                           x ="Degrees of Freedom", y = "Total (ms)")
 total_dense_cpu +  labs(title="Total Computation Time for Dense CPU Solution vs Problem Size", 
                           x ="Degrees of Freedom", y = "Total (ms)")
-elem_mats_cpu +  labs(title="Element Matrices Generation Times for CPU vs Problem Size", 
-                          x ="Degrees of Freedom", y = "Element Matrices Generation (ms)")
-assembly_sparse_cpu +  labs(title="SparseGlobal Stiffness Matrix Assembly Times for CPU vs Problem Size", 
-                          x ="Degrees of Freedom", y = "Assembly (ms)")
-assembly_dense_cpu +  labs(title="Dense Global Stiffness Matrix Assembly Times for CPU vs Problem Size", 
-                          x ="Degrees of Freedom", y = "Assembly (ms)")
+total_sparse_dense_cpu_speedup_vs_n + labs(title="Speedup of Total Time for Sparse Solution\nover Dense vs Problem Size", 
+                          x ="Degrees of Freedom", y = "Speedup")
+
 solve_sparse_cpu +  labs(title="Sparse Solver Times for CPU vs Problem Size", 
                           x ="Degrees of Freedom", y = "Solve (ms)")
 solve_dense_cpu +  labs(title="Dense Times for CPU vs Problem Size", 
                           x ="Degrees of Freedom", y = "Solve (ms)")
+elem_mats_cpu +  labs(title="Element Matrices Generation Times for CPU vs Problem Size", 
+                          x ="Degrees of Freedom", y = "Element Matrices Generation (ms)")
+assembly_sparse_cpu +  labs(title="Sparse Global Stiffness Matrix Assembly Times for CPU\nvs Problem Size", 
+                          x ="Degrees of Freedom", y = "Assembly (ms)")
+assembly_dense_cpu +  labs(title="Dense Global Stiffness Matrix Assembly Times for CPU\nvs Problem Size", 
+                          x ="Degrees of Freedom", y = "Assembly (ms)")
 sparsity_pass_cpu +  labs(title="Sparsity Pass Times vs Problem Size", 
                           x ="Degrees of Freedom", y = "Sparsity Pass (ms)")
 
-ggplot(cpu_dense_avgs, aes(fill=, y=value, x=specie)) + 
-    geom_bar(position="fill", stat="identity")
+prop_sparse
+prop_dense
 
-
-data.m <- melt(subset(cpu_sparse_avgs, n > 25), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
-                                "iterations", "elems_p_assemb", "convert", "transfer"))
-ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1)*(n+1)))) +
-                                geom_bar(position="fill", stat="identity") +
-                                labs(title="Proportion of Computation Time Taken By Each Step\nin Sparse Serial Process", 
-                                x ="Problem Size", y = NULL, fill = "Kernel") +
-                                scale_y_continuous(labels = scales::percent_format())
-
-
-
-data.m <- melt(subset(cpu_dense_avgs, n > 10), id.vars=c("n", "m", "total", "block_size_X", "reconfig", "sse", 
-                                "iterations", "elems_p_assemb", "convert", "transfer", "sparsity.scan"))
-ggplot(data.m, aes(fill=variable, y=value/total, x=as.factor((n+1)*(n+1)))) +
-                                geom_bar(position="fill", stat="identity") +
-                                labs(title="Proportion of Computation Time Taken By Each Step\nin Dense Serial Process", 
-                                x ="Problem Size", y = NULL, fill = "Kernel") + 
-                                scale_y_continuous(labels = scales::percent_format())
 
 
 
