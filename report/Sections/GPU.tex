@@ -70,11 +70,17 @@ While many of the GPU programming variants like openCL and openGL have their pro
 
 \section{Current FEM Approaches - UNFINISHED}\label{approaches}
 
-\subsection{Linear System Decomposition}
+Currently, there are three existing methods of parallelising the finite element method and implementing it on a GPU:
+\begin{itemize}
+	\item Partitioning the linear system across the threads and solving.
+	\item Applying a domain decomposition.
+	\item Utilising multigrid techniques.
+\end{itemize}
+In this paper, the one implemented is the partitioning of the linear system across the processors and solving. This is, as it says on the tin; the element matrices and element vectors are assembled in parallel, the global stiffness matrix and stress vector are is then also assembled across the threads in parallel at which point this linear system is then solved using standard decomposition approaches. For this paper, the linear system decomposition was left to be handled by Nvidia's existing direct solver library cuSOLVER and the handling of the element matrices and assembly was implemented manually. These steps are no different really than discussed Section~\ref{approach}, barring needing to handle certain amounts of communication between threads handling nodes within the same cell, and also when mapping back to the global stiffness matrix/stress vector.
 
-\subsection{Multigrid Techniques}
+Domain decomposition is another technique applied to parallelising the FEM. The premise behind this approach is, if the mesh, or domain, $\Omega$, upon which the PDE is defined is decomposed into $n$ separate subdomains $\{\Omega_i\}_n$, these can each be solved iteratively using their own individual boundary conditions, as if they were independent PDEs. There are two main domain decomposition approaches, the Schwarz method for overlapping subdomains and the Schur method for disjoint domains. At each iteration there is corrections done on the locals boundary conditions via communication from neighbours and the iterations continue. This can often, be quite expensive in terms of computation costs, and depending on the architecture might not always be the optimal choice. For a GPU, due to the lack of being able to communicate between threads in separate blocks, this could cause some bottlenecks in the approach.
 
-\subsection{Domain Decomposition}
+The final main approach to parallelising the FEM is by implementing a multigrid approach. The idea behind the multigrid approach is to coarsen the grid, and use interpolation to find estimates to this courser grid by iterating until convergence. This can then be refined using prolongation to make a finer mesh, of just the error from the previous prolonged mesh. This finer mesh can then have the same approach applied until convergence and the error prolonged again. This can oscillate up and down between fine and coarse grids until a converged solution is found. In the case of the FEM, this is a natural and efficient implementation as the entire domain can be divided into coarse and fine grids, each of which can be solved in parallel across the threads.
 
 \section{FEMSES}
 

@@ -12,7 +12,7 @@ using the finite element method.
 
 There are three separate implementations within the code:
 * Serial code implementing standard FEM in C++.
-* CUDA version implementing standard FEM with linear system decomposed across threads.
+* CUDA version implementing standard FEM with linear system partitioned across threads.
 * CUDA version implementing novel FEM-SES (Single Element Solution) approach.  
 
 All code is stored in `/src/`
@@ -38,15 +38,41 @@ cd src/
 make
 ```
 
+To remove all object files and executable, run,
+```
+make clean
+```
+or to remove all objects, timings, results and executable, run
+```
+make clean_all
+```
+
 ### Usage
 To get detailed usage information, run
 ```
 ./fem_solver -h
 ```
-UNFINISHED
+All results are stored in `/src/results/output_*_results.csv` and run times are stored in `/src/timings/*_timings.csv`.
+
+Typical succesful run output looks as the screenshot below:
+
+![Run Screen](run_screen.png?raw=true "Runtime Screenshot")
+
+<b> Note: </b> When running this solver, there is no means of knowing a priori the amount of memory needed to be allocated by cuSOLVER library. Be conscious of DRAM on device when choose problem size.
+
+An error log will be created and written to `/src/error.log` during runtime.
 
 ### Testing
-UNFINISHED
+
+To run test suite for timings, run
+```
+make timings
+```
+or to test for memory errors,
+```
+make mem_tests
+```
+The timings test script is lengthy - contains around 6,000 runs - so do not run if short on time. Output plots can be attained from the R code stored in `/src/Plots/plots.R`
 
 ### Author
 Alex Keating  
