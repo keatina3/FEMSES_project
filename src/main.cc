@@ -87,7 +87,7 @@ int main(int argc, char** argv){
     /////////////////////////////////////////////////
 
     // dummy kernel to prevent slowdown timing further kernels //
-    // if(timing && (gpu_f || gpu_fs))     dummy(u, 100 > order ? 100 : order);
+    if(timing && (gpu_f || gpu_fs))     dummy(u, 100 > order ? 100 : order);
 
     
     //////////////      GPU       ///////////////////

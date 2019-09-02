@@ -101,7 +101,7 @@ for i in 4 9 24 49 99 199 499 699; do
             ./fem_solver -n $i -m $i -M -c -g -c -v -t -b 1 1>> a.out 2>> error.log
         done
         for x in {1..4}; do
-            ./fem_solver -n $i -m $i -g -c -v -t -f -b 1 1>> a.out 2>> error.log
+            ./fem_solver -n $i -m $i -g -c -v -t -b 1 1>> a.out 2>> error.log
         done
         
         for j in {2..300..6}; do
@@ -120,12 +120,23 @@ for i in 4 9 24 49 99 199 499 699; do
     fi
     '
     
-    if [ $i -lt 25 ]; then
+    if [ $i -lt 500 ]; then
         echo "Testing RTX2080..."
         echo "Testing sparse solver..."    
-        ./fem_solver -n $i -m $i -c -v -t -k 1>> a.out 2>> error.log
-        echo "Testing dense solver..."    
-        ./fem_solver -n $i -m $i -c -v -t -k -d 1>> a.out 2>> error.log
+        for x in {1..4}; do
+            ./fem_solver -n $i -m $i -c -v -t -k -f 1>> a.out 2>> error.log
+        done
+        
+        if [ $i -lt 200 ]; then
+            echo "Testing dense solver..."    
+            for x in {1..4}; do
+                ./fem_solver -n $i -m $i -c -v -t -k -d -f 1>> a.out 2>> error.log
+            done
+            echo "Testing FEMSES..."
+            for x in {1..4}; do
+                ./fem_solver -n $i -m $i -c -g -v -t -k 1>> a.out 2>> error.log
+            done
+        fi
     fi
 
 done
