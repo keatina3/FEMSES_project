@@ -14,7 +14,7 @@ The problem stated in Section~\ref{problem} was used to computationally test the
         \hline
         Tesla~K40 & Kepler & 745~Mhz & 15 & 2880 & 12~GB~GDDR5 & 288~GB/s & 46~Kb &\\[1.35em]
         RTX~2080~Super & Turing & 1.65~Ghz & 48 & 3072 & 8~GB~GDDR6 & 496~GB/s & 46~Kb &\\[1.35em]
-        GeForce~GTX~780 & Kepler & 869~Mhz & N/A & 2304 & 3~GB~GDDR5 & 288~GB/s & 46~Kb &\\[1.35em]
+        GeForce~GTX~780 & Kepler & 869~Mhz & 12 & 2304 & 3~GB~GDDR5 & 288~GB/s & 46~Kb &\\[1.35em]
         %\Xhline{3\arrayrulewidth}
         \hline
     \end{tabular}}
@@ -148,6 +148,17 @@ In terms of the profiling and performance of the other kernels involved in the p
 	\end{subfigure}
 	\caption{Timings taken versus problem size for various kernels involved in CPU FEM method.}
 	\label{fig:kerns}
+\end{figure}
+
+\subsubsection{Results}
+
+Figure~\ref{fig:results} shows a 3D plot of the resulting solution to the PDE achieved by the serial implementation for a $200\times 200$ case.
+
+\begin{figure}
+	\centering
+	\includegraphics[width = 0.8\linewidth]{Plots/3d_soln}
+	\caption{Plot of solution to Laplace equation posed in Section~\ref{problem}.}
+	\label{fig:results}
 \end{figure}
 \section{GPU Performance}
 
