@@ -3,7 +3,7 @@
 
 \section{Test-bed Architecture}
 
-The problem stated in Section~\ref{problem} was used to computationally test the topics discussed in this paper. In terms of test bed architecture, the timings were all conducted on a 3.4~Ghz Intel Core~i5-3570K. with 6~Mb cache and 4 cores along with 16~GB of DDR3 memory. For the GPU times, two cards were used: a Kepler architecture, Tesla~K40 clocking 745~Mhz-875~Mhz, carrying 15 SMs, each with 192 CUDA cores, it carries 12~GB of GDDR5 global memory clocking 1.5~GHz and a 288~GB/s bandwidth. The other card tested was the more modern, Turing architecture, RTX~2080 Super, clocking at 1.65~Ghz-1.815~Ghz, carrying 48 SMs, each with 64 CUDA cores, 8~GB of GDDR6 memory with a 496GB/s bandwidth. Both cards have 48~Kb of shared memory per block and 16~Kb of per thread memory available. Note also, due to the limitations of the most recent version of Nvidia's Visual Profiler tool, installed on the system mentioned, and also the removal of some of the counters from the Turing architecture, for profiling, a different system with an older version of NVVP and an older Kepler architecture GeForce GTX~780. The GTX~780 clocks at 869~Mhz-900~Mhz, has 2304 CUDA cores, and 3~GB of GDDR5 DRAM with 288~GB/s bandwidth. The system was also using an Intel Core~i5~7600 with 3.5~Ghz clock speed, 6 cores and 6~MB L3 cache. Table~\ref{table:testbed} illustrates all the specifications for the setup.
+The problem stated in Section~\ref{problem} was used to computationally test the topics discussed in this paper. In terms of test bed architecture, the timings were all conducted on a 3.4~Ghz Intel Core~i5-3570K. with 6~Mb cache and 4 cores along with 16~GB of DDR3 memory. For the GPU times, two cards were used: a Kepler architecture, Tesla~K40 clocking 745~Mhz-875~Mhz, carrying 15 SMs, each with 192 CUDA cores, it carries 12~GB of GDDR5 global memory clocking 1.5~GHz and a 288~GB/s bandwidth. The other card tested was the more modern, Turing architecture, RTX~2080 Super, clocking at 1.65~Ghz-1.815~Ghz, carrying 48 SMs, each with 64 CUDA cores, 8~GB of GDDR6 memory with a 496~GB/s bandwidth. Both cards have 48~Kb of shared memory per block and 16~Kb of per thread memory available. Note also, due to the limitations of the most recent version of Nvidia's Visual Profiler tool, installed on the system mentioned, and also the removal of some of the counters from the Turing architecture, for profiling, a different system with an older version of Nvidia's Visual Profiler and an older Kepler architecture GeForce GTX~780. The GTX~780 clocks at 869~Mhz-900~Mhz, has 2304 CUDA cores, and 3~GB of GDDR5 DRAM with 288~GB/s bandwidth. The system was also using an Intel Core~i5~7600 with 3.5~Ghz clock speed, 6 cores and 6~MB L3 cache. Table~\ref{table:testbed} illustrates all the specifications for the setup.
 \begin{table}
     \begin{center}
     \resizebox{\columnwidth}{!}{
@@ -58,13 +58,13 @@ For all the testing mentioned in the rest of this chapter, each data point, or s
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/total_sparse_cpu}
-		\caption{Caption}
+		\caption{Total time taken for sparse case.}
 		\label{fig:tot_sparse_cpu}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_dense_cpu}
-		\caption{Caption}
+		\caption{Total time taken for dense case.}
 		\label{fig:tot_dense_cpu}
 	\end{subfigure}
 	\caption{Total time taken for serial sparse and dense cases versus problem size.}
@@ -85,16 +85,16 @@ Figure~\ref{fig:tot_cpu} shows the total time taken in ms for the serial code to
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/solve_sparse_cpu}
-		\caption{Caption}
+		\caption{Time taken for sparse solver.}
 		\label{fig:solve_sparse_cpu}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/solve_dense_cpu}
-		\caption{Caption}
+		\caption{Time taken for dense solver.}
 		\label{fig:solve_dense_cpu}
 	\end{subfigure}
-	\caption{Total time taken for serial sparse and dense cases versus problem size.}
+	\caption{Time taken for linear solvers in serial sparse and dense cases versus problem size.}
 	\label{fig:solve_cpu}
 \end{figure}
 
@@ -105,13 +105,13 @@ The logic behind this inference, that the solvers are what is causing the non-li
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/prop_sparse}
-		\caption{Caption}
+		\caption{Proportion of time taken for each kernel in sparse solution.}
 		\label{fig:prop_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/prop_dense}
-		\caption{Caption}
+		\caption{Proportion of time taken for each kernel in dense solution.}
 		\label{fig:prop_dense_cpu}
 	\end{subfigure}
 	\caption{Proportion of computation time taken per kernel for sparse and dense CPU cases.}
@@ -125,28 +125,28 @@ In terms of the profiling and performance of the other kernels involved in the p
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/assembly_sparse_cpu}
-		\caption{Caption}
+		\caption{Time taken for assembly of CSR global stiffness matrix.}
 		\label{fig:assem_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/assembly_dense_cpu}
-		\caption{Caption}
+		\caption{Time taken for assembly of dense global stiffness matrix.}
 		\label{fig:assem_dense}
 	\end{subfigure}\\
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/elem_mats_cpu}
-		\caption{Caption}
+		\caption{Time taken for generation of element matrices.}
 		\label{fig:elems_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/sparsity_pass_cpu}
-		\caption{Caption}
+		\caption{Time taken to perform sparsity pass.}
 		\label{fig:sparsity_scan}
 	\end{subfigure}
-	\caption{Timings taken for various kernels involved in CPU FEM method.}
+	\caption{Timings taken versus problem size for various kernels involved in CPU FEM method.}
 	\label{fig:kerns}
 \end{figure}
 \section{GPU Performance}
@@ -162,28 +162,28 @@ The standard FEM GPU approach achieved some varying times, depending largely on 
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/total_sparse_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up over sparse serial solution.}
 		\label{fig:tot_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_dense_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up over dense serial solution.}
 		\label{fig:tot_dense}
 	\end{subfigure}\\
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_dnsspr_cpu_sparse_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up dense-sparse conversion method over sparse serial solution.}
 		\label{fig:tot_dnsspr_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_dnsspr_cpu_dense_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up dense-sparse conversion method over dense serial solution.}
 		\label{fig:tot_dnsspr_dense}
 	\end{subfigure}
-	\caption{Speed-ups of total times over serial code vs. problem size for sparse, dense and dense-sparse conversion solutions.}
+	\caption{Speed-ups of total GPU times over serial code vs. problem size for sparse, dense and dense-sparse conversion solutions.}
 	\label{fig:tot}
 \end{figure}
 
@@ -200,16 +200,16 @@ Figure~\ref{fig:tot_b} shows the speed-ups seen over the CPU code for sparse and
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/total_sparse_cpu_speedup_vs_b}
-		\caption{Caption}
+		\caption{Total time speed-up over sparse serial solution.}
 		\label{fig:tot_sparse_b}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_dense_cpu_speedup_vs_b}
-		\caption{Caption}
+		\caption{Total time speed-up over dense serial solution.}
 		\label{fig:tot_dense_b}
 	\end{subfigure}
-	\caption{Speed-ups of total times over serial code vs. block size, for sparse \& dense solutions.}
+	\caption{Speed-ups of total GPU times over serial code versus block size, for sparse and dense solutions.}
 	\label{fig:tot_b}
 \end{figure}
 
@@ -220,16 +220,16 @@ Figure~\ref{fig:tot_b} shows the speed-ups seen over the CPU code for sparse and
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/solve_sparse_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{Sparse solver speed-up over Intel's MKL DSS.}
 		\label{fig:sparse_solver}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/solve_dense_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{Dense solver speed-up over Intel's MKL LAPACKE.}
 		\label{fig:dense_solver}
 	\end{subfigure}
-	\caption{Speed-ups of linear solver times over Intel's MKL vs. problem size, for sparse \& dense solutions.}
+	\caption{Speed-ups of cuSOLVER's solver times over Intel's MKL versus problem size, for sparse and dense solutions.}
 	\label{fig:solvers}
 \end{figure}
 Looking at the actual performance of the linear solvers themselves, Figures~\ref{fig:sparse_solver},~\ref{fig:dense_solver} almost identically replicate the results seen in Figures~\ref{fig:tot_sparse},~\ref{fig:tot_dense} - just more illustrating how dominant these are towards the total time taken. In Figure (REFERENCE), this can be seen from screen-shots taken from Nvidia's Visual Profiler where the massive chunk of computation time taken by these solvers, compared to the rest the FEM process is shown. It isn't that these wholly perform poorly, more-so that Intel's DSS solve for CSR linear systems is optimised to very impressive levels, and simply outperforms Nvidia's cuSOLVER and cuSPARSE solutions. The dense solver on the other hand actually performs quite well compared to Intel's MKL library. It was not the premise of this paper to improve on existing direct linear solvers so this is simply a result that needs to be taken with a pinch of salt.
@@ -239,7 +239,7 @@ While it may seem that Nvidia's CSR solver is actually a poorly written and poor
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.48\linewidth]{Plots/solve_gpus_speedup_vs_n}
-	\caption{Speed-ups of Nvidia's sparse linear solver over their dense solver against problem size.}
+	\caption{Speed-ups of cuSOLVER's sparse linear solver over cuSOLVER's dense solver against problem size.}
 	\label{fig:gpu_solve}
 \end{figure}
 
@@ -250,16 +250,16 @@ While it may seem that Nvidia's CSR solver is actually a poorly written and poor
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/alloc_sparse_vs_n}
-		\caption{Caption}
+		\caption{Allocation time taken for sparse case.}
 		\label{fig:alloc_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/alloc_dense_vs_n}
-		\caption{Caption}
+		\caption{Allocation time taken for dense case.}
 		\label{fig:alloc_dense}
 	\end{subfigure}
-	\caption{Total allocation time taken for both dense and CSR approaches.}
+	\caption{Total allocation time taken for both dense and CSR GPU approaches.}
 	\label{fig:alloc}
 \end{figure}
 Figure~\ref{fig:alloc} shows the total allocation times for both sparse and dense cases. The dense case seen in Figure~\ref{fig:alloc_dense}, is not expected to have a linear scaling but more so a polynomial scaling. It illustrates a 2\textsuperscript{nd} order polynomial scaling, this is to be expected since, excluding the mesh, the dominant array needing to be allocated is of size $\texttt{order}\times\texttt{order}$. The sparse case in Figure~\ref{fig:alloc_sparse}, on the other hand, is harder to predict the scaling of. This is due to the fact that as the matrix gets larger, the number of non-zeros present in the matrix will be totally dependent on the both the shape of the mesh, and the degrees of freedom chosen for the basis functions - be it P1 or P2 et cetera. The timing does appear to decrease, though the inclination here is that this it is due to variance and the small sample size of five per data point - in this case five runs per block size and problem size. Figure~\ref{fig:alloc_su} shows the speed-up seen in performing the sparse case over the dense. Since both variants allocate the five arrays needed for the mesh as well as the stiffness matrix, naturally the expected, and observed, result here is sparse speed-up over dense.
@@ -275,13 +275,13 @@ Figure~\ref{fig:alloc} shows the total allocation times for both sparse and dens
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/transf_sparse_vs_n}
-		\caption{Caption}
+		\caption{Transfer time taken for sparse case.}
 		\label{fig:transf_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/transf_dense_vs_n}
-		\caption{Caption}
+		\caption{Transfer time taken for dense case.}
 		\label{fig:transf_dense}
 	\end{subfigure}
 	\caption{Total transfer time taken for both dense and CSR approaches.}
@@ -292,7 +292,7 @@ Unlike in the allocation case, the sparse timings can be a bit more predictable.
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.48\linewidth]{Plots/transf_sparse_dense_speedup_vs_n}
-	\caption{Speed-up of transfer time needed for sparse over dense case versus problem size.}
+	\caption{Speed-up of transfer time for sparse case over dense case versus problem size.}
 	\label{fig:transf_su}
 \end{figure}
 
@@ -303,16 +303,16 @@ Unlike in the allocation case, the sparse timings can be a bit more predictable.
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/elem_mats_dev_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up over serial generation of element matrices versus problem size.}
 		\label{fig:elems_n}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/elem_mats_dev_cpu_speedup_vs_b}
-		\caption{Caption}
+		\caption{Speed-up over serial generation of element matrices versus blocks size.}
 		\label{fig:elems_b}
 	\end{subfigure}
-	\caption{Speed-ups of GPU generation of element matrices \& vectors over serial code against problem size \& block size.}
+	\caption{Speed-ups of GPU generation of element matrices and vectors over serial code against problem size ans block size.}
 	\label{fig:elem_mats_gen}
 \end{figure}
 
@@ -325,7 +325,7 @@ Regarding thread divergence, it can be loosely seen that the speed-up appears to
 \begin{figure}
 	\centering
 	\includegraphics[width=0.9\linewidth]{Plots/elem_mats_dev_speedups_reconfig}
-	\caption{CAPTION}
+	\caption{Speed-up of GPU generation of element matrices over CPU versus block size for various problem sizes and memory configurations.}
 	\label{fig:elems_reconfig}
 \end{figure}
 
@@ -336,16 +336,16 @@ Regarding thread divergence, it can be loosely seen that the speed-up appears to
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/assem_dev_cpu_sparse_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up over serial assembly of CSR matrix.}
 		\label{fig:assem_sparse_n}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/assem_dev_cpu_dense_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up over serial assembly of dense matrix.}
 		\label{fig:assem_dense_n}
 	\end{subfigure}
-	\caption{Speed-ups of GPU assembly of global stiffness matrix \& stress vector over serial code against problem size for CSR and dense matrices.}
+	\caption{Speed-ups of GPU generation of assembly of global stiffness matrix and stress vector over serial code against problem size for CSR and dense matrices.}
 	\label{fig:assem_su_n}
 \end{figure}
 
@@ -354,7 +354,7 @@ The assembly of the global stiffness matrix and stress vector are another import
 \begin{figure}
 	\centering
 	\includegraphics[width=0.55\linewidth]{Plots/assem_dev_gpu_sparse_dense_speedup_vs_b}
-	\caption{Speed-ups of GPU sparse stiffness matrix assembly over dense versus block size.}
+	\caption{Speed-ups of GPU sparse global stiffness matrix assembly over dense assembly versus block size.}
 	\label{fig:sparse_dense_assem}
 \end{figure}
 
@@ -363,14 +363,14 @@ Like in the element matrices, choice of block size does in fact matter - both fo
 \begin{figure}
 	\centering
 	\includegraphics[width=0.9\linewidth]{Plots/assem_dev_sparse_speedups_reconfig}
-	\caption{CAPTION}
+	\caption{Speed-up of GPU assembly of sparse global stiffness matrix and stress vector over CPU versus block size for various problem sizes and memory configurations.}
 	\label{fig:assem_sparse_reconfig}
 \end{figure}
 
 \begin{figure}
 	\centering
 	\includegraphics[width=0.9\linewidth]{Plots/assem_dev_dense_speedups_reconfig}
-	\caption{CAPTION}
+	\caption{Speed-up of GPU assembly of dense global stiffness matrix and stress vector over CPU versus block size for various problem sizes and memory configurations.}
 	\label{fig:assem_dense_reconfig}
 \end{figure}
 
@@ -382,13 +382,13 @@ Like in the element matrices, choice of block size does in fact matter - both fo
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/elems_p_assem_ker_cpu_sparse_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up of GPU main kernel over serial code for sparse case.}
 		\label{fig:kern_sparse_n}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/elems_p_assem_ker_cpu_dense_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up of GPU main kernel over serial code for sparse case.}
 		\label{fig:kern_dense_n}
 	\end{subfigure}
 	\caption{Speed-ups of GPU main kernel over serial code against problem size for CSR and dense matrices.}
@@ -412,25 +412,25 @@ The FEMSES approach, also achieved some varying results in comparison to both th
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/total_femses_cpu_sparse_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up of FEMSES over serial sparse solution.}
 		\label{fig:tot_femses_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_femses_cpu_dense_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up of FEMSES over serial dense solution.}
 		\label{fig:tot_femses_dense}
 	\end{subfigure}\\
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_femses_gpu_sparse_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up of FEMSES over GPU sparse solution.}
 		\label{fig:tot_femses_gpu_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/total_femses_gpu_dense_speedup_vs_n}
-		\caption{Caption}
+		\caption{Total time speed-up of FEMSES over GPU dense solution.}
 		\label{fig:tot_femses_gpu_dense}
 	\end{subfigure}
 	\caption{Speed-ups of total times over serial code and standard GPU code vs. problem size for FEMSES solution.}
@@ -444,13 +444,13 @@ Contrary to what was seen in the other GPU FEM implementation, there is a lot mo
 \begin{figure}
 	\centering
 	\includegraphics[width=0.9\linewidth]{Plots/total_femses_cpu_sparse_speedup_vs_b_facet}
-	\caption{CAPTION.}
+	\caption{Speed-up of FEMSES total time over serial sparse case versus block size for various problem sizes.}
 	\label{fig:tot_femses_sparse_b}
 \end{figure}
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.9\linewidth]{Plots/total_femses_cpu_dense_speedup_vs_b_facet}
-	\caption{CAPTION.}
+	\caption{Speed-up of FEMSES total time over serial dense case versus block size for various problem sizes.}
 	\label{fig:tot_femses_dense_b}
 \end{figure}
 
@@ -463,28 +463,28 @@ The FEMSES solver, like the linear system solvers in the previous sections, is t
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width = \linewidth]{Plots/solve_femses_sparse_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{FEMSES solver speed-up over Intel's MKL DSS.}
 		\label{fig:solve_femses_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/solve_femses_dense_cpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{FEMSES solver speed-up over Intel's MKL LAPACKE dense solver.}
 		\label{fig:solve_femses_dense}
 	\end{subfigure}\\
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/solve_femses_sparse_gpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{FEMSES solver speed-up over cuSOLVER's sparse solver.}
 		\label{fig:solve_femses_gpu_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/solve_femses_dense_gpu_speedup_vs_n}
-		\caption{Caption}
+		\caption{FEMSES solver speed-up over cuSOLVER's dense solver.}
 		\label{fig:solve_femses_gpu_dense}
 	\end{subfigure}
-	\caption{Speed-ups of total times over serial code and standard GPU code vs. problem size for FEMSES solution.}
+	\caption{Speed-ups of FEMSES solver times over Intel's MKL and cuSOLVER versus problem size.}
 	\label{fig:solve_femses}
 \end{figure}
 
@@ -503,16 +503,16 @@ The allocation time for the FEMSES approach is shown in Figure~\ref{fig:alloc_fe
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width =\linewidth]{Plots/alloc_femses_sparse_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up over sparse case.}
 		\label{fig:alloc_femses_sparse}
 	\end{subfigure}\hfill
 	\begin{subfigure}{0.48\linewidth}
 		\centering
 		\includegraphics[width=\linewidth]{Plots/alloc_femses_dense_speedup_vs_n}
-		\caption{Caption}
+		\caption{Speed-up over dense case.}
 		\label{fig:alloc_femses_dense}
 	\end{subfigure}
-	\caption{Speed-ups of FEMSES allocation over GPU sparse \& dense variants.}
+	\caption{Speed-ups of FEMSES allocation time over GPU sparse \& dense solutions.}
 	\label{fig:alloc_femses_su}
 \end{figure}
 
@@ -523,7 +523,7 @@ There was no transfer times taken for FEMSES as the amount of data required to b
 \begin{figure}
 	\centering
 	\includegraphics[width=0.58\linewidth]{Plots/iters_v_n}
-	\caption{Number of iterations to convergence for the FEMSES approach with linear scale for reference.}
+	\caption{Number of iterations for convergence of the FEMSES approach versus problem size with abline of linear scale for reference.}
 	\label{fig:converg}
 \end{figure}
 The poor rate of convergence was the main concern regarding the FEMSES implementation. Figure~\ref{fig:converg} illustrates the convergence as problem size increases and shows the super-linear rate which it achieves. When investigating why these results may be happening, one thing which was noticed, as the errors got smaller, they often reached orders of $10^{-5}$ and $10^{-6}$ and then proceeded to oscillate in and around these values, never reaching convergence within maximum iterations. The error then had to be truncated to $10^{-4}$ to avoid this. An inclination here was that the paper may have been using double precision and this was down to accuracy lost from utilising single precision values instead. This was tested and the results proved equal. The current proposal as to the reasoning for these unexpected results is in Fernandez (CITE), the PDE used is a rectangular pipe, with non-homogeneous Dirichlet conditions on the outer boundaries and homogeneous Neumann on the bore hole, thus causing propagation from four directions. In the example in Section~\ref{problem}, the rectangular mesh has homogeneous Neumann conditions on the upper and lower edges and non-homogeneous Dirichlet conditions on the left and right boundary, therefore propagation will occur in only two directions, from left and right inwards. This theory has yet to be tested but would be an interesting result to deduce if this is indeed the root cause of the sub-par performance of FEMSES. 

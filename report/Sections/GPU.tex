@@ -19,7 +19,7 @@ In GPU programming, there are multiple options currently available. Currently on
 		\centering
 		\includegraphics[width=0.9\linewidth]{Figures/gpu_grid}
 	\end{subfigure}
-	\caption{Illustration of a GPU's architecture and virtual grid. (NEED BETTER CAPTION}
+	\caption{Illustration of a GPU's physical architecture and virtual 2D grid representation with dimensions $6\times4$ and block dimensions $5\times1$.}
 	\label{fig:gpu_arch}
 \end{figure}
 While, as stated, GPUs have the potential to provide huge speed-ups, this is not necessarily a given. There is much to consider as a programmer when writing code which are not traditionally have to consider when writing code for CPUs - in serial, shared memory or even distributed architectures. CPUs traditionally consist of multiple cores, usually to the order of four to sixteen, sitting on a chip, with CISC architectures - meaning it is written to perform complicated instructions at with high clock speeds. These chips often contain up to three levels of automated caches, with buffers, preventing thrashing by first-in-first-out or least-recently-used strategies. They regularly have extra chips called accelerators for performing specific calculations like cryptography or data compression and can have quite complex scheduling algorithms. In short, CPU chips are very clever, but fall down when it comes to high levels of parallelism.
@@ -29,7 +29,7 @@ GPUs, on the other hand, are made up of thousands of CUDA cores, sitting on what
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.8\linewidth]{Figures/cpuvsgpu}
-	\caption{Simplistic comparison of CPU vs. GPU architectures.}
+	\caption{Simplistic comparison of CPU versus GPU architectures.}
 	\label{fig:cpugpu}
 \end{figure}
 \begin{figure}
@@ -44,11 +44,11 @@ While slow clock-speed and simple instruction sets are the main drawbacks of usi
 \begin{figure}
 	\centering
 	\includegraphics[width=0.8\linewidth]{Figures/mem_arch}
-	\caption{CAPTION}
+	\caption{Illustration of the memory structure on an Nvidia GPU.}
 	\label{fig:mem}
 \end{figure}
 
-The final, main thing to consider, is what are known as warps. On the GPU, threads are organised into groups of 32. These groups of 32 threads all receive the same instructions at the same time. If some of the threads do not need to perform a given instruction, they will wait until the rest of the warp has completed the instruction until receiving another. Clearly, this can cause some bottlenecking. Figure (REFERENCE) demonstrates how this can apply to a specific case. The best thing one can do when taking warps into consideration is to attempt to set block sizes as multiples of 32 - since usually blocks are all performing the same or similar instructions.
+The final, main thing to consider, is what are known as warps. On the GPU, threads are organised into groups of 32. These groups of 32 threads all receive the same instructions at the same time. If some of the threads do not need to perform a given instruction, they will wait until the rest of the warp has completed the instruction until receiving another. Clearly, this can cause some bottlenecking. Figure~\ref{fig:warps} demonstrates how this can apply to a specific case. The best thing one can do when taking warps into consideration is to attempt to set block sizes as multiples of 32 - since usually blocks are all performing the same or similar instructions.
 
 In terms of actually putting this all to use, in CUDA, the code is structured by splitting the functions up into three classifications:
 \begin{enumerate}
@@ -57,6 +57,12 @@ In terms of actually putting this all to use, in CUDA, the code is structured by
 	\item \texttt{\twound device\twound} functions are GPU functions which are called on by the device - these cannot be called by the host.
 \end{enumerate}
 Clearly then, the main difference between programming on a CPU compared to on a GPU is the onus put on the programmer to manage scheduling and memory management amongst other things without the assistance of the device. Thus, CUDA code must inevitably be more basic and more-so a collection of simple executions - it lends itself best to large scale operations of basic calculations.
+\begin{figure}
+	\centering
+	\includegraphics[width = 0.8\linewidth]{Figures/warps}
+	\caption{Figure illustrating thread divergence for a single warp of size 32 when two instructions are issued for only certain threads in the warp.}
+	\label{fig:warps}
+\end{figure}
 
 \subsection{CUDA Libraries}\label{culibs}
 
@@ -91,7 +97,7 @@ It may seem strange here, to have an estimate to the global solution on the RHS 
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.35\linewidth]{Figures/2cell2.png}
-	\caption{Small two cell example of a mesh with global and local node numberings illustrated. NOT FINISHED}
+	\caption{Small two cell example of a mesh with global and local node numberings illustrated.}
 	\label{fig:2cell2}
 \end{figure}
 The second step in the 2-step iterative relaxation is to take these local solutions, and assemble them into a global solution. This is done by creating a weighting array, summing up the contribution of each node on the denominator. Mathematically, the weighting and assembly is given by,
@@ -176,7 +182,7 @@ In Figure~\ref{fig:gpu_flow}, a flow chart of the approach taken to code a basic
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.8\linewidth]{Figures/non_coalesced}
-	\caption{CAPTION}
+	\caption{Illustration of global memory random access pattern being transferred to shared memory to ensure coalescence.}
 	\label{fig:coalesc}
 \end{figure}
 In terms of storage, for a problem which scales like FEM does, managing one's resources correctly and not doing excessive memory allocations is important - along with, of course, freeing any allocations which are completed. The first thing needed to be allocated on the GPU is the five arrays to store the mesh. Exactly like was mentioned in Section~\ref{mesh}, memory needs to be allocated to store \texttt{vetices\_gpu}, \texttt{cells\_gpu}, \texttt{dof\_gpu}, \texttt{is\_bound\_gpu} and \texttt{bdry\_vals\_gpu}. In terms of memory being coalesced, all five arrays are indeed contiguous, and in both \texttt{cells\_gpu} and \texttt{dof\_gpu}, the memory access pattern is sequential so this won't pose any coalescence problems. However, the other three arrays, the memory access pattern jumps up and down the array, completely dependent on the shape of the mesh, and the connectivity of the nodes. Thus to handle this, as detailed in the device functions, the necessary values are read into shared memory in single writes to hedge this bottleneck. Figure~\ref{fig:coalesc} illustrates this, showing the lack of coalescence and the solution by writing to shared memory once.
@@ -204,7 +210,7 @@ This is an important factor to take into account when deciding what problem size
 
 \subsubsection{Kernels}
 
-There are two main kernels for this approach: the first kernel, \texttt{assemble\_gpu} or in its sparse form, \texttt{assemble\_gpu\_csr}, will take the input mesh as transferred prior, create the element matrices and assemble the global linear system, storing it back into global memory, this is demonstrated in Listing~\ref{lst:fem_main}; the second kernel, utilises CUDA libraries to solve the linear system. The assembly kernel was written specifically for this implementation, thus the setup of the grid and block dimensions must be set by the user. In order to take as much advantage of shared memory as possible, it was noted that the only real communication at this stage in the FEM process, is between nodes in the same cell. The setup of the kernel is then set that there are \texttt{block\_size\_X}, cells per block, in the $x$ direction, and 3 nodes per cell, in the $y$ direction. This gave the convenient benefit of \texttt{idx} being equal to the cell number, and \texttt{idy} being the local node numbering. This mapping is illustrated in Figure (REFERENCE). The kernel itself, runs two primary device functions, the first one generates the element matrices on shared memory, and the second then assembles these from shared memory into the global stiffness matrix, writing back to global memory. For two reasons, this is where the kernel had to terminate: you cannot globally synchronise the entire CUDA device within a kernel, only individual blocks, moving on to solve the linear system from here would almost certainly cause race conditions. The second reason is simply to avoid having to rewrite linear solver libraries that have already been optimised.
+There are two main kernels for this approach: the first kernel, \texttt{assemble\_gpu} or in its sparse form, \texttt{assemble\_gpu\_csr}, will take the input mesh as transferred prior, create the element matrices and assemble the global linear system, storing it back into global memory, this is demonstrated in Listing~\ref{lst:fem_main}; the second kernel, utilises CUDA libraries to solve the linear system. The assembly kernel was written specifically for this implementation, thus the setup of the grid and block dimensions must be set by the user. In order to take as much advantage of shared memory as possible, it was noted that the only real communication at this stage in the FEM process, is between nodes in the same cell. The setup of the kernel is then set that there are \texttt{block\_size\_X}, cells per block, in the $x$ direction, and 3 nodes per cell, in the $y$ direction. This gave the convenient benefit of \texttt{idx} being equal to the cell number, and \texttt{idy} being the local node numbering. The kernel itself, runs two primary device functions, the first one generates the element matrices on shared memory, and the second then assembles these from shared memory into the global stiffness matrix, writing back to global memory. For two reasons, this is where the kernel had to terminate: you cannot globally synchronise the entire CUDA device within a kernel, only individual blocks, moving on to solve the linear system from here would almost certainly cause race conditions. The second reason is simply to avoid having to rewrite linear solver libraries that have already been optimised.
 
 The linear solver kernel, comes in three different variations: one for CSR, one for dense matrices, and one which converts a dense matrix into CSR and solves. Unlike the assembly kernel, however, there is no need to decide how to organise the blocks and threads as this is taken care of by the library itself inside a variable called the handle, which is invoked at the beginning and passed into all library functions. In terms of what actual library functions are used, for the sparse solver, cuSPARSE is used to define the matrix structure, such as number of non-zeros, zero-based indexing, symmetric positive definite et cetera. This is used in tandem with cuSOLVER's single-precision, sparse SPD, Cholesky decomposition direct solver, \texttt{cusolverSpScsrlsvchol}. Unlike in the serial version, and Intel's DSS, the cuSOLVER kernel needs to store the entire matrix, as opposed to only the upper or lower half. This is an unnecessary bottleneck but one which cannot be avoided. The dense-CSR solver kernel, applies the same functionality as the sparse kernel, except for executing two other library kernels prior to the solver, \texttt{cusparseSnnz}, to deduce the sparsity pattern of the matrix, and \texttt{cusparseSdense2csr}, to convert from dense to CSR. The dense solver on the other hand, naturally does not use cuSPARSE. It does, however, split its solver kernel into two separate operations, the first being the actual Cholesky factorisation using \texttt{cusolverDnSpotrf} and the second applies the solver, \texttt{cusolverDnpotrs}. Figure~\ref{fig:cusolvers} shows flowcharts of the necessary steps required in order to execute the three solver variants.
 
@@ -243,7 +249,14 @@ __global__ void assemble_gpu(
 
 \subsubsection{Device Functions}
 
-There are two main device functions written for the assembly kernel. Prior to running these, when invoking the kernel the required amount of shared memory must be allocated. The grid structure is defined as \texttt{block\_size\_X} FEM cells per block, within each block there is one FEM cell designated per row of threads in the $x$-axis, and 3 nodes per row i.e. one node per thread in the $y$-axis. The shared memory needs to be large enough to store the element matrix \texttt{Le}, the element vector \texttt{be} as well as some other constants which need reuse such as the coordinates of each node in the cell \texttt{xi}, the global node numberings \texttt{dof\_r} and the constants seen in Equation~\eqref{conv}, for each cell in the block. Thus the amount of shared memory required is $\texttt{28}\times\texttt{block\_size\_X}$. This memory structure is displayed in Figure (REFERENCE) for an example block size of 4 in the $x$-axis. This would need to be larger of course, for non-P1 type problems but for this implementation it is sufficient.
+There are two main device functions written for the assembly kernel. Prior to running these, when invoking the kernel the required amount of shared memory must be allocated. The grid structure is defined as \texttt{block\_size\_X} FEM cells per block, within each block there is one FEM cell designated per row of threads in the $x$-axis, and 3 nodes per row i.e. one node per thread in the $y$-axis. The shared memory needs to be large enough to store the element matrix \texttt{Le}, the element vector \texttt{be} as well as some other constants which need reuse such as the coordinates of each node in the cell \texttt{xi}, the global node numberings \texttt{dof\_r} and the constants seen in Equation~\eqref{conv}, for each cell in the block. Thus the amount of shared memory required is $\texttt{28}\times\texttt{block\_size\_X}$. This memory structure is displayed in Figure~\ref{fig:shared_mem} for an example block size of 4 in the $x$-axis. This would need to be larger of course, for non-P1 type problems but for this implementation it is sufficient.
+
+\begin{figure}
+	\centering
+	\includegraphics[width = 0.75\linewidth]{Figures/shared_pos}
+	\caption{Illustration of shared memory structure for assembly kernel for a block containing four cells of the mesh.}
+	\label{fig:shared_mem}
+\end{figure}
 
 The first device function, \texttt{assemble\_elem}, starts off by setting pointer values for the element matrices, element vectors and constants in shared memory. It reads in the global node numbering associated with the node for that particular thread into the thread register. It then reads in the coordinates of the three nodes in that cell into shared memory so that data is now coalesced and then synchronises the threads in the block. The area of the cell is calculated by the thread associated with local node 0, and then the $\beta$ and $\gamma$ values are calculated in parallel. After this point, the device function runs Algorithm~\ref{algo:elems}, where each thread calculates a single row in the element matrix and writes them to the shared memory array. Notice that there is need for atomic functions when enforcing the boundary conditions, this is to prevent race conditions as the threads need to write to the same memory addresses. 
 
@@ -369,7 +382,7 @@ __global__ void glob_sols(
 \end{lstlisting}
 \subsubsection{Device Functions}
 
-The first device function utilised in the FEMSES approach is actually code reuse from the standard approach. It takes the mesh as input, uses the same shared memory structure as Figure (REFERENCE), and generates the element matrices and vectors in parallel, writing them to shared memory. See Section~\ref{basicfem} for more details on this device function.
+The first device function utilised in the FEMSES approach is actually code reuse from the standard approach. It takes the mesh as input, uses the same shared memory structure as Figure ~\ref{fig:shared_mem}, and generates the element matrices and vectors in parallel, writing them to shared memory. See Section~\ref{basicfem} for more details on this device function.
 
 The next device function evaluates the weightings. This functions takes the cell indices and element matrices as input and calculates the denominator weighting seen in Equation~\eqref{weight}. In Fernandez (CITE), each node in each cell was assigned its own individual weighting value in an array. This would involve a global synchronisation (something they did not do) to ensure the denominator values were fully added up and to avoid a race condition. Instead, the weighting array was allocated as one value per node as opposed to three per cell. In this paper's approach, the denominator was the weight stored and this was simply used to divide the node's corresponding diagonal value in its element matrix later on. Of course this means an extra read from global memory but it avoids the need for a global synchronisation.
 

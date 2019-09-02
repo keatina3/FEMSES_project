@@ -10,6 +10,10 @@ gpu_Tesla_dense = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_de
 gpu_Tesla_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_sparse_times.csv")
 gpu_Tesla_dnsspr = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_dnsspr_times.csv")
 gpu_Tesla_femses = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_femses_times.csv")
+gpu_RTX2080_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_sparse_times.csv")
+gpu_RTX2080_dense = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_dense_times.csv")
+gpu_RTX2080_femses = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_femses_times.csv")
+
 
 col_sprs = "#00AFBB"
 col_dns = "#E7B800"
@@ -49,13 +53,12 @@ gpu_Tesla_sparse_avgs = get_averages(gpu_Tesla_sparse)
 gpu_Tesla_dense_avgs = get_averages(gpu_Tesla_dense)
 gpu_Tesla_dnsspr_avgs = get_averages(gpu_Tesla_dnsspr) 
 gpu_Tesla_femses_avgs = get_averages(gpu_Tesla_femses)
+gpu_RTX2080_femses_avgs = get_averages(gpu_RTX2080_femses)
+gpu_RTX2080_sparse_avgs = get_averages(gpu_RTX2080_sparse)
+gpu_RTX2080_dense_avgs = get_averages(gpu_RTX2080_dense)
 
 
 ###### Total speedups over CPU vs problem_size ########
-
-n_labeller <- function(variable,value){
-  return(labels[value])
-}
 
 speedups = get_speedups(gpu_Tesla_sparse_avgs, cpu_sparse_avgs)
 total_sparse_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) + 
@@ -144,19 +147,18 @@ speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
 total_femses_cpu_sparse_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0), aes(block_size_X, total,
                                         colour=as.factor((n+1)*(n+1)))) + geom_smooth(formula = y ~ log(x)) + geom_point()
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
-labels = unique(subset(speedups,n<200)[1])
-labels = list((labels+1) **2 )
+labels = c("4" = "25", "9"="100","24"="625","49"="2500","99"="10000","199"="40000","499"="250000","699"="490000")
 total_femses_cpu_sparse_speedup_vs_b_facet <- ggplot(subset(speedups, block_size_X > 10), 
                                         aes(block_size_X, total, colour = as.factor(reconfig))) +
                                         geom_smooth(colour=col_sprs) + geom_point(colour=col_sprs) +
-                                        facet_wrap(~n, scales="free")
+                                        facet_wrap(~n, scales="free", labeller = labeller(n=labels))
 
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_dense_avgs)
 total_femses_cpu_dense_speedup_vs_b <- ggplot(subset(speedups,reconfig=!0), aes(block_size_X, total,
                                         colour=as.factor((n+1)*(n+1)))) + geom_smooth(formula = y ~ log(x)) + geom_point()
 total_femses_cpu_dense_speedup_vs_b_facet <- ggplot(subset(speedups, reconfig!=0  & block_size_X > 10), aes(block_size_X, total)) +
                                         geom_smooth(colour=col_dns) + geom_point(colour=col_dns) +
-                                        facet_wrap(~n, scales="free")
+                                        facet_wrap(~n, scales="free",labeller = labeller(n=labels))
                         
 
 ## figures
@@ -303,10 +305,10 @@ n_labeller <- function(variable,value){
   return(labels[value])
 }
 
-
+labels <- c("99" = "10000", "199" = "40000", "499" = "25000", "699" = "490000")
 elem_mats_dev_speedups_reconfig <- ggplot(subset(speedups,n>=99 & block_size_X < 224), aes(block_size_X, elem_mats,
                                         colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) + 
-                                        facet_wrap(.~ n, scales="free", labeller = as_labeller(labels))
+                                        facet_wrap(~n, scales="free", labeller = labeller(n = labels))
 
 
 elem_mats_dev_cpu_speedup_vs_b + scale_y_log10(breaks = base_breaks()) + 
@@ -331,9 +333,10 @@ assem_dev_cpu_sparse_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>=99)
 assem_dev_cpu_sparse_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0 & n>99), aes((n+1)*(n+1), assembly)) +
                               geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
 
+labels <- c("99" = "10000", "199" = "40000", "499" = "25000", "699" = "490000")
 assem_dev_sparse_speedups_reconfig <- ggplot(subset(speedups,n>=99 & block_size_X < 224), aes(block_size_X, assembly,
                                           colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) +
-                                          facet_wrap(~ n, scales="free")
+                                          facet_wrap(~ n, scales="free", labeller = labeller(n=labels))
 
 ## dense
 speedups = get_speedups(gpu_Tesla_dense_avgs, cpu_dense_avgs)
@@ -342,9 +345,10 @@ assem_dev_cpu_dense_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>10), 
 assem_dev_cpu_dense_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), assembly)) +
                               geom_smooth(colour=col_sprs,formula = y ~ log(x)) + geom_point(colour=col_sprs)
 
+labels <- c("24" = "625", "49" = "2500", "99" = "10000", "199" = "40000")
 assem_dev_dense_speedups_reconfig <- ggplot(subset(speedups,n>10 & block_size_X < 224), aes(block_size_X, assembly,
                                         colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) +
-                                        facet_wrap(~ n, scales="free")
+                                        facet_wrap(~ n, scales="free", labeller = labeller(n=labels))
 
 ## sparse vs dense
 speedups = get_speedups(gpu_Tesla_sparse_avgs, gpu_Tesla_dense_avgs)
