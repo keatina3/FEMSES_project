@@ -3,9 +3,7 @@ library(gridExtra)
 library(scales)
 library(reshape2)
 library(wesanderson)
-library(akima)
-library(rgl)
-library(plot.ly)
+library(plotly)
 
 cpu_dense = read.csv("~/Documents/College/Project/src/timings/cpu_dense_times.csv")
 cpu_sparse = read.csv("~/Documents/College/Project/src/timings/cpu_sparse_times.csv")
@@ -306,16 +304,6 @@ elem_mats_dev_cpu_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>=99), a
 elem_mats_dev_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0 & n>=99), aes((n+1)*(n+1), elem_mats)) +
                               geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
 
-<<<<<<< HEAD
-=======
-labels = unique(subset(speedups,n>=99)[1])
-labels = list((labels+1) **2 )
-
-n_labeller <- function(variable,value){
-  return(labels[value])
-}
-
->>>>>>> c7aa921c54526e4a9be2e29fcfe58efc45463d3b
 labels <- c("99" = "10000", "199" = "40000", "499" = "25000", "699" = "490000")
 elem_mats_dev_speedups_reconfig <- ggplot(subset(speedups,n>=99 & block_size_X < 224), aes(block_size_X, elem_mats,
                                         colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) + 
@@ -651,19 +639,17 @@ transfer_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
 transfer_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
                   labs(title="Speedup of RTX2080 over Tesla K40 Transfer Time vs.\nProblem Size for Dense Solution", 
                     x ="Degrees of Freedom", y = "Speedup")
-0
 
 
 ##### Plotting Results #####
 
-results = unlist(cpu_dense_results)
+results = gpu_femses_results
+  
+surface = acast(results, x~y, value.var="u")
 
-#interp is from the akima package so you can work with non-square data in your contour
-surface <- as.data.frame(interp2xyz(interp(x=results[1], y=results[2], z=results[3])))
+f <- list(family = "Courier New, monospace",size = 18,color = "#7f7f7f")
+x <- list(title = "x",titlefont = f)
+y <- list(title = "y",titlefont = f)
+z <- list(title = "u(x,y)",titlefont = f)
 
-plot3d(df) # What it looks like in 3d
-
-#what it looks like projected into 2d
-  ggplot(df, aes(x=x,y=y,z=z, fill=z)) + 
-    geom_contour(binwidth=0.1, aes(color= ..level..)) + 
-    theme_classic()
+plot_ly(z = ~ surface) %>% add_surface()  %>% layout(title = "Heat map solution to PDE", scene=list(xaxis = x, yaxis = y, zaxis = z))
