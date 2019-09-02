@@ -12,7 +12,7 @@ Before the nuts and bolts of the finite element method are discussed, first cons
 where $\mathbf{x} = \{x_1,x_2,\dots,x_n\}$.
 For a case of a 2-dimensional, 2\textsuperscript{nd} order PDE, this results in ending up with the operator,
 \begin{equation}
-	\mathcal{L} = a \frac{\partial^2 u}{\partial x^2} + b \frac{\partial^2 u}{\partial x \partial y} + c \frac{\partial^2 u}{\partial y^2} + F\left(x,y; u; \frac{\partial u}{\partial x}, \frac{\partial u}{\partial y}\right).
+	\mathcal{L} = a \frac{\partial^2}{\partial x^2} + b \frac{\partial^2}{\partial x \partial y} + c \frac{\partial^2}{\partial y^2} + F\left(x,y; \frac{\partial}{\partial x}, \frac{\partial}{\partial y}\right).
 \end{equation}
 This can be used, by applying it to a function $u(\mathbf{x})$, leaving a PDE,
 \begin{equation}\label{pde}
@@ -128,7 +128,7 @@ multiplying this by a test function $v$, and getting the inner product over the 
 \begin{equation}\label{green}
 		\int_{\Omega}(\mathbf{v}\cdot\nabla u + \beta u)v~d\mathbf{x} = \int_{\Omega}\nabla\cdot(\alpha\nabla u)v~d\mathbf{x} + \int_{\Omega}fv~d\mathbf{x}.
 \end{equation}
-Applying Green's lemma (CITE)? to the second-order term then results in the following equation,
+Applying Green's lemma to the second-order term then results in the following equation,
 \begin{equation}
 	\int_{\Omega}\nabla\cdot(\alpha\nabla u)v~d\mathbf{x} = -\int_{\Omega}\alpha\nabla u\cdot \nabla v~d\mathbf{x} + \oint_{\Gamma} \alpha \frac{\partial u}{\partial \mathbf{n}} v~ds + \int fv~d\mathbf{x}.
 \end{equation}
@@ -186,13 +186,13 @@ Up to this point, the basis functions that have been used have all been defined 
 \begin{figure}
 	\centering
 	\includegraphics[width=0.8\linewidth]{Figures/node_numbers}
-	\caption{INSERT DETAILED CAPTION HERE}
+	\caption{Illustration of three cell, 1D mesh with $\Omega_0 = \{0,1\},~\Omega_1 = \{1,2\},~\Omega_2 = \{2,3,4\}$.}
 	\label{fig:cells}
 \end{figure}
 \begin{figure}
 	\centering
 	\includegraphics[width=0.8\linewidth]{Figures/basis_funcs}
-	\caption{CAPTION THIS}
+	\caption{1D mesh representation, with 1\textsuperscript{st} order (P1) Lagrange polynomials in cells 0,1 and 2\textsuperscript{nd} (P2) order in cell 2.}
 	\label{fig:1dbasis}
 \end{figure}
 For illustrative purposes, a single-dimensional problem is used here to demonstrate the actual concept of the finite elements or cells. Consider now a domain,
@@ -207,7 +207,7 @@ Within this domain, define $N_n$ nodes, spaced out across the domain any particu
 \begin{equation}\label{dof}
 	i = q(e,r),
 \end{equation}
-where $q(e,r)$ is a mapping function from local index $r$ in cell $e$, back to the node's global index across the domain. Figure~\ref{fig:cells} demonstrates these definitions for a simple, 3 cell, 1D case. Basis functions must next be defined across the domain in order to make an approximation for $u$. Consider a node, globally numbered $i$, locally numbered $r$, on cell $e$, with $d+1$ nodes in said cell, its corresponding basis function $\varphi_i(x)$ is defined as a Lagrange polynomial of degree $d$,
+where $q(e,r)$ is a mapping function from local index $r$ in cell $e$, back to the node's global index across the domain. Figure~\ref{fig:cells} demonstrates these definitions for a simple, three cell, 1D case. Basis functions must next be defined across the domain in order to make an approximation for $u$. Consider a node, globally numbered $i$, locally numbered $r$, on cell $e$, with $d+1$ nodes in said cell, its corresponding basis function $\varphi_i(x)$ is defined as a Lagrange polynomial of degree $d$,
 \begin{equation}
 	l_d(x) = \prod_{\substack{0\leq m\leq k \\ m\neq j}}\frac{x-x_m}{x_j-x_m} 
 \end{equation}
@@ -220,7 +220,7 @@ where $\mathcal{I}_s$ is the set of indices for which $u(x_i)$ is unknown.
 \begin{figure}
 	\centering
 	\includegraphics[width=0.4\linewidth]{Figures/Piecewise_linear_function2D}
-	\caption{2D representation of linear/P1 basis functions on a mesh.}
+	\caption{2D mesh representation of P1 basis functions.}
 	\label{fig:2dbasis}
 \end{figure}
 
@@ -300,7 +300,7 @@ Normally, $A$ would be a sparse SPD matrix, but since this is a small case the m
 \begin{figure}
 	\centering
 	\includegraphics[width = 0.35\linewidth]{Figures/2cell.png}
-	\caption{Small two cell example of a mesh with global and local node numberings illustrated. NOT FINISHED}
+	\caption{Small two cell example of a mesh.}
 	\label{fig:2cell}
 \end{figure}
 \subsection{Enforcing Boundary Conditions}
@@ -433,7 +433,7 @@ Figure~\ref{fig:soln} illustrates this solution plotted in Wolfram Mathematica.
 \begin{figure}
 	\centering
 	\includegraphics[width=0.6\linewidth]{Figures/soln}
-	\caption{MATHEMATICA SOLUTION CAPTION}
+	\caption{Plot of solution to PDE problem posed.}
 	\label{fig:soln}
 \end{figure}
 

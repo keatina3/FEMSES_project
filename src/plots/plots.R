@@ -10,9 +10,15 @@ gpu_Tesla_dense = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_de
 gpu_Tesla_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_sparse_times.csv")
 gpu_Tesla_dnsspr = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_dnsspr_times.csv")
 gpu_Tesla_femses = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_femses_times.csv")
+<<<<<<< HEAD
 gpu_RTX2080_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_sparse_times.csv")
 gpu_RTX2080_dense = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_dense_times.csv")
 gpu_RTX2080_femses = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_femses_times.csv")
+=======
+gpu_RTX2080_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_sparse_times.csv")
+gpu_RTX2080_dense = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_dense_times.csv")
+gpu_RTX2080_femses = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_femses_times.csv")
+>>>>>>> c7aa921c54526e4a9be2e29fcfe58efc45463d3b
 
 
 col_sprs = "#00AFBB"
@@ -298,6 +304,16 @@ elem_mats_dev_cpu_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>=99), a
 elem_mats_dev_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0 & n>=99), aes((n+1)*(n+1), elem_mats)) +
                               geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
 
+<<<<<<< HEAD
+=======
+labels = unique(subset(speedups,n>=99)[1])
+labels = list((labels+1) **2 )
+
+n_labeller <- function(variable,value){
+  return(labels[value])
+}
+
+>>>>>>> c7aa921c54526e4a9be2e29fcfe58efc45463d3b
 labels <- c("99" = "10000", "199" = "40000", "499" = "25000", "699" = "490000")
 elem_mats_dev_speedups_reconfig <- ggplot(subset(speedups,n>=99 & block_size_X < 224), aes(block_size_X, elem_mats,
                                         colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) + 

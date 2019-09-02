@@ -10,6 +10,8 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
+#include <cstdio>
+
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
     float tmp = 0.0;
@@ -101,7 +103,6 @@ __device__ void assemble_elem(
                 atomicExch(&temp1[offset + (3*idy) + j],  0.0);
             }
         }
-        __syncthreads();
         temp1[offset + (3*idy) + idy] = 1.0;
         atomicExch(&temp1[(offset + 9) + idy], bound);
     }                            

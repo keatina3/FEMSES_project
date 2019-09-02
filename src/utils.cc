@@ -226,7 +226,7 @@ void output_results(Mesh &M, float *u, float *u_hat, int order, int routine){
     else                fname.append("gpu_");
 
     if(routine != 0){
-        if(k==0)    fname.append("GTX2080_");
+        if(k==0)    fname.append("RTX2080_");
         else        fname.append("Tesla_");
     }
     
@@ -277,7 +277,7 @@ void output_times(Tau &t, int routine, float sse, int iters, int reconfig){
     else                fname.append("gpu_");
 
     if(routine != 0){
-        if(k==0)    fname.append("GTX2080_");
+        if(k==0)    fname.append("RTX2080_");
         else        fname.append("Tesla_");
     }
     
