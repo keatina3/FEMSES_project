@@ -72,7 +72,7 @@ or to test for memory errors,
 ```
 make mem_tests
 ```
-The timings test script is lengthy - contains around 6,000 runs - so do not run if short on time. Output plots can be attained from the R code stored in `/src/Plots/plots.R`
+The timings test script is lengthy - contains around 6,000 runs - so do not run if short on time. Output plots can be attained from the R code stored in `/src/plots/plots.R`
 
 ### Author
 Alex Keating  
