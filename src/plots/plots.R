@@ -3,6 +3,9 @@ library(gridExtra)
 library(scales)
 library(reshape2)
 library(wesanderson)
+library(akima)
+library(rgl)
+library(plot.ly)
 
 cpu_dense = read.csv("~/Documents/College/Project/src/timings/cpu_dense_times.csv")
 cpu_sparse = read.csv("~/Documents/College/Project/src/timings/cpu_sparse_times.csv")
@@ -10,16 +13,15 @@ gpu_Tesla_dense = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_de
 gpu_Tesla_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_sparse_times.csv")
 gpu_Tesla_dnsspr = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_dnsspr_times.csv")
 gpu_Tesla_femses = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_femses_times.csv")
-<<<<<<< HEAD
 gpu_RTX2080_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_sparse_times.csv")
 gpu_RTX2080_dense = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_dense_times.csv")
 gpu_RTX2080_femses = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_femses_times.csv")
-=======
-gpu_RTX2080_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_sparse_times.csv")
-gpu_RTX2080_dense = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_dense_times.csv")
-gpu_RTX2080_femses = read.csv("~/Documents/College/Project/src/timings/gpu_GTX2080_femses_times.csv")
->>>>>>> c7aa921c54526e4a9be2e29fcfe58efc45463d3b
 
+cpu_sparse_results = read.csv("~/Documents/College/Project/src/results/output_cpu_sparse_results.csv")
+cpu_dense_results = read.csv("~/Documents/College/Project/src/results/output_cpu_dense_results.csv")
+gpu_sparse_results = read.csv("~/Documents/College/Project/src/results/output_gpu_Tesla_sparse_results.csv")
+gpu_dense_results = read.csv("~/Documents/College/Project/src/results/output_gpu_Tesla_dense_results.csv")
+gpu_femses_results = read.csv("~/Documents/College/Project/src/results/output_gpu_Tesla_femses_results.csv")
 
 col_sprs = "#00AFBB"
 col_dns = "#E7B800"
@@ -591,7 +593,7 @@ alloc_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), allocation)) +
 transfer_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), transfer)) + 
                               geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
 
-speedups = get_speedups(gpu_RTX2080_femses_avgs, subset(gpu_Tesla_femses_avgs, reconfig == 0 & block_size_X == 32))
+speedups = get_speedups(subset(gpu_RTX2080_femses_avgs, n != 99 ), subset(gpu_Tesla_femses_avgs, n != 99 & reconfig == 0 & block_size_X == 32))
 alloc_femses_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), allocation)) + 
                               geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
 
@@ -649,5 +651,19 @@ transfer_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
 transfer_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
                   labs(title="Speedup of RTX2080 over Tesla K40 Transfer Time vs.\nProblem Size for Dense Solution", 
                     x ="Degrees of Freedom", y = "Speedup")
+0
 
 
+##### Plotting Results #####
+
+results = unlist(cpu_dense_results)
+
+#interp is from the akima package so you can work with non-square data in your contour
+surface <- as.data.frame(interp2xyz(interp(x=results[1], y=results[2], z=results[3])))
+
+plot3d(df) # What it looks like in 3d
+
+#what it looks like projected into 2d
+  ggplot(df, aes(x=x,y=y,z=z, fill=z)) + 
+    geom_contour(binwidth=0.1, aes(color= ..level..)) + 
+    theme_classic()

@@ -296,7 +296,7 @@ Unlike in the allocation case, the sparse timings can be a bit more predictable.
 	\label{fig:transf_su}
 \end{figure}
 
-\subsubsection{Element Matrices \& Vectors}
+\subsubsection{Generation of Element Matrices \& Vectors}
 
 \begin{figure}
 	\centering
@@ -529,3 +529,137 @@ There was no transfer times taken for FEMSES as the amount of data required to b
 The poor rate of convergence was the main concern regarding the FEMSES implementation. Figure~\ref{fig:converg} illustrates the convergence as problem size increases and shows the super-linear rate which it achieves. When investigating why these results may be happening, one thing which was noticed, as the errors got smaller, they often reached orders of $10^{-5}$ and $10^{-6}$ and then proceeded to oscillate in and around these values, never reaching convergence within maximum iterations. The error then had to be truncated to $10^{-4}$ to avoid this. An inclination here was that the paper may have been using double precision and this was down to accuracy lost from utilising single precision values instead. This was tested and the results proved equal. The current proposal as to the reasoning for these unexpected results is in Fernandez (CITE), the PDE used is a rectangular pipe, with non-homogeneous Dirichlet conditions on the outer boundaries and homogeneous Neumann on the bore hole, thus causing propagation from four directions. In the example in Section~\ref{problem}, the rectangular mesh has homogeneous Neumann conditions on the upper and lower edges and non-homogeneous Dirichlet conditions on the left and right boundary, therefore propagation will occur in only two directions, from left and right inwards. This theory has yet to be tested but would be an interesting result to deduce if this is indeed the root cause of the sub-par performance of FEMSES. 
 
 \subsection{Comparison of GPU Architectures}
+
+Two different GPUs were used in testing for this paper. All the results seen in the previous section are all taken from the Tesla~K40. The RTX~2080 Super was installed recently and due to time constraints didn't complete an entire test suite, but rather only completed tests for a single block size. The problem size was also limited to smaller values than the Tesla due to memory limitations of the RTX~2080 having smaller DRAM. In this section, the performance of the RTX~2080 Super is compared against the older Tesla~K40.
+
+\subsubsection{Total Timings \& Solvers}
+
+\begin{figure}
+	\centering
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width = \linewidth]{Plots/total_sparse_rtx_speedup_vs_n}
+		\caption{Total time speed-up of RTX~2080 over Tesla~K40 for sparse solution.}
+		\label{fig:total_rtx_sparse}
+	\end{subfigure}\hfill
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/total_dense_rtx_speedup_vs_n}
+		\caption{Total time speed-up of RTX~2080 over Tesla~K40 for dense solution.}
+		\label{fig:total_rtx_dense}
+	\end{subfigure}\\
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/total_femses_rtx_speedup_vs_n}
+		\caption{Total time speed-up of RTX~2080 over Tesla~K40 for FEMSES.}
+		\label{fig:total_rtx_femses}
+	\end{subfigure}
+	\caption{Speed-ups RTX~2080 over Tesla~K40 of total times versus problem size for three main approaches.}
+	\label{fig:total_rtx}
+\end{figure}
+
+The total times appeared to achieve mostly more positive results on the RTX~2080 than on the Tesla. The speed-ups over the Tesla versus problem size are illustrated in Figure~\ref{fig:total_rtx}. The sparse case demonstrates a nice stable speed-up of around $2\times$, while the dense case appears to experience some form of linear or possibly slightly logarithmic scaling, to a higher degree of up to $4\times$, roughly. FEMSES on the other hand, actually appeared to perform worse on the newer architecture. It does experience a positive scaling trend but never appears to actually outperform the older card.
+
+\begin{figure}
+	\centering
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width = \linewidth]{Plots/solve_sparse_rtx_speedup_vs_n}
+		\caption{Solver time speed-up of RTX~2080 over Tesla~K40 for sparse solution.}
+		\label{fig:solve_rtx_sparse}
+	\end{subfigure}\hfill
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/solve_dense_rtx_speedup_vs_n}
+		\caption{Solver time speed-up of RTX~2080 over Tesla~K40 for dense solution.}
+		\label{fig:solve_rtx_dense}
+	\end{subfigure}\\
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/solve_femses_rtx_speedup_vs_n}
+		\caption{Solver time speed-up of RTX~2080 over Tesla~K40 for FEMSES.}
+		\label{fig:solve_rtx_femses}
+	\end{subfigure}
+	\caption{Speed-ups RTX~2080 over Tesla~K40 of solver times versus problem size for three main approaches.}
+	\label{fig:solve_rtx}
+\end{figure}
+
+In Figure~\ref{fig:solve_rtx}, the speed-ups are shown against problem size for the solver kernel in the process. Again, just like the results seen on the Tesla, the solver is evidently the dominant kernel in the method and the resulting graphs are near identical. These results do somewhat explain the poorer performance in the FEMSES approach than the other two methods. It is largely possibly that the cuSOLVER libraries have been optimised to work well with the newer Nvidia architectures and take advantage of whichever technologies these may bring. However, the FEMSES approach has most of its code purpose written for this report and coded almost entirely on the Tesla and so, expectedly, performs quite well on this by comparison.
+
+\subsubsection{Generation of Element Matrices \& Assembly of Global System}
+
+\begin{figure}
+	\centering
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width = \linewidth]{Plots/elems_rtx_speedup_vs_n}
+		\caption{Generation of element matrices time speed-up of RTX~2080 over Tesla~K40.}
+		\label{fig:elems_rtx}
+	\end{subfigure}\hfill
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/assem_sparse_rtx_speedup_vs_n}
+		\caption{Assembly of global system time speed-up of RTX~2080 over Tesla~K40 for sparse solution.}
+		\label{fig:assem_rtx_sparse}
+	\end{subfigure}\\
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/assem_dense_rtx_speedup_vs_n}
+		\caption{Assembly of global system time speed-up of RTX~2080 over Tesla~K40 for dense solution.}
+		\label{fig:assem_rtx_dense}
+	\end{subfigure}
+	\caption{Speed-ups RTX~2080 over Tesla~K40 of different kernel times versus problem size for three main approaches.}
+	\label{fig:kerns_rtx}
+\end{figure}
+
+The speed-ups of time taken for the generation of element matrices and the assembly of both sparse and dense global linear systems are shown in Figure~\ref{fig:kerns}. Both the generation of the element matrices and the assembly of the sparse solution achieve relatively stable speed-ups of about $5\times$.  Positive results in both instances. The dense assembly speed-up  is a little harder to make inferences from. Given that the sample size for these tests is much smaller (evident from the large confidence intervals in the plots), there appears to be an outlier for problem sizes of 1000. Besides this, although the trend is negative, the dense assembly also showed positive speed-ups for various the number of unknowns tested.
+
+\subsubsection{Allocations \& Transfers}
+
+\begin{figure}
+	\centering
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width = \linewidth]{Plots/alloc_sparse_rtx_speedup_vs_n}
+		\caption{Allocation time speed-up of RTX~2080 over Tesla~K40 for sparse solution.}
+		\label{fig:alloc_rtx_sparse}
+	\end{subfigure}\hfill
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/alloc_dense_rtx_speedup_vs_n}
+		\caption{Allocation time speed-up of RTX~2080 over Tesla~K40 for dense solution.}
+		\label{fig:alloc_rtx_dense}
+	\end{subfigure}\\
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/alloc_femses_rtx_speedup_vs_n}
+		\caption{Allocation time speed-up of RTX~2080 over Tesla~K40 for FEMSES.}
+		\label{fig:alloc_rtx_femses}
+	\end{subfigure}
+	\caption{Speed-ups RTX~2080 over Tesla~K40 of allocation times versus problem size for three main approaches.}
+	\label{fig:alloc_rtx}
+\end{figure}
+
+Figure~\ref{fig:alloc_rtx} shows the speed-ups in allocation time for the three different approaches. The speed-up see for allocating the sparse matrices, again shows a nice stable speed-up of about $2\times$ as fast as the old card. The dense and FEMSES case both have more unusual trends. The dense case, ignoring a massive spike outlier, appears to also be quite stable at $1.4\times$, but there is an outlier nonetheless. For the FEMSES case the graph demonstrates what appears to be logarithmic scaling at a glance. Difficult to deduce why this is the case other than on the bad side of variance with clock speeds on the card while testing.
+
+\begin{figure}
+	\centering
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width = \linewidth]{Plots/transfer_sparse_rtx_speedup_vs_n}
+		\caption{Transfer time speed-up of RTX~2080 over Tesla~K40 for sparse solution.}
+		\label{fig:transf_rtx_sparse}
+	\end{subfigure}\hfill
+	\begin{subfigure}{0.48\linewidth}
+		\centering
+		\includegraphics[width=\linewidth]{Plots/transfer_dense_rtx_speedup_vs_n}
+		\caption{Transfer time speed-up of RTX~2080 over Tesla~K40 for dense solution/FEMSES.}
+		\label{fig:transf_rtx_dense}
+	\end{subfigure}
+	\caption{Speed-ups RTX~2080 over Tesla~K40 of transfer times versus problem size for sparse and dense solutions.}
+	\label{fig:trasnf_rtx}
+\end{figure}
+
+Again, similar to the allocation times, the transfer times in Figure~\ref{fig:trasnf_rtx}, appeared quite stable for the CSR cases and then quite erratic for the dense case. This is also an unusual result and presumably down to the same issues seen in the other cases. This would make sense as the problem size causing the spikes appears to be the same for all the outliers. Besides this, however, again positive speed-ups are obeserved.
+
+All considered then, it's clear that the newer architecture, overall, outperformed the Tesla. It would be interesting to investigate further the potential speed-ups that could be achieved with this new card given more time for testing.
