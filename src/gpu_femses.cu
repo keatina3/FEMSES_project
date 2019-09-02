@@ -310,13 +310,13 @@ extern void gpu_femses(float *u, Mesh &M, Tau &t, int &count, int &reconfig){
     
     // testing if requested block size if over max amount allowed on card //
     if(block_size_X * block_size_Y > threads){
-        std::exit(1);
+        error_log();
         std::cerr << "      Too many threads requested per block..." << std::endl;
         std::cerr << "              Threads requested: " 
                                             << block_size_X * block_size_Y << std::endl;
         std::cerr << "              Max threads available: " << threads << std::endl;
         std::cerr << "      Exiting." << std::endl;
-        error_log();
+        std::exit(1);
     }
     
     // reconfiguring memory if shared has spare, to allow more per thread registers //
