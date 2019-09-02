@@ -10,6 +10,10 @@ gpu_Tesla_dense = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_de
 gpu_Tesla_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_sparse_times.csv")
 gpu_Tesla_dnsspr = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_dnsspr_times.csv")
 gpu_Tesla_femses = read.csv("~/Documents/College/Project/src/timings/gpu_Tesla_femses_times.csv")
+gpu_RTX2080_sparse = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_sparse_times.csv")
+gpu_RTX2080_dense = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_dense_times.csv")
+gpu_RTX2080_femses = read.csv("~/Documents/College/Project/src/timings/gpu_RTX2080_femses_times.csv")
+
 
 col_sprs = "#00AFBB"
 col_dns = "#E7B800"
@@ -49,13 +53,12 @@ gpu_Tesla_sparse_avgs = get_averages(gpu_Tesla_sparse)
 gpu_Tesla_dense_avgs = get_averages(gpu_Tesla_dense)
 gpu_Tesla_dnsspr_avgs = get_averages(gpu_Tesla_dnsspr) 
 gpu_Tesla_femses_avgs = get_averages(gpu_Tesla_femses)
+gpu_RTX2080_femses_avgs = get_averages(gpu_RTX2080_femses)
+gpu_RTX2080_sparse_avgs = get_averages(gpu_RTX2080_sparse)
+gpu_RTX2080_dense_avgs = get_averages(gpu_RTX2080_dense)
 
 
 ###### Total speedups over CPU vs problem_size ########
-
-n_labeller <- function(variable,value){
-  return(labels[value])
-}
 
 speedups = get_speedups(gpu_Tesla_sparse_avgs, cpu_sparse_avgs)
 total_sparse_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), total)) + 
@@ -144,19 +147,18 @@ speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
 total_femses_cpu_sparse_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0), aes(block_size_X, total,
                                         colour=as.factor((n+1)*(n+1)))) + geom_smooth(formula = y ~ log(x)) + geom_point()
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_sparse_avgs)
-labels = unique(subset(speedups,n<200)[1])
-labels = list((labels+1) **2 )
+labels = c("4" = "25", "9"="100","24"="625","49"="2500","99"="10000","199"="40000","499"="250000","699"="490000")
 total_femses_cpu_sparse_speedup_vs_b_facet <- ggplot(subset(speedups, block_size_X > 10), 
                                         aes(block_size_X, total, colour = as.factor(reconfig))) +
                                         geom_smooth(colour=col_sprs) + geom_point(colour=col_sprs) +
-                                        facet_wrap(~n, scales="free")
+                                        facet_wrap(~n, scales="free", labeller = labeller(n=labels))
 
 speedups = get_speedups(gpu_Tesla_femses_avgs, cpu_dense_avgs)
 total_femses_cpu_dense_speedup_vs_b <- ggplot(subset(speedups,reconfig=!0), aes(block_size_X, total,
                                         colour=as.factor((n+1)*(n+1)))) + geom_smooth(formula = y ~ log(x)) + geom_point()
 total_femses_cpu_dense_speedup_vs_b_facet <- ggplot(subset(speedups, reconfig!=0  & block_size_X > 10), aes(block_size_X, total)) +
                                         geom_smooth(colour=col_dns) + geom_point(colour=col_dns) +
-                                        facet_wrap(~n, scales="free")
+                                        facet_wrap(~n, scales="free",labeller = labeller(n=labels))
                         
 
 ## figures
@@ -296,17 +298,10 @@ elem_mats_dev_cpu_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>=99), a
 elem_mats_dev_cpu_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0 & n>=99), aes((n+1)*(n+1), elem_mats)) +
                               geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
 
-labels = unique(subset(speedups,n>=99)[1])
-labels = list((labels+1) **2 )
-
-n_labeller <- function(variable,value){
-  return(labels[value])
-}
-
-
+labels <- c("99" = "10000", "199" = "40000", "499" = "25000", "699" = "490000")
 elem_mats_dev_speedups_reconfig <- ggplot(subset(speedups,n>=99 & block_size_X < 224), aes(block_size_X, elem_mats,
                                         colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) + 
-                                        facet_wrap(.~ n, scales="free", labeller = as_labeller(labels))
+                                        facet_wrap(~n, scales="free", labeller = labeller(n = labels))
 
 
 elem_mats_dev_cpu_speedup_vs_b + scale_y_log10(breaks = base_breaks()) + 
@@ -331,9 +326,10 @@ assem_dev_cpu_sparse_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>=99)
 assem_dev_cpu_sparse_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0 & n>99), aes((n+1)*(n+1), assembly)) +
                               geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
 
+labels <- c("99" = "10000", "199" = "40000", "499" = "25000", "699" = "490000")
 assem_dev_sparse_speedups_reconfig <- ggplot(subset(speedups,n>=99 & block_size_X < 224), aes(block_size_X, assembly,
                                           colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) +
-                                          facet_wrap(~ n, scales="free")
+                                          facet_wrap(~ n, scales="free", labeller = labeller(n=labels))
 
 ## dense
 speedups = get_speedups(gpu_Tesla_dense_avgs, cpu_dense_avgs)
@@ -342,9 +338,10 @@ assem_dev_cpu_dense_speedup_vs_b <- ggplot(subset(speedups,reconfig!=0 & n>10), 
 assem_dev_cpu_dense_speedup_vs_n <- ggplot(subset(speedups,reconfig!=0), aes((n+1)*(n+1), assembly)) +
                               geom_smooth(colour=col_sprs,formula = y ~ log(x)) + geom_point(colour=col_sprs)
 
+labels <- c("24" = "625", "49" = "2500", "99" = "10000", "199" = "40000")
 assem_dev_dense_speedups_reconfig <- ggplot(subset(speedups,n>10 & block_size_X < 224), aes(block_size_X, assembly,
                                         colour = as.factor(reconfig))) + geom_point() + geom_smooth(formula = y ~ log(x)) +
-                                        facet_wrap(~ n, scales="free")
+                                        facet_wrap(~ n, scales="free", labeller = labeller(n=labels))
 
 ## sparse vs dense
 speedups = get_speedups(gpu_Tesla_sparse_avgs, gpu_Tesla_dense_avgs)
@@ -521,5 +518,120 @@ prop_sparse
 prop_dense
 
 
+
+
+
+
+
+###### RTX Profiling ######
+
+## Total time ##
+
+speedups = get_speedups(gpu_RTX2080_sparse_avgs, subset(gpu_Tesla_sparse_avgs, reconfig == 0 & block_size_X == 32))
+total_sparse_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), total)) + 
+                              geom_smooth(colour=col_sprs, formula = y~log(x)) + geom_point(colour=col_sprs)
+speedups = get_speedups(gpu_RTX2080_dense_avgs, subset(gpu_Tesla_dense_avgs, reconfig == 0 & block_size_X == 32))
+total_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), total)) + 
+                              geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
+speedups = get_speedups(gpu_RTX2080_femses_avgs, subset(gpu_Tesla_femses_avgs, reconfig == 0 & block_size_X == 32))
+total_femses_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), total)) + 
+                              geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
+
+## Solvers time ##
+
+speedups = get_speedups(gpu_RTX2080_sparse_avgs, subset(gpu_Tesla_sparse_avgs, reconfig == 0 & block_size_X == 32))
+solve_sparse_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), solve)) + 
+                              geom_smooth(colour=col_sprs, formula = y~log(x)) + geom_point(colour=col_sprs)
+speedups = get_speedups(gpu_RTX2080_dense_avgs, subset(gpu_Tesla_dense_avgs, reconfig == 0 & block_size_X == 32))
+solve_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), solve)) + 
+                              geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
+speedups = get_speedups(gpu_RTX2080_femses_avgs, subset(gpu_Tesla_femses_avgs, reconfig == 0 & block_size_X == 32))
+solve_femses_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), solve)) + 
+                              geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
+
+## element matrices & assembly ##
+
+speedups = get_speedups(gpu_RTX2080_sparse_avgs, subset(gpu_Tesla_sparse_avgs, reconfig == 0 & block_size_X == 32))
+elems_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), elem_mats)) + 
+                              geom_smooth(colour=col_sprs, formula = y~log(x)) + geom_point(colour=col_sprs)
+assem_sparse_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), assembly)) + 
+                              geom_smooth(colour=col_dnsspr, formula = y~log(x)) + geom_point(colour=col_dnsspr)
+
+speedups = get_speedups(gpu_RTX2080_dense_avgs, subset(gpu_Tesla_dense_avgs, reconfig == 0 & block_size_X == 32))
+assem_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), assembly)) + 
+                              geom_smooth(colour=col_dns, formula = y ~ log(x)) + geom_point(colour=col_dns)
+
+## transfers & allocation ##
+
+speedups = get_speedups(gpu_RTX2080_sparse_avgs, subset(gpu_Tesla_sparse_avgs, reconfig == 0 & block_size_X == 32))
+alloc_sparse_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), allocation)) + 
+                              geom_smooth(colour=col_sprs, formula = y~log(x)) + geom_point(colour=col_sprs)
+transfer_sparse_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), transfer)) + 
+                              geom_smooth(colour=col_sprs, formula = y~log(x)) + geom_point(colour=col_sprs)
+
+speedups = get_speedups(gpu_RTX2080_dense_avgs, subset(gpu_Tesla_dense_avgs, reconfig == 0 & block_size_X == 32))
+alloc_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), allocation)) + 
+                              geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
+transfer_dense_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), transfer)) + 
+                              geom_smooth(colour=col_dns, formula = y~log(x)) + geom_point(colour=col_dns)
+
+speedups = get_speedups(gpu_RTX2080_femses_avgs, subset(gpu_Tesla_femses_avgs, reconfig == 0 & block_size_X == 32))
+alloc_femses_rtx_speedup_vs_n <- ggplot(speedups, aes((n+1)*(n+1), allocation)) + 
+                              geom_smooth(colour=col_femses, formula = y~log(x)) + geom_point(colour=col_femses)
+
+
+
+## figures ##
+
+total_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Total Time vs.\n Problem Size for Sparse Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+total_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Total Time vs.\n Problem Size for Dense Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+total_femses_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Total Time vs.\n Problem Size for FEMSES", 
+                    x ="Degrees of Freedom", y = "Speedup")
+
+
+solve_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Solver Time vs.\nProblem Size for Sparse Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+solve_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Solver Time vs.\nProblem Size for Dense Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+solve_femses_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Solver Time vs.\nProblem Size for FEMSES", 
+                    x ="Degrees of Freedom", y = "Speedup")
+
+
+elems_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Generation of Element Matrices vs.\nProblem Size for Sparse Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+assem_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Assembly of Stiffness Matrix vs.\nProblem Size for Sparse Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+
+assem_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Assembly of Stiffness Matrix vs.\nProblem Size for Dense Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+
+
+alloc_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Allocation Time vs.\nProblem Size for Sparse Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+alloc_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Allocation Time vs.\nProblem Size for Dense Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+alloc_femses_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Allocation Time vs.\nProblem Size for FEMSES", 
+                    x ="Degrees of Freedom", y = "Speedup")
+
+transfer_sparse_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Tranfer Time vs.\nProblem Size for Sparse Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
+transfer_dense_rtx_speedup_vs_n + scale_y_log10(breaks = base_breaks()) +
+                  labs(title="Speedup of RTX2080 over Tesla K40 Transfer Time vs.\nProblem Size for Dense Solution", 
+                    x ="Degrees of Freedom", y = "Speedup")
 
 
