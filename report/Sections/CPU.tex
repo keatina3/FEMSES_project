@@ -15,7 +15,7 @@ Given that there is a lot of machinery involved in programming the FEM as a nume
 	\label{fig:cpp}
 \end{figure}
 
-Figure~\ref{fig:cpp} illustrates the overall design structure of the code - in both serial and parallel, though the GPU code will be discussed in more detail in Section~\ref{gpucode}. The code is split into four main files and their respective headers,
+Figure~\ref{fig:cpp} illustrates the overall design structure of the code - in both serial and parallel, though the GPU code is discussed in more detail in Section~\ref{gpucode}. The code is split into four main files and their respective headers,
 \begin{itemize}
 	\item \texttt{main.cc} - Main C++ code, used for invoking the FEM operation and calling results to be output.
 	\item \texttt{mesh.cc} - Contains the code for the Mesh class, storing all necessary operations and data structures to construct a mesh.
@@ -36,7 +36,7 @@ Objects are a massive sell for using C++ over C when programming a numerical met
 
 \subsection{Mesh}\label{mesh}
 
-The mathematics of the mesh has been illustrated, the next logical step would be to port it over to code. The data structure for the mesh holds a handful of key components and routines needed for its generation. Given the mesh itself is, of course, a collection of interconnected nodes on a plane, upon each of which numerical calculations must be performed, it was naturally necessary to stores these nodes and their corresponding coordinates. In the implementation of this paper, a 2D mesh was used, though the extension to higher dimensions is rather arbitrary - another benefit of the FEM. The nodes' coordinates were stored in an array, \texttt{vertices}, which had a dimension of \texttt{order}, where order is the number of nodes or number of unknowns. Looking back at the Section~\ref{elems}, however, simply knowing the nodes coordinates for the FEM isn't enough, one also needs to know their global indices and degree of freedom mapping back to the stiffness matrix. These were respectively stored in two 2D arrays, \texttt{cells} and \texttt{dof}. Note that this is the exact same as performing the mapping function $q(e,r)$ seen previously. For example, \texttt{dof[e][r]} will provide the global node index of local node $r$ in cell $e$. Figure~\ref{fig:4cell} gives an example of a small mesh, the populated version of these three arrays are described in Listing~\ref{lst:mesh}. Note also in this example that each cell's array is numbered in an anti-clockwise direction - this is important for the orientation of the integrals calculated later. Since in this paper, only P1 examples were used, the degree of freedom mapping and global node indices are actually equal and so having two separate arrays for these was rather unnecessary but it allows for potential further expansion of the code with ease.
+The mathematics of the mesh has been illustrated, the next logical step would be to port it over to code. The data structure for the mesh holds a handful of key components and routines needed for its generation. Given the mesh itself is, of course, a collection of interconnected nodes on a plane, upon each of which numerical calculations must be performed, it was naturally necessary to store these nodes and their corresponding coordinates. In the implementation of this paper, a 2D mesh was used, though the extension to higher dimensions is rather arbitrary - another benefit of the FEM. The nodes' coordinates were stored in an array, \texttt{vertices}, which had a dimension of \texttt{order}, where order is the number of nodes or number of unknowns. Looking back at the Section~\ref{elems}, however, simply knowing the nodes coordinates for the FEM isn't enough, one also needs to know their global indices and degree of freedom mapping back to the stiffness matrix. These were respectively stored in two 2D arrays, \texttt{cells} and \texttt{dof}. Note that this is the exact same as performing the mapping function $q(e,r)$ seen previously. For example, \texttt{dof[e][r]} will provide the global node index of local node $r$ in cell $e$. Figure~\ref{fig:4cell} gives an example of a small mesh, the populated version of these three arrays are described in Listing~\ref{lst:mesh}. Note also in this example that each cell's array is numbered in an anti-clockwise direction - this is important for the orientation of the integrals calculated later. Since in this paper, only P1 examples were used, the degree of freedom mapping and global node indices are actually equal and so having two separate arrays for these was rather unnecessary but it allows for potential further expansion of the code with ease.
 
 \begin{lstlisting}[basicstyle=\footnotesize, caption={Example of populated mesh.}, label={lst:mesh}]
 vertices = [[-7.0, -1], [8.0, -7.0], [11.0, 6.0], [4.0, -5.0], [-2.0,2.0]]
@@ -59,6 +59,7 @@ In terms of what routines are contained in the Mesh class, during instantiation,
 
 \begin{algorithm}
 	\caption{Evaluation of element matrices \& element vectors.}
+	\label{algo:elems}
 	\KwIn{$V, e$}
 	\For{$r = 0 \dots 2$}{
 		$\mathbf{x}_r = \left[\begin{matrix} 1 & V_{r,0}^{(e)} & V_{r,1}^{(e)} \end{matrix}\right]$
@@ -91,7 +92,6 @@ In terms of what routines are contained in the Mesh class, during instantiation,
 		}
 	}
 	\Return{$\mathbf{L}^{(e)}, \mathbf{b}^{(e)}$}
-	\label{algo:elems}
 \end{algorithm}
 Once the mesh has been generated, the next aim for the software was to create as generic a FEM class as possible, one which could take any mesh in the structure of the Mesh class, and solve the given PDE - in this report's case the Laplace equation. The FEM class will, of course, need to allocate data to store the global stiffness matrix and global stress vectors. The stress vector is simply stored in \texttt{b} and has a dimension of \texttt{order}, the stiffness matrix on the other hand can be stored in either dense or CSR format. Since CSR is stored in three separate, single dimensional arrays, this allowed the benefit of using standard library vectors, also eliminating the need for \texttt{new} and \texttt{delete}. The dense format on the other hand is 2D and has the same issue with contiguity as mentioned in the remark above. The CSR matrix is stored in \texttt{valsL}, \texttt{rowPtrL} and \texttt{colIndL} and the dense matrix is stored in \texttt{L}. The class then also stores certain properties needed, such as the dimensions of the problem \texttt{order}, the number of cells in the mesh and the number of non-zeros in the sparse matrix.
 
@@ -107,7 +107,7 @@ The element matrix calculation is detailed in Algorithm~\ref{algo:elems}, utilis
 	\KwIn{$\{\mathbf{L}^{(e)}\}_e, \{\mathbf{b}^{(e)}\}_e$}
 	\caption{Assembly of global stiffness matrix \& stress vector in dense format.}
 	\label{algo:assemble}
-	\For{$e =0\dots (num\_cells-1) $}{
+	\For{$e =0\dots (\#\mathbf{L}^{(e)}-1) $}{
 		\For{$r =0\dots 2$}{
 			$v_r = q(e,r)$\\
 			\For{$s = 0 \dots 2$}{
@@ -123,7 +123,7 @@ The element matrix calculation is detailed in Algorithm~\ref{algo:elems}, utilis
 	\KwIn{$\{\mathbf{L}^{(e)}\}_e, \{\mathbf{b}^{(e)}\}_e$}
 	\caption{Assembly of global stiffness matrix \& stress vector in CSR format.}
 	\label{algo:assemble_csr}
-	\For{$e =0\dots (num\_cells-1) $}{
+	\For{$e =0\dots (\#\mathbf{L}^{(e)}-1) $}{
 		\For{$r =0\dots 2$}{
 			$v_r = q(e,r)$\\
 			\For{$s = 0 \dots 2$}{

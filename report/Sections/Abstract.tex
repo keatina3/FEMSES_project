@@ -2,3 +2,13 @@
 \thispagestyle{empty}
 \section*{Abstract}
 
+\vspace{1.0cm}
+
+\begin{small}
+In this thesis, an investigation was completed into parallelising the finite element method (FEM) on Nvidia GPUs. Naive CPU and basic GPU implementations were coded using C++11 and CUDA. The GPU implementation was parallelised by partitioning up the mesh's cells across the threads on the GPU and assembling the global stiffness matrix in parallel. Both CPU and GPU variants used pre-existing solvers (Intel MKL and cuSOVLER) to solve the final linear system. The results were tested against a simplistic rectangular mesh domain for the Laplace equation. These were tested and profiled, and the results showed large speed-ups to the point of assembly, but the linear systems solvers were outperformed by Intel's sparse solver. The linear system was also deemed to be the dominant kernel by a long stretch.
+
+A novel finite element method single-element solution (FEMSES) approach was also implemented. This involved decoupling the local solutions from the entire mesh, and applying a Jacobi relaxation scheme to find local solutions to the element matrices. These were then assembled into a global solution estimate and iterated until convergence. This avoided the need to assembly the global stiffness matrix, thereby supposedly taking a large bottleneck out of the FEM and improving on its level of parallelism. FEMSES was tested and its timings compared back to that of the naive GPU approach on two different GPU architectures. The speed-ups seen were not matching of that drawn from FEMSES's original literature.
+
+All related software to the report is located at \url{https://github.com/keatina3/FEMSES_project} .
+
+\end{small}
