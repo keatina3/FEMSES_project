@@ -24,7 +24,7 @@ which is going to be basis for this study - attempting to approximate the functi
 	\item Neumann condition: $\frac{\partial u}{\partial \mathbf{n}} = h(s)$.
 	\item Robin condition: $\frac{\partial u}{\partial \mathbf{n}} + \sigma(s)u = k(s)$,
 \end{enumerate}
-where $s$ is the arc length of the boundary $C$ and $\mathbf{n}$ is a vector, externally normal to $C$. How these conditions are imposed and handled is discussed in Section~\, later in the report.
+where $s$ is the arc length of the boundary $C$ and $\mathbf{n}$ is a vector, externally normal to $C$~\cite{davies}. How these conditions are imposed and handled is discussed in Section~\ref{boundaries}, later in the report.
 
 \section{Approximation Theory}
 
@@ -46,7 +46,7 @@ then it can be said the any function $u\in V$ can be written as a linear combina
 	\begin{equation}\label{basis}
 		u(x) = \sum_i c_i \psi_i. 
 	\end{equation}
-Consider now, functions $f,g$ - the squared-norm or inner-product of these two functions is defined as,
+\cite{mardal}. Consider now, functions $f,g$ - the squared-norm or inner-product of these two functions is defined as,
 \begin{equation}\label{innerprod}
 	\langle f,g\rangle = \int f(x)g(x)dx
 \end{equation}
@@ -79,6 +79,7 @@ giving the system of $N+1$ equations,
 \begin{equation}
 	\left\langle e, \frac{\partial e}{\partial c_i}\right\rangle = 0, \quad i\in\{1,\dots,N\}.
 \end{equation}
+\cite{mardal}
 
 \subsection{Galerkin}
 
@@ -95,6 +96,7 @@ and since any function in $V$ can be approximated using Equation~\eqref{basis}, 
 	\langle R, \psi_i \rangle=0,\quad i\in\{1,\dots,N\},
 \end{equation}
 thus leaving another system of linear equations to solve. This is alternatively known as projecting $R$ onto $V$.
+\cite{mardal}
 
 \subsection{Weighted Residuals}\label{residuals}
 
@@ -111,6 +113,7 @@ and so this leaves,
 	\langle R, w_i \rangle=0,\quad i\in\{1,\dots,N\},
 \end{equation}
 again, leaving a linear system of $N+1$ equations.
+\cite{mardal}
 
 \section{Variational Calculus}
 
@@ -141,8 +144,9 @@ and the Equation~\eqref{green} can be shown in terms of the inner product define
 	\left\langle\mathbf{v}\cdot\nabla u,v\right\rangle + \left\langle\beta u,v\right\rangle = -\left\langle\alpha\nabla u, \nabla v\right\rangle + \left\langle g,v\right\rangle_N + \left\langle f,v\right\rangle.
 \end{equation}
 This PDE has now been transformed into its weak formulation. Looking at the Section~\ref{residuals}, it's quite obvious now that $u$ can be approximated by subbing in an estimate, applying the method of weighted residuals and achieving a system of linear equations. Thus the solution space has been reduced to a finite dimensional space.
+\cite{mardal}
 
-\subsection{Functionals - UNFINISHED SECTION}\label{functionals}
+\subsection{Functionals}\label{functionals}
 
 While regular calculus deals with changes in ordinary variables, calculus of variations by contrast deals with changes in functions - handling special functions  known as functionals, which take functions as inputs compared to just variables. These are beneficial for the FEM as, considering the problem posed in the previous section, much of what is trying to be accomplished is finding the function which minimises an integral i.e. minimising a functional. Take for example, the functional 
 \begin{equation}
@@ -155,23 +159,20 @@ Before discussing how to derive these functionals, first look at an abstract not
 	a(u,v) = L(v),\quad v\in V,
 \end{equation}
 where $a(u,v)$ is in bilinear form, containing all terms which have both test and trial functions, whereas, $L(v)$ is linear, containing only test functions. This is equivalent to the integrals seen in Equation~\eqref{weak}, which is looked to be to minimised. This equation is equivalent to minimising the functional,
-\begin{equation}
+\begin{equation}\label{func_min}
 	I[v] = \frac{1}{2}a(u,v) - L(v). 
 \end{equation}
-NEED TO CITE THIS....
 In a multidimensional case, consider the PDE,
 \begin{align}
 	-\nabla(\alpha\nabla u) + \beta u &= f,\quad \mathbf{x} \in \Omega\\
 	u &= u_D,\quad \mathbf{x} \in \Gamma_D\\
 	-\alpha \frac{\partial u}{\partial \mathbf{n}} + \sigma(s) u &= k,\quad \mathbf{x}\in \Gamma_R	
 \end{align}
-ADD DERIVATION HERE.
-The resulting functional is,
+Applying the minimisation seen in equation~\eqref{func_min}, and applying some standard multivariablle calculus, the resulting functional is,
 \begin{equation}
 	I[u] = \int_\Omega (\nabla u\cdot \alpha \nabla u) + \beta u^2 - 2 u f)~d\mathbf{x} + \oint_{\Gamma_R} (\sigma u^2 - 2 u k)~ds
 \end{equation}
-These functionals are an alternative and mathematically equivalent variant on attempting to minimising the problem at hand and a commonly seen in papers discussing the FEM. 
-PAGE 234!!
+These functionals are an alternative and mathematically equivalent variant on attempting to minimising the problem at hand and a commonly seen in papers discussing the FEM. \cite{davies}
 
 \section{Finite Elements}\label{elems}
 
@@ -216,6 +217,7 @@ which is $1$ at node $r$ and $0$ everywhere else. If the node is internal, then 
 	u(x) \approx \sum_{\mathcal{I}_s} c_i \varphi_i(x),
 \end{equation}
 where $\mathcal{I}_s$ is the set of indices for which $u(x_i)$ is unknown.
+\cite{strang}
 
 \begin{figure}
 	\centering
@@ -259,6 +261,7 @@ where $\widetilde{A}^{(e)}$ and $\widetilde{b}^{(e)}$ are known as the element m
 	\widetilde{A}_{r,s}^{(e)} &= \left\langle\mathbf{v}\cdot\nabla \varphi_j,\varphi_i\right\rangle_{\Omega^{(e)}} + \left\langle\beta \varphi_j,\varphi_i\right\rangle_{\Omega^{(e)}} + \left\langle\alpha\nabla \varphi_j, \nabla \varphi_i\right\rangle_{\Omega^{(e)}}, \\
 	\widetilde{b}_r^{(e)} &= \left\langle g,\varphi_i\right\rangle_{\Gamma_N\cap\Omega^{(e)}} + \left\langle f,\varphi_i\right\rangle_{\Omega^{(e)}}.
 \end{align}
+\cite{mardal},~cite{davies}
 Take the small P1, 2D example seen in Figure~\ref{fig:2cell}. Clearly, in this example, each cell contains three nodes, so the resulting element matrix $\widetilde{A}^{(e)} \in \mathbb{R}^{3\times 3}$ and element vector $\widetilde{b}^{(e)} \in \mathbb{R}^3$. Evaluating both of these, by the nature of all the calculations being dot products, results in a symmetric positive definite element matrix,
 \begin{equation}\label{elemmat}
 	\widetilde{A}^{(e)} =
@@ -303,7 +306,7 @@ Normally, $A$ would be a sparse SPD matrix, but since this is a small case the m
 	\caption{Small two cell example of a mesh.}
 	\label{fig:2cell}
 \end{figure}
-\subsection{Enforcing Boundary Conditions}
+\subsection{Enforcing Boundary Conditions}\label{boundaries}
 
 Boundary conditions have been conveniently ignored up to this point in the report for simplicity's sake when explaining how to assemble the linear system. However, they of course cannot in reality go without being implemented. Thankfully, certain boundary conditions are easier to handle than others. Looking at Equations~\eqref{linsys}, the first term on the right-hand side is a contour integral over the boundary where the Neumann condition applies. Subbing in $g$ into the inner-product here has now in fact dealt with the Neumann condition - this is known as a \textit{natural boundary condition}, where it is handled naturally as part of the integration by parts or Green's lemma.
 
@@ -339,7 +342,7 @@ and updated element vector,
 	\end{matrix}\right].
 \end{equation}
 These can now be assembled into the global stiffness matrix and stress vector just as before without any other changes necessary.
-
+\cite{mardal}
 \subsection{Physical or Local Coordinates}\label{coords}
 
 The last outstanding piece of mathematics that needs to be touched upon in the FEM is the coordinate mapping of the nodes. In Equation~\ref{linsys}, clearly the integrals or inner-products are all calculated with respect to the physical coordinates of $\mathbf{x}$, across the domain upon which they are defined - compact or whole domain. However, as was mentioned, much of the advantage of the FEM is that you can shape a complex domain into many smaller domains with easier to calculate integrals. In this case, it might be much more within one's interest to locally define the coordinates in each cell and then map back. For example, take a 2D, P1 case again, it might be much more convenient for the node's local coordinates to be (0,0), (0,1) and (1,0) in any cell. For example, to apply this mathematically, denote the local coordinate system by $\mathbf{X}$ and the new, easier local basis functions $\widetilde\varphi_r(\mathbf{X})$, and now consider the integral,
@@ -368,7 +371,7 @@ where ${\widetilde{\Omega}^{(e)}} = [0,1]\times[0,1]$. This mapping can easily b
 	\widetilde\varphi_1(\mathbf{X}) &= X_0,\\
 	\widetilde\varphi_2(\mathbf{X}) &= X_1,
 \end{align}
-thus leaving far easier integrals to evaluate.
+thus leaving far easier integrals to evaluate.~\cite{mardal}
 
 \section{Implemented Example}
 
@@ -422,6 +425,7 @@ Without going into large amounts of detail, it can be deduced mathematically tha
 	\int_{\Omega^{(e)}} \alpha \nabla \varphi_j \cdot \nabla \varphi_i~d\mathbf{x} &= \int_{\Omega^{(e)}}\frac{\Delta^2}{4}(\beta_i\beta_j + \gamma_i\gamma_j)~d\mathbf{x}\\
 	&= \frac{\Delta^3}{4}(\beta_i\beta_j + \gamma_i\gamma_j).\label{conv}
 \end{align}
+\cite{mardal}
 
 \subsubsection{Analytical Solution}
 

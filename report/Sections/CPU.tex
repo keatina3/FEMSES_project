@@ -36,7 +36,13 @@ Objects are a massive sell for using C++ over C when programming a numerical met
 
 \subsection{Mesh}\label{mesh}
 
-The mathematics of the mesh has been illustrated, the next logical step would be to port it over to code. The data structure for the mesh holds a handful of key components and routines needed for its generation. Given the mesh itself is of course, a collection of interconnected nodes on a plane, upon each of which numerical calculations must be performed, it was naturally necessary to stores these nodes and their corresponding coordinates. In the implementation of this paper, a 2D mesh was used, though the extension to higher dimensions is rather arbitrary - another benefit of the FEM. The nodes' coordinates were stored in an array, \texttt{vertices}, which had a dimension of \texttt{order}, where order is the number of nodes or number of unknowns. Looking back at the Section~\ref{elems}, however, simply knowing the nodes coordinates for the FEM isn't enough, one also needs to know their global indices and degree of freedom mapping back to the stiffness matrix. These were respectively stored in two 2D arrays, \texttt{cells} and \texttt{dof}. Note that this is the exact same as performing the mapping function $q(e,r)$ seen previously. For example, \texttt{dof[e][r]} will provide the global node index of local node $r$ in cell $e$. Figure~\ref{fig:4cell} gives an example of a small mesh, the populated version of these three arrays are described in (LISTING). Note also in this example that each cell's array is numbered in an anti-clockwise direction - this is important for the orientation of the integrals calculated later. Since in this paper, only P1 examples were used, the degree of freedom mapping and global node indices are actually equal and so having two separate arrays for these was rather unnecessary but it allows for potential further expansion of the code with ease.
+The mathematics of the mesh has been illustrated, the next logical step would be to port it over to code. The data structure for the mesh holds a handful of key components and routines needed for its generation. Given the mesh itself is, of course, a collection of interconnected nodes on a plane, upon each of which numerical calculations must be performed, it was naturally necessary to stores these nodes and their corresponding coordinates. In the implementation of this paper, a 2D mesh was used, though the extension to higher dimensions is rather arbitrary - another benefit of the FEM. The nodes' coordinates were stored in an array, \texttt{vertices}, which had a dimension of \texttt{order}, where order is the number of nodes or number of unknowns. Looking back at the Section~\ref{elems}, however, simply knowing the nodes coordinates for the FEM isn't enough, one also needs to know their global indices and degree of freedom mapping back to the stiffness matrix. These were respectively stored in two 2D arrays, \texttt{cells} and \texttt{dof}. Note that this is the exact same as performing the mapping function $q(e,r)$ seen previously. For example, \texttt{dof[e][r]} will provide the global node index of local node $r$ in cell $e$. Figure~\ref{fig:4cell} gives an example of a small mesh, the populated version of these three arrays are described in Listing~\ref{lst:mesh}. Note also in this example that each cell's array is numbered in an anti-clockwise direction - this is important for the orientation of the integrals calculated later. Since in this paper, only P1 examples were used, the degree of freedom mapping and global node indices are actually equal and so having two separate arrays for these was rather unnecessary but it allows for potential further expansion of the code with ease.
+
+\begin{lstlisting}[basicstyle=\footnotesize, caption={Example of populated mesh.}, label={lst:mesh}]
+vertices = [[-7.0, -1], [8.0, -7.0], [11.0, 6.0], [4.0, -5.0], [-2.0,2.0]]
+cells = [[0,1,4], [1,2,4], [4,2,3], [0,1,3]]
+dof = [[0,1,4], [1,2,4], [4,2,3], [0,1,3]]
+\end{lstlisting}
 
 \begin{remark}
 	Standard library vectors were not used for the 2D arrays as the contiguity of the data was important for transferring the data to the GPU and for certain linear solvers.
@@ -143,17 +149,17 @@ The element matrix calculation is detailed in Algorithm~\ref{algo:elems}, utilis
 \begin{figure}
 	\centering
 	\includegraphics[width=0.7\linewidth]{Figures/mesh_graph}
-	\caption{Mesh for generic FEM problem illustrated as a graph representation.}
+	\caption{Mesh for generic FEM problem illustrated as a graph representation.~\cite{saad}}
 	\label{fig:graph}
 \end{figure}
 \begin{figure}
 	\centering
 	\includegraphics[width=0.4\linewidth]{Figures/sparsity_pattern}
-	\caption{Sparsity pattern of FEM mesh.}
+	\caption{Sparsity pattern of FEM mesh.~\cite{saad}}
 	\label{fig:pattern}
 \end{figure}
 
-The idea of sparse matrices and CSR storage has been thrown about in this paper a handful of times. The idea here is that a matrix is considered sparse, if it consists of mostly 0 valued entries - in some papers it is defined as having over 50\% 0 entries but this is a rather loose definition. This is important in the FEM as, if the basis functions are considered, one must remember that these are defined on a compact support $\Omega^{(e)}$, and will be 0 everywhere outside of this domain. Due to this, the global stiffness matrix will be a SPD, sparse matrix. Consider again Figure~\ref{fig:4cell}, at no point is there any connection between nodes X and Y, thus the resulting inner product $\left\langle\varphi_X,\varphi_Y\right\rangle=0$. Why is this important? It can be hugely beneficial to computation time if one can take advantage of the sparsity pattern of a matrix, clearly as there is going to be potentially orders less null operations to iterate through.
+The idea of sparse matrices and CSR storage has been thrown about in this paper a handful of times. The idea here is that a matrix is considered sparse, if it consists of mostly 0 valued entries - in some papers it is defined as having over 50\% 0 entries but this is a rather loose definition. This is important in the FEM as, if the basis functions are considered, one must remember that these are defined on a compact support $\Omega^{(e)}$, and will be 0 everywhere outside of this domain. Due to this, the global stiffness matrix will be a SPD, sparse matrix. Consider again Figure~\ref{fig:4cell}, at no point is there any connection between nodes 1 and 3, thus the resulting inner product $\left\langle\varphi_1,\varphi_3\right\rangle=0$. Why is this important? It can be hugely beneficial to computation time if one can take advantage of the sparsity pattern of a matrix, clearly as there is going to be potentially orders less null operations to iterate through.
 
 These matrices can be stored in a number of different ways, three will be looked at here, although only CSR was used in the implementation:
 \begin{itemize}
@@ -211,10 +217,11 @@ From a sparse matrix perspective, this graph can be thought of as the connectivi
 \begin{equation}
 	\left\langle \varphi_i, \varphi_j \right\rangle = 0.
 \end{equation}
+\cite{saad}
 
 \subsection{Sparsity Scan}\label{sparsity}
 
-Naturally, the next question needing to be posed is, how does one take advantage of this inherent sparsity pattern available in the stiffness matrix. The easiest, although there have been papers published on more advanced methods (CITE), is to run a single pass over the mesh to begin, taking the computational hit, and using this to create a sparsity pattern. In this implementation, the pass created a vector of STL sets, one set for each node, and iterated through each, amending to the set if there was an edge between the two nodes. Using this, one now has the number of non-zeros and can populate quite easily, IA and IJ, in the CSR matrix. Algorithm~\ref{algo:sparse} details how this is explicitly performed.
+Naturally, the next question needing to be posed is, how does one take advantage of this inherent sparsity pattern available in the stiffness matrix. The easiest, although there have been papers published on more advanced methods~\cite{sparse}, is to run a single pass over the mesh to begin, taking the computational hit, and using this to create a sparsity pattern. In this implementation, the pass created a vector of STL sets, one set for each node, and iterated through each, amending to the set if there was an edge between the two nodes. Using this, one now has the number of non-zeros and can populate quite easily, IA and IJ, in the CSR matrix. Algorithm~\ref{algo:sparse} details how this is explicitly performed.
 \begin{algorithm}
 	\caption{Sparsity pass on mesh to populate row pointer and column indices vectors.}
 	\label{algo:sparse}
@@ -248,8 +255,8 @@ A substantial part of the computation time in the FEM, relies on actually solvin
 
 \subsection{Intel's MKL}\label{mkl}
 
-The Intel library was split into two separate sub-libraries: their LAPACK routines for dense systems, and their Direct Sparse Solver (DSS). Both were used in this paper for comparison reasons. In either case, given that the stiffness matrix $A$, is symmetric positive definite (SPD), both dense and sparse solvers work by initially factorising the matrix using Cholesky decomposition, $A = L^T L$, where $L$ is lower-triangular. This new system is now solved using a direct solver. The DSS also has an option of providing a reordering of the sparse matrix, prior to the Cholesky decomposition, such as Cuthill-McKee (CITE), if one so wishes to make the sparsity pattern more compact, and thus more efficient for solving. Figure~\ref{fig:ordering} demonstrates the potential benefits of reordering, a much more compact data set, allowing for far more coalesced operations and less distance to travel along memory (CITE MATLAB SITE). This option was left on "auto" for the purposes of this report. 
-CITE INTEL'S DOCUMENTATION
+The Intel library was split into two separate sub-libraries: their LAPACK routines for dense systems, and their Direct Sparse Solver (DSS). Both were used in this paper for comparison reasons. In either case, given that the stiffness matrix $A$, is symmetric positive definite (SPD), both dense and sparse solvers work by initially factorising the matrix using Cholesky decomposition, $A = L^T L$, where $L$ is lower-triangular. This new system is now solved using a direct solver. The DSS also has an option of providing a reordering of the sparse matrix, prior to the Cholesky decomposition, such as Cuthill-McKee~\cite{cutmckee}, if one so wishes to make the sparsity pattern more compact, and thus more efficient for solving. Figure~\ref{fig:ordering} demonstrates the potential benefits of reordering, a much more compact data set, allowing for far more coalesced operations and less distance to travel along memory. This option was left on "auto" for the purposes of this report.~\cite{dss}
+
 \begin{figure}
     \centering
     \begin{subfigure}{0.49\textwidth}
@@ -264,6 +271,6 @@ CITE INTEL'S DOCUMENTATION
      \begin{subfigure}{0.49\textwidth}
         \includegraphics[width=\textwidth]{Figures/chol_cmckee}
     \end{subfigure}
-    \caption{Illustration of a sparsity pattern of a matrix, pre and post Cuthill-McKee reordering, along with the resulting Cholesky decompositions of both matrices.}
+    \caption{Illustration of a sparsity pattern of a matrix, pre and post Cuthill-McKee reordering, along with the resulting Cholesky decompositions of both matrices.\cite{matlab}}
     \label{fig:ordering}
 \end{figure}

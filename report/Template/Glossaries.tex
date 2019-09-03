@@ -1,0 +1,73 @@
+\newglossaryentry{memdep}
+{
+  name=Memory Dependency,
+  description={A load/store cannot be because the required resources are not available or are fully utilised, or too many requests of a given type are outstanding. Data request stalls can be potentially reduced by optimising memory alignment across patterns.}
+}
+\newglossaryentry{const}
+{
+  name=Constant,
+  description={A constant load is blocked due to a miss in the constants cache.}
+}
+
+\newglossaryentry{sync}
+{
+  name=Synchronisation,
+  description={The warp is blocked at a \twound syncthreads() call.}
+}
+\newglossaryentry{memthrot}
+{
+  name=Memory Throttle,
+  description={Large number of pending memory operations prevent further forward progress. These can be reduced by combining several memory transactions into one.}
+}
+\newglossaryentry{noselect}
+{
+  name=Not Selected,
+  description={Warp was ready to use, but some other warp issued instead. You may be able to sacrifice occupancy without impacting latency hiding and doing so may help improve cache rates.}
+}
+\newglossaryentry{fetch}
+{
+  name=Instruction Fetch,
+  description={Next assembly instruction has not yet been fetched.}
+}
+\newglossaryentry{texture}
+{
+  name=Texture,
+  description={The texture sub-system is fully utilised or has too many outstanding requests.}
+}
+\newglossaryentry{exec}
+{
+  name=Execution Dependency,
+  description={An input required by the instruction is not yet available. Execution dependency stall can be reduced by increasing instruction-level parallelism.}
+}
+\newglossaryentry{pipe}
+{
+  name=Pipeline Busy,
+  description={The compute resource(s) required by the instruction is not yet available.}
+}
+
+\newacronym{fem}{FEM}{Finite Element Method}
+\newacronym{femses}{FEMSES}{Finite Element Method Single-Element Solution}
+\newacronym{gpu}{GPU}{Graphics Processing Unit}
+\newacronym{gpgpu}{GPGPU}{General-Purpose Graphics Processing Unit}
+\newacronym{nvvp}{NVVP}{Nvidia Visual Profiler}
+\newacronym{gcd}{GCD}{Greatest Common Divisor}
+\newacronym{csr}{CSR}{Compressed Sparse Row}
+\newacronym{csc}{GCD}{Compressed Sparse Column}
+\newacronym{pde}{PDE}{Partial Differential Equation}
+\newacronym{mkl}{MKL}{Math Kernel Library}
+\newacronym{lapack}{LAPACK}{Linear Algebra Package}
+\newacronym{blas}{BLAS}{Basic Linear Algebra Subroutines}
+\newacronym{sdk}{SDK}{Software Development Kit}
+\newacronym{spd}{SPD}{Symmetric Positive Definite}
+\newacronym{rhs}{RHS}{Right-Hand Side}
+\newacronym{lhs}{LHS}{Left-Hand Side}
+\newacronym{raii}{RAII}{Resource Acquisition is Initialisation}
+\newacronym{stl}{STL}{C++ Standard Library}
+\newacronym{dram}{DRAM}{Dynamic Random Access Memory}
+\newacronym{ddr}{DDR}{Double Data Rate}
+\newacronym{dss}{DSS}{Dense Sparse Solver}
+\newacronym{magma}{MAGMA}{Matrix Algebra on GPU and Multicore Architectures}
+
+
+
+

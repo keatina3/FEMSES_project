@@ -16,10 +16,13 @@
 \usepackage{xcolor}
 \usepackage[linesnumbered,lined,ruled,titlenotnumbered]{algorithm2e}
 \usepackage{subcaption}
+\usepackage[toc,acronym,nonumberlist,numberedsection]{glossaries}
+
 
 \makeatletter
 %\renewcommand{\@algocf@capt@plain}{bottom}% formerly {bottom}
 \makeatother
+\makeglossaries
 
 \newtheorem*{remark}{Remark}
 
@@ -34,7 +37,7 @@
 
 % set APA citation style
 %\usepackage{apacite}
-\usepackage[numbib,notlof,notlot,nottoc]{tocbibind}
+\usepackage[notlof,notlot,nottoc]{tocbibind}
 \pagenumbering{gobble}
 
 \newcolumntype{C}[1]{>{\centering\arraybackslash$}p{#1}<{$}}
@@ -96,6 +99,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %DOCUMENT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{Template/Glossaries.tex}
 
 \begin{document}
 
@@ -166,12 +171,13 @@
 %BIBLIOGRAPHY
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\clearpage
-\renewcommand*{\thesection}{}\textbf{}
+%\clearpage
+%\renewcommand*{\thesection}{}\textbf{}
 
-\bibliographystyle{apacite}
-\bibliography{Bibliography.bib}
+%\bibliographystyle{apacite}
+%\bibliography{Bibliography.bib}
 
+\input{./Template/Bibliography}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %APPENDICES
@@ -180,9 +186,8 @@
 \appendix
 \renewcommand*{\thesection}{\Alph{section}}\textbf{}
 
-\begin{appendices}
-\input{Appendices/Appendix_1.tex}
-\end{appendices}
-
+\glsaddall
+\printglossary[type=\acronymtype]
+\printglossary[title=List of NVVP Terms, toctitle=List of Terms]
 
 \end{document}

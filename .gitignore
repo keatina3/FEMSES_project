@@ -4,6 +4,17 @@
 *.aux
 *.lof
 *.lot
+*.acn
+*.acr
+*.alg
+*.bbl
+*.blg
+*.glg
+*.glo
+*.gls
+*.ist
+*.loa
+*.lol
 *.out
 *.toc
 *.gz
