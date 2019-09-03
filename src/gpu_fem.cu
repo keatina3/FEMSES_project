@@ -10,8 +10,6 @@
 #include "gpu_utils.h"
 #include "gpu_fem.h"
 
-#include <cstdio>
-
 //////////// Calculates area of triangle, given coordinates ////////////////
 __device__ float area(float *xi){
     float tmp = 0.0;

@@ -19,5 +19,7 @@
 *.toc
 *.gz
 *.sty
+*.lol
+*.loa
 fem_solver
 References/*
